@@ -184,7 +184,8 @@ function UnknownElementPlaceholder({ element, scale }: { element: SlideElement; 
 function TextElementRenderer({ element, scale }: { element: TextElement; scale: number }) {
   const { x, y, width, height, textLines } = element;
   const markerCounters: Record<string, number> = {};
-  const extraLeftPadding = 10 * scale
+  const leftAlignedPadding = 12 * scale
+  const rightAlignedPadding = 12 * scale
   const maxTextRunFontSize = Math.max(
     ...textLines.flatMap(line => line.textRuns.map(run => run.fontSize)),
     16
@@ -365,8 +366,8 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
       {textLines.map((line, lineIndex) => {
         const alignment = line.textAlignment.toLowerCase() as 'left' | 'center' | 'right'
         const basePaddingLeft = (line.marginLeft || 0) * scale
-        const alignmentPaddingLeft = alignment === 'left' ? extraLeftPadding : 0
-        const alignmentPaddingRight = alignment === 'right' ? extraLeftPadding : 0
+        const alignmentPaddingLeft = alignment === 'left' ? leftAlignedPadding : 0
+        const alignmentPaddingRight = alignment === 'right' ? rightAlignedPadding : 0
 
         return (
           <div
