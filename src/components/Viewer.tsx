@@ -1,7 +1,9 @@
+import { useEffect, useMemo, useState } from 'react';
 import { styles } from '../styles';
 import { Sidebar } from './Sidebar';
 import { SlideViewer } from './SlideViewer';
-import type { CoursewareMetadata, SlideData } from '../parser';
+import type { CoursewareMetadata, SlideData, SlideIssue } from '../parser';
+import { isFontFamilyMissing } from '../font-utils';
 
 interface ViewerProps {
   metadata: CoursewareMetadata;
@@ -12,6 +14,62 @@ interface ViewerProps {
   resourceMap?: Record<string, string>;
 }
 
+type IssueFilter = 'all' | SlideIssue['kind']
+
+function collectMissingFontIssues(slides: SlideData[]): SlideIssue[] {
+  const issues: SlideIssue[] = []
+  const seen = new Set<string>()
+
+  slides.forEach(slide => {
+    slide.elements.forEach(element => {
+      const textLines = (() => {
+        if (element.type === 'text') return element.textLines
+        if (element.type === 'shape') return element.inlineText || []
+        return []
+      })()
+      if (textLines.length === 0) return
+
+      const elementType = element.type === 'shape' ? element.geometryType || 'Shape' : element.type
+
+      textLines.forEach(line => {
+        const markerFont = line.textMarkerStyle?.fontFamily?.trim()
+        if (markerFont && isFontFamilyMissing(markerFont)) {
+          const markerKey = `${slide.id}|${element.id}|marker|${markerFont}`
+          if (!seen.has(markerKey)) {
+            seen.add(markerKey)
+            issues.push({
+              kind: 'missing-font',
+              slideId: slide.id,
+              elementType,
+              elementId: element.id,
+              name: markerFont,
+              value: '列表符号字体不可用'
+            })
+          }
+        }
+
+        line.textRuns.forEach(run => {
+          const fontName = run.fontFamily?.trim()
+          if (!fontName || !isFontFamilyMissing(fontName)) return
+          const key = `${slide.id}|${element.id}|run|${fontName}`
+          if (seen.has(key)) return
+          seen.add(key)
+          issues.push({
+            kind: 'missing-font',
+            slideId: slide.id,
+            elementType,
+            elementId: element.id,
+            name: fontName,
+            value: '文本字体不可用'
+          })
+        })
+      })
+    })
+  })
+
+  return issues
+}
+
 export function Viewer({ 
   metadata, 
   slides, 
@@ -20,7 +78,61 @@ export function Viewer({
   onClear,
   resourceMap = {}
 }: ViewerProps) {
+  const [isIssueModalOpen, setIssueModalOpen] = useState(false);
+  const [issueFilter, setIssueFilter] = useState<IssueFilter>('all');
+  const [fontCheckTick, setFontCheckTick] = useState(0);
   const currentSlide = slides[currentIndex];
+
+  useEffect(() => {
+    if (typeof document === 'undefined' || !document.fonts) return
+    const handleFontStateChange = () => setFontCheckTick(tick => tick + 1)
+    document.fonts.ready.then(handleFontStateChange).catch(() => undefined)
+    document.fonts.addEventListener('loadingdone', handleFontStateChange)
+    document.fonts.addEventListener('loadingerror', handleFontStateChange)
+    return () => {
+      document.fonts.removeEventListener('loadingdone', handleFontStateChange)
+      document.fonts.removeEventListener('loadingerror', handleFontStateChange)
+    }
+  }, [])
+
+  const slideOrderMap = useMemo(() => {
+    return new Map(slides.map((slide, index) => [slide.id, index + 1]));
+  }, [slides]);
+  const missingFontIssues = useMemo(() => {
+    return collectMissingFontIssues(slides)
+  }, [slides, fontCheckTick]);
+  const allIssues = useMemo(() => {
+    return [...slides.flatMap(slide => slide.issues || []), ...missingFontIssues];
+  }, [slides, missingFontIssues]);
+  const sortedIssues = useMemo(() => {
+    const ordered = [...allIssues];
+    ordered.sort((a, b) => {
+      const pageA = slideOrderMap.get(a.slideId) || Number.MAX_SAFE_INTEGER;
+      const pageB = slideOrderMap.get(b.slideId) || Number.MAX_SAFE_INTEGER;
+      if (pageA !== pageB) return pageA - pageB;
+      if (a.kind !== b.kind) {
+        const priority: Record<SlideIssue['kind'], number> = {
+          'unknown-element': 0,
+          'unknown-parameter': 1,
+          'missing-font': 2
+        }
+        return priority[a.kind] - priority[b.kind]
+      }
+      if (a.elementType !== b.elementType) return a.elementType.localeCompare(b.elementType);
+      if (a.name !== b.name) return a.name.localeCompare(b.name);
+      return a.elementId.localeCompare(b.elementId);
+    });
+    return ordered;
+  }, [allIssues, slideOrderMap]);
+  const filteredIssues = useMemo(() => {
+    if (issueFilter === 'all') return sortedIssues
+    return sortedIssues.filter(issue => issue.kind === issueFilter)
+  }, [sortedIssues, issueFilter]);
+  const unknownElementCount = allIssues.filter(issue => issue.kind === 'unknown-element').length;
+  const unknownParameterCount = allIssues.filter(issue => issue.kind === 'unknown-parameter').length;
+  const missingFontCount = allIssues.filter(issue => issue.kind === 'missing-font').length;
+  const issueCount = allIssues.length;
+  const issueButtonText = issueCount > 0 ? `问题 (${issueCount})` : '问题';
 
   return (
     <div style={styles.viewerContainer}>
@@ -33,6 +145,9 @@ export function Viewer({
           </span>
         </div>
         <div style={styles.toolbarRight}>
+          <button onClick={() => setIssueModalOpen(true)} style={styles.issueButton}>
+            {issueButtonText}
+          </button>
           <button onClick={onClear} style={styles.clearButton}>
             关闭
           </button>
@@ -48,6 +163,93 @@ export function Viewer({
         />
         <SlideViewer slide={currentSlide} resourceMap={resourceMap} />
       </div>
+
+      {isIssueModalOpen && (
+        <div style={styles.modalOverlay} onClick={() => setIssueModalOpen(false)}>
+          <div style={styles.modalCard} onClick={event => event.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <div style={styles.modalTitle}>解析问题列表</div>
+              <button style={styles.modalCloseButton} onClick={() => setIssueModalOpen(false)}>
+                关闭
+              </button>
+            </div>
+            <div style={styles.modalSummary}>
+              <span>总计 {issueCount} 项</span>
+              <span>未识别元素 {unknownElementCount} 项</span>
+              <span>未识别参数 {unknownParameterCount} 项</span>
+              <span>缺失字体 {missingFontCount} 项</span>
+            </div>
+            <div style={styles.issueFilterBar}>
+              <button
+                style={{
+                  ...styles.issueFilterButton,
+                  ...(issueFilter === 'all' ? styles.issueFilterButtonActive : {})
+                }}
+                onClick={() => setIssueFilter('all')}
+              >
+                全部 ({issueCount})
+              </button>
+              <button
+                style={{
+                  ...styles.issueFilterButton,
+                  ...(issueFilter === 'unknown-element' ? styles.issueFilterButtonActive : {})
+                }}
+                onClick={() => setIssueFilter('unknown-element')}
+              >
+                未识别元素 ({unknownElementCount})
+              </button>
+              <button
+                style={{
+                  ...styles.issueFilterButton,
+                  ...(issueFilter === 'unknown-parameter' ? styles.issueFilterButtonActive : {})
+                }}
+                onClick={() => setIssueFilter('unknown-parameter')}
+              >
+                未识别参数 ({unknownParameterCount})
+              </button>
+              <button
+                style={{
+                  ...styles.issueFilterButton,
+                  ...(issueFilter === 'missing-font' ? styles.issueFilterButtonActive : {})
+                }}
+                onClick={() => setIssueFilter('missing-font')}
+              >
+                缺失字体 ({missingFontCount})
+              </button>
+            </div>
+            {filteredIssues.length === 0 && (
+              <div style={styles.modalEmpty}>当前筛选条件下没有问题</div>
+            )}
+            {filteredIssues.length > 0 && (
+              <div style={styles.issueList}>
+                {filteredIssues.map((issue, index) => {
+                  const pageNumber = slideOrderMap.get(issue.slideId);
+                  return (
+                    <div key={`${issue.kind}-${issue.slideId}-${issue.elementId}-${issue.name}-${index}`} style={styles.issueItem}>
+                      <div style={styles.issueItemHeader}>
+                        <span style={styles.issueBadge}>
+                          {issue.kind === 'unknown-element'
+                            ? '未识别元素'
+                            : issue.kind === 'unknown-parameter'
+                              ? '未识别参数'
+                              : '缺失字体'}
+                        </span>
+                        <span style={styles.issueMeta}>
+                          第 {pageNumber || '?'} 页 | 元素类型: {issue.elementType} | 元素ID: {issue.elementId}
+                        </span>
+                      </div>
+                      <div style={styles.issueName}>名称: {issue.name}</div>
+                      {issue.value && (
+                        <div style={styles.issueValue}>值: {issue.value}</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

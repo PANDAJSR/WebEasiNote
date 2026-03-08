@@ -17,6 +17,7 @@ TextRun,
 ShapeElement,
   PictureElement,
   UnknownElement,
+  SlideIssue,
 SlideElement
 } from './types';
 export { parseColor, formatDateTime } from './xml-utils';
@@ -268,6 +269,7 @@ function parseSlideXML(xmlString: string): SlideData {
   
   // 解析元素
   let elements: SlideData['elements'] = [];
+  let issues: SlideData['issues'] = [];
   const elementsNode = slideElement.querySelector('Elements');
   if (elementsNode) {
     const topLevelNodes = Array.from(elementsNode.children);
@@ -280,7 +282,9 @@ function parseSlideXML(xmlString: string): SlideData {
     console.log(`[Slide ${id}] 发现元素类型统计:`, elementTypeCounts);
     console.log(`[Slide ${id}] 所有元素标签:`, topLevelNodes.map(n => n.tagName).join(', '));
 
-    elements = parseSlideElements(elementsNode, { slideId: id });
+    const parseResult = parseSlideElements(elementsNode, { slideId: id });
+    elements = parseResult.elements;
+    issues = parseResult.issues;
     console.log(`[Slide ${id}] 顶层元素 ${topLevelNodes.length} 个，解析后可渲染元素 ${elements.length} 个`);
   } else {
     console.log(`[Slide ${id}] 没有找到 Elements 节点`);
@@ -292,6 +296,7 @@ function parseSlideXML(xmlString: string): SlideData {
     height,
     backgroundColor,
     backgroundImage,
+    issues,
     elements
   };
 }

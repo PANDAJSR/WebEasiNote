@@ -1,4 +1,4 @@
-import type { SlideElement, ShapeElement, PictureElement } from './types'
+import type { SlideElement, ShapeElement, PictureElement, SlideIssue } from './types'
 import { parseShapeElement } from './shapes'
 import { parsePictureElement } from './pictures'
 import { parseTextElement } from './text-parser'
@@ -10,10 +10,78 @@ interface ParseElementsOptions {
   offsetY?: number
 }
 
+interface ParseSlideElementsResult {
+  elements: SlideElement[]
+  issues: SlideIssue[]
+}
+
+const KNOWN_PARAMETERS: Record<string, Set<string>> = {
+  Text: new Set(['Id', 'X', 'Y', 'Width', 'Height', 'Rotation', 'BorderThickness', 'BorderType', 'RichText']),
+  Shape: new Set([
+    'Id',
+    'X',
+    'Y',
+    'Width',
+    'Height',
+    'Opacity',
+    'Background',
+    'Foreground',
+    'Path',
+    'FillRule',
+    'PathFillRule',
+    'Geometry',
+    'Thickness',
+    'LineType',
+    'InlineText',
+    'Effects'
+  ]),
+  Picture: new Set([
+    'Id',
+    'X',
+    'Y',
+    'Width',
+    'Height',
+    'Source',
+    'PictureName',
+    'Alpha',
+    'Rotation',
+    'DisplayRegion',
+    'MetaData'
+  ]),
+  Group: new Set(['Id', 'X', 'Y', 'Width', 'Height', 'Rotation', 'Elements'])
+}
+
 function parseNumber(value: string | null, fallback = 0): number {
   if (!value) return fallback
   const parsed = parseFloat(value)
   return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function previewValue(node: Element): string {
+  const text = node.textContent?.trim() || ''
+  if (text.length <= 80) return text
+  return `${text.slice(0, 80)}...`
+}
+
+function collectUnknownParameters(
+  node: Element,
+  elementType: keyof typeof KNOWN_PARAMETERS,
+  slideId: string,
+  elementId: string,
+  issues: SlideIssue[]
+) {
+  const knownParams = KNOWN_PARAMETERS[elementType]
+  Array.from(node.children).forEach(child => {
+    if (knownParams.has(child.tagName)) return
+    issues.push({
+      kind: 'unknown-parameter',
+      slideId,
+      elementType,
+      elementId,
+      name: child.tagName,
+      value: previewValue(child)
+    })
+  })
 }
 
 function applyOffset<T extends SlideElement>(element: T, offsetX: number, offsetY: number): T {
@@ -24,16 +92,19 @@ function applyOffset<T extends SlideElement>(element: T, offsetX: number, offset
   }
 }
 
-export function parseSlideElements(elementsNode: Element, options: ParseElementsOptions): SlideElement[] {
+export function parseSlideElements(elementsNode: Element, options: ParseElementsOptions): ParseSlideElementsResult {
   const { slideId, offsetX = 0, offsetY = 0 } = options
   const parsedElements: SlideElement[] = []
+  const issues: SlideIssue[] = []
   const allChildNodes = Array.from(elementsNode.children)
 
   allChildNodes.forEach((node, index) => {
     const tagName = node.tagName
+    const elementId = getDirectChildText(node, 'Id') || `${tagName.toLowerCase()}-${index}`
 
     switch (tagName) {
       case 'Text': {
+        collectUnknownParameters(node, 'Text', slideId, elementId, issues)
         const textElement = parseTextElement(node)
         if (textElement) {
           parsedElements.push(applyOffset(textElement, offsetX, offsetY))
@@ -41,6 +112,7 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         break
       }
       case 'Shape': {
+        collectUnknownParameters(node, 'Shape', slideId, elementId, issues)
         const shapeElement = parseShapeElement(node)
         if (shapeElement) {
           parsedElements.push(applyOffset(shapeElement as ShapeElement, offsetX, offsetY))
@@ -48,6 +120,7 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         break
       }
       case 'Picture': {
+        collectUnknownParameters(node, 'Picture', slideId, elementId, issues)
         const pictureElement = parsePictureElement(node)
         if (pictureElement) {
           parsedElements.push(applyOffset(pictureElement as PictureElement, offsetX, offsetY))
@@ -55,6 +128,7 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         break
       }
       case 'Group': {
+        collectUnknownParameters(node, 'Group', slideId, elementId, issues)
         const groupX = parseNumber(getDirectChildText(node, 'X'))
         const groupY = parseNumber(getDirectChildText(node, 'Y'))
         const groupRotation = parseNumber(getDirectChildText(node, 'Rotation'))
@@ -74,17 +148,34 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
           offsetX: offsetX + groupX,
           offsetY: offsetY + groupY
         })
-        parsedElements.push(...groupChildren)
+        parsedElements.push(...groupChildren.elements)
+        issues.push(...groupChildren.issues)
         break
       }
       default: {
-        const elementId = getDirectChildText(node, 'Id') || `${tagName.toLowerCase()}-${index}`
         const x = parseNumber(getDirectChildText(node, 'X')) + offsetX
         const y = parseNumber(getDirectChildText(node, 'Y')) + offsetY
         const width = parseNumber(getDirectChildText(node, 'Width'), 200)
         const height = parseNumber(getDirectChildText(node, 'Height'), 100)
 
         console.warn(`[Slide ${slideId}] ⚠️ 未支持的元素类型: ${tagName}`)
+        issues.push({
+          kind: 'unknown-element',
+          slideId,
+          elementType: tagName,
+          elementId,
+          name: tagName
+        })
+        Array.from(node.children).forEach(child => {
+          issues.push({
+            kind: 'unknown-parameter',
+            slideId,
+            elementType: tagName,
+            elementId,
+            name: child.tagName,
+            value: previewValue(child)
+          })
+        })
 
         parsedElements.push({
           type: 'unknown',
@@ -100,5 +191,8 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
     }
   })
 
-  return parsedElements
+  return {
+    elements: parsedElements,
+    issues
+  }
 }

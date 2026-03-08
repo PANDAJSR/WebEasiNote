@@ -155,12 +155,22 @@ export interface UnknownElement {
   originalType: string;
 }
 
+export interface SlideIssue {
+  kind: 'unknown-element' | 'unknown-parameter' | 'missing-font';
+  slideId: string;
+  elementType: string;
+  elementId: string;
+  name: string;
+  value?: string;
+}
+
 export interface SlideData {
   id: string;
   width: number;
   height: number;
   backgroundColor: string;
   backgroundImage?: string; // sourceId for ImageBrush background
+  issues: SlideIssue[];
   elements: (TextElement | ShapeElement | PictureElement | UnknownElement)[];
 }
 

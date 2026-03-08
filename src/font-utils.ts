@@ -75,17 +75,49 @@ function quoteFontFamily(name: string): string {
   return `"${escaped}"`
 }
 
+function normalizeFontName(name: string): string {
+  return name.trim().toLowerCase()
+}
+
+export function resolveFontCandidates(fontFamily?: string): string[] {
+  if (!fontFamily) return []
+
+  const primary = fontFamily.trim()
+  if (!primary) return []
+
+  const aliasList = fontAliasMap[primary] || []
+  return Array.from(new Set([primary, ...aliasList]))
+}
+
+export function isGenericFont(name: string): boolean {
+  return GENERIC_FAMILIES.has(normalizeFontName(name))
+}
+
+export function isFontAvailable(name: string): boolean {
+  const fontName = name.trim()
+  if (!fontName || isGenericFont(fontName)) return true
+  if (typeof document === 'undefined' || !document.fonts?.check) return true
+
+  try {
+    return document.fonts.check(`12px ${quoteFontFamily(fontName)}`)
+  } catch {
+    return true
+  }
+}
+
+export function isFontFamilyMissing(fontFamily?: string): boolean {
+  const candidates = resolveFontCandidates(fontFamily)
+  if (candidates.length === 0) return false
+  return candidates.every(candidate => !isFontAvailable(candidate))
+}
+
 /**
  * 构建字体族字符串，优先使用文件字体，其次尝试常见别名，最后回退到通用 sans-serif
  */
 export function buildFontFamily(fontFamily?: string): string | undefined {
-  if (!fontFamily) return undefined
-
-  const primary = fontFamily.trim()
-  if (!primary) return undefined
-
-  const aliasList = fontAliasMap[primary] || []
-  const families = [primary, ...aliasList, 'sans-serif']
+  const candidates = resolveFontCandidates(fontFamily)
+  if (candidates.length === 0) return undefined
+  const families = [...candidates, 'sans-serif']
   const uniqueFamilies = Array.from(new Set(families))
 
   return uniqueFamilies
