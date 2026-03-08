@@ -1,0 +1,172 @@
+// 类型定义模块
+
+export interface CoursewareMetadata {
+  type: 'enbx' | 'folder';
+  name: string;
+  creator: string;
+  appVersion: string;
+  documentVersion: string;
+  modifiedDate: string | null;
+  slideCount: number;
+  resourceCount: number;
+  resources?: string[];
+  slideFiles?: string[];
+  slideIds: string[];
+  raw: {
+    board: unknown;
+    document: unknown;
+  };
+}
+
+export interface DocumentData {
+  Name?: string;
+  Creator?: string;
+  AppVersion?: string;
+  DocumentVersion?: string;
+  ModifiedDateTime?: string;
+}
+
+export interface TextRun {
+  text: string;
+  fontFamily: string;
+  fontSize: number;
+  fontStyle: 'normal' | 'italic';
+  fontWeight: 'normal' | 'bold';
+  color: string;
+  gradient?: {
+    startPoint: { x: number; y: number };
+    endPoint: { x: number; y: number };
+    stops: Array<{ color: string; offset: number }>;
+    opacity: number;
+  };
+  opacity?: number;
+  decoration?: 'None' | 'Underline';
+  textEffects?: {
+    shadow?: {
+      blur: number;
+      direction: number;
+      distance: number;
+      opacity: number;
+      color: string;
+    };
+    reflection?: {
+      depth: number;
+      distance: number;
+      opacity: number;
+    };
+  };
+}
+
+export interface TextMarkerStyle {
+  char?: string;
+  fontFamily?: string;
+  autoNumberType?: string;
+  startAt?: number;
+}
+
+export interface TextLine {
+  textRuns: TextRun[];
+  textAlignment: 'Left' | 'Center' | 'Right';
+  textMarker?: string;
+  textMarkerStyle?: TextMarkerStyle;
+  indent?: number;
+  indentLevel?: number;
+  indentType?: string;
+  marginLeft?: number;
+  direction?: 'LeftToRight' | 'RightToLeft';
+  lineSpacing?: number;
+  fixedLineSpacing?: number;
+  spaceBefore?: number;
+  spaceAfter?: number;
+}
+
+export interface TextElement {
+  type: 'text';
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation?: number;
+  borderThickness?: number;
+  borderType?: string;
+  arrangingType?: 'Horizontal' | 'Vertical';
+  sizeToContent?: 'Manual' | 'Height' | 'WidthAndHeight';
+  verticalTextAlignment?: 'Top' | 'Center' | 'Bottom';
+  textLines: TextLine[];
+}
+
+// 占位符类型，实际定义在 shapes.ts 和 pictures.ts
+export interface ShapeElement {
+  type: 'shape';
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  opacity?: number;
+  backgroundColor: string;
+  foregroundColor: string;
+  path: string;
+  fillRule?: 'nonzero' | 'evenodd';
+  geometryType: string;
+  inlineText?: TextLine[];
+  borderWidth?: number;
+  borderColor?: string;
+  lineType?: string;
+  reflection?: {
+    offsetY: number;
+    opacity: number;
+    gradientStart: number;
+    gradientEnd: number;
+  };
+}
+
+export interface PictureElement {
+  type: 'picture';
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  sourceId: string;
+  pictureName: string;
+  alpha: number;
+  rotation: number;
+  displayRegion?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  pictureSize?: {
+    width: number;
+    height: number;
+  };
+}
+
+export interface UnknownElement {
+  type: 'unknown';
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  originalType: string;
+}
+
+export interface SlideData {
+  id: string;
+  width: number;
+  height: number;
+  backgroundColor: string;
+  backgroundImage?: string; // sourceId for ImageBrush background
+  elements: (TextElement | ShapeElement | PictureElement | UnknownElement)[];
+}
+
+export interface CoursewareData {
+  metadata: CoursewareMetadata;
+  slides: SlideData[];
+}
+
+export type SlideElement = TextElement | ShapeElement | PictureElement | UnknownElement;
