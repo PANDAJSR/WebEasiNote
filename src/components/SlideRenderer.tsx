@@ -415,8 +415,6 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
                   <span
                     key={runIndex}
                     style={{
-                      position: 'relative',
-                      display: 'inline-block',
                       fontFamily: buildFontFamily(run.fontFamily),
                       fontSize: run.fontSize * scale,
                       fontStyle: run.fontStyle,
