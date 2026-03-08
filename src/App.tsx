@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import JSZip from 'jszip';
 import { 
   parseENBXFile, 
@@ -215,6 +215,39 @@ function App() {
   const handleSlideChange = (index: number) => {
     setCurrentSlideIndex(index);
   };
+
+  useEffect(() => {
+    if (viewMode !== 'viewer') return
+    if (slides.length === 0) return
+
+    const isEditableTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false
+      const tagName = target.tagName
+      return (
+        tagName === 'INPUT' ||
+        tagName === 'TEXTAREA' ||
+        tagName === 'SELECT' ||
+        target.isContentEditable
+      )
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        setCurrentSlideIndex(prev => Math.max(prev - 1, 0))
+      }
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        setCurrentSlideIndex(prev => Math.min(prev + 1, slides.length - 1))
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [viewMode, slides.length])
 
   return (
     <div style={styles.container}>

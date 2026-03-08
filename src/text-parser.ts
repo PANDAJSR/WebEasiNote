@@ -173,8 +173,12 @@ function parseTextLine(lineNode: Element): TextLine | null {
         const textRun = parseTextRun(runNode);
         if (textRun) {
           // 多行文本场景中，导出的 TextRun 可能包含行尾换行符，这里清理掉以避免重复换行
+          // 仅当存在非换行字符时才去掉末尾换行；纯换行内容用于表示空行，需要保留
           if (textRun.text) {
-            textRun.text = textRun.text.replace(/[\r\n]+$/g, '');
+            const hasNonBreakChar = /[^\r\n]/.test(textRun.text)
+            textRun.text = hasNonBreakChar
+              ? textRun.text.replace(/[\r\n]+$/g, '')
+              : '\n'
           }
           textRuns.push(textRun);
         }

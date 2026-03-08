@@ -368,6 +368,7 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
         const basePaddingLeft = (line.marginLeft || 0) * scale
         const alignmentPaddingLeft = alignment === 'left' ? leftAlignedPadding : 0
         const alignmentPaddingRight = alignment === 'right' ? rightAlignedPadding : 0
+        const hasRenderableText = line.textRuns.some(run => run.text.replace(/[\r\n]/g, '').length > 0)
 
         return (
           <div
@@ -408,36 +409,56 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
                 </span>
               );
             })()}
-            {line.textRuns.map((run, runIndex) => (
-              (() => {
-                const gradient = buildTextGradient(run)
-                const opacity = (run.opacity ?? 1) * (run.gradient?.opacity ?? 1)
-                return (
-                  <span
-                    key={runIndex}
-                    style={{
-                      fontFamily: buildFontFamily(run.fontFamily),
-                      fontSize: run.fontSize * scale,
-                      fontStyle: run.fontStyle,
-                      fontWeight: run.fontWeight,
-                      fontSynthesis: 'style weight',
-                      color: gradient ? 'transparent' : run.color,
-                      backgroundImage: gradient,
-                      backgroundClip: gradient ? 'text' : undefined,
-                      WebkitBackgroundClip: gradient ? 'text' : undefined,
-                      WebkitTextFillColor: gradient ? 'transparent' : undefined,
-                      opacity,
-                      textDecoration: run.decoration === 'Underline' ? 'underline' : 'none',
-                      textShadow: getShadowStyle(run),
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word',
-                    }}
-                  >
-                    {run.text}
-                  </span>
-                )
-              })()
-            ))}
+            {hasRenderableText
+              ? line.textRuns.map((run, runIndex) => (
+                (() => {
+                  const gradient = buildTextGradient(run)
+                  const opacity = (run.opacity ?? 1) * (run.gradient?.opacity ?? 1)
+                  return (
+                    <span
+                      key={runIndex}
+                      style={{
+                        fontFamily: buildFontFamily(run.fontFamily),
+                        fontSize: run.fontSize * scale,
+                        fontStyle: run.fontStyle,
+                        fontWeight: run.fontWeight,
+                        fontSynthesis: 'style weight',
+                        color: gradient ? 'transparent' : run.color,
+                        backgroundImage: gradient,
+                        backgroundClip: gradient ? 'text' : undefined,
+                        WebkitBackgroundClip: gradient ? 'text' : undefined,
+                        WebkitTextFillColor: gradient ? 'transparent' : undefined,
+                        opacity,
+                        textDecoration: run.decoration === 'Underline' ? 'underline' : 'none',
+                        textShadow: getShadowStyle(run),
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {run.text}
+                    </span>
+                  )
+                })()
+              ))
+              : (
+                <span
+                  style={{
+                    fontFamily: buildFontFamily(line.textRuns[0]?.fontFamily),
+                    fontSize: (line.textRuns[0]?.fontSize || 16) * scale,
+                    fontStyle: line.textRuns[0]?.fontStyle || 'normal',
+                    fontWeight: line.textRuns[0]?.fontWeight || 'normal',
+                    fontSynthesis: 'style weight',
+                    color: line.textRuns[0]?.color || '#000000',
+                    opacity: line.textRuns[0]?.opacity ?? 1,
+                    textDecoration: line.textRuns[0]?.decoration === 'Underline' ? 'underline' : 'none',
+                    textShadow: line.textRuns[0] ? getShadowStyle(line.textRuns[0]) : undefined,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {'\u00A0'}
+                </span>
+              )}
           </div>
         )
       })}

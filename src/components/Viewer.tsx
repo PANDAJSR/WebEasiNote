@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { styles } from '../styles';
-import { Sidebar } from './Sidebar';
 import { SlideViewer } from './SlideViewer';
 import type { CoursewareMetadata, SlideData, SlideIssue } from '../parser';
 import { isFontFamilyMissing } from '../font-utils';
@@ -156,12 +155,13 @@ export function Viewer({
 
       {/* 主内容区 */}
       <div style={styles.mainContent}>
-        <Sidebar 
-          slides={slides} 
+        <SlideViewer
+          slide={currentSlide}
+          slides={slides}
           currentIndex={currentIndex}
           onSlideChange={onSlideChange}
+          resourceMap={resourceMap}
         />
-        <SlideViewer slide={currentSlide} resourceMap={resourceMap} />
       </div>
 
       {isIssueModalOpen && (

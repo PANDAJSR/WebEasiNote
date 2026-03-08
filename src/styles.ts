@@ -217,6 +217,16 @@ export const styles: Record<string, CSSProperties> = {
   slideTabActive: {
     backgroundColor: '#edf2f7',
   },
+  slideTabStack: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: '6px',
+  },
+  slideTabMetaRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
   slideTabNumber: {
     width: '24px',
     height: '24px',
@@ -233,6 +243,7 @@ export const styles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: '2px',
+    flex: 1,
   },
   slideTabTitle: {
     fontSize: '0.875rem',
@@ -241,6 +252,29 @@ export const styles: Record<string, CSSProperties> = {
   slideTabSize: {
     fontSize: '0.75rem',
     color: '#a0aec0',
+  },
+  slideTabPreviewWrapper: {
+    marginTop: 0,
+    padding: 0,
+    borderRadius: 0,
+    backgroundColor: 'transparent',
+  },
+  slideTabPreviewViewport: {
+    height: '56px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    borderRadius: '0',
+    backgroundColor: 'transparent',
+  },
+  slideTabPreviewContent: {
+    pointerEvents: 'none',
+  },
+  slideTabPreviewImage: {
+    maxWidth: '100%',
+    maxHeight: '100%',
+    display: 'block',
   },
 
   // 幻灯片查看器区域
@@ -399,12 +433,21 @@ export const styles: Record<string, CSSProperties> = {
     left: 0,
     right: 0,
     display: 'flex',
-    gap: '20px',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     padding: '8px 16px',
     backgroundColor: 'white',
     borderTop: '1px solid #e2e8f0',
     fontSize: '0.75rem',
     color: '#718096',
+    zIndex: 10,
+  },
+  slideInfoItems: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '20px',
+    overflowX: 'auto',
+    paddingRight: '12px',
   },
   infoItem: {
     display: 'flex',
@@ -424,5 +467,38 @@ export const styles: Record<string, CSSProperties> = {
     height: '12px',
     borderRadius: '2px',
     border: '1px solid #e2e8f0',
+  },
+  slidePanelToggleButton: {
+    height: '26px',
+    padding: '0 10px',
+    border: '1px solid #cbd5e1',
+    borderRadius: '4px',
+    backgroundColor: '#f8fafc',
+    color: '#334155',
+    fontSize: '0.75rem',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+  },
+  slidePanelOverlay: {
+    position: 'absolute',
+    inset: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.08)',
+    zIndex: 15,
+  },
+  slideFloatingPanel: {
+    position: 'absolute',
+    top: '16px',
+    right: '16px',
+    bottom: '52px',
+    width: '200px',
+    backgroundColor: '#ffffff',
+    border: '1px solid #e2e8f0',
+    borderRadius: '8px',
+    boxShadow: '0 14px 28px rgba(15, 23, 42, 0.16)',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    zIndex: 20,
   },
 };
