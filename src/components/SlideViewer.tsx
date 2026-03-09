@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons'
 import { styles } from '../styles'
 import { SlideRenderer } from './SlideRenderer'
 import type { SlideData } from '../parser'
@@ -59,6 +61,18 @@ export function SlideViewer({
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
   const [isSlidePanelOpen, setSlidePanelOpen] = useState(false)
+  const isFirstSlide = currentIndex <= 0
+  const isLastSlide = currentIndex >= slides.length - 1
+
+  const handlePrevSlide = () => {
+    if (isFirstSlide) return
+    onSlideChange(currentIndex - 1)
+  }
+
+  const handleNextSlide = () => {
+    if (isLastSlide) return
+    onSlideChange(currentIndex + 1)
+  }
 
   // 计算合适的缩放比例，使幻灯片完全适应容器（减去底部栏高度）
   const calculateScale = useCallback(() => {
@@ -154,9 +168,33 @@ export function SlideViewer({
             <span>{slide.elements.length}</span>
           </div>
         </div>
-        <button style={styles.slidePanelToggleButton} onClick={() => setSlidePanelOpen(open => !open)}>
-          幻灯片列表
-        </button>
+        <div style={styles.slidePagerControls}>
+          <button
+            style={{
+              ...styles.slidePagerButton,
+              ...(isFirstSlide ? styles.slidePagerButtonDisabled : {})
+            }}
+            onClick={handlePrevSlide}
+            disabled={isFirstSlide}
+            aria-label="上一页"
+          >
+            <FontAwesomeIcon icon={faChevronLeft} />
+          </button>
+          <button style={styles.slidePanelToggleButton} onClick={() => setSlidePanelOpen(open => !open)}>
+            {currentIndex + 1} / {slides.length}
+          </button>
+          <button
+            style={{
+              ...styles.slidePagerButton,
+              ...(isLastSlide ? styles.slidePagerButtonDisabled : {})
+            }}
+            onClick={handleNextSlide}
+            disabled={isLastSlide}
+            aria-label="下一页"
+          >
+            <FontAwesomeIcon icon={faChevronRight} />
+          </button>
+        </div>
       </div>
     </div>
   )

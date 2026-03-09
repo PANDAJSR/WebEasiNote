@@ -258,8 +258,34 @@ function parseTextRun(runNode: Element): TextRun | null {
     let textEffects: TextRun['textEffects'];
 
     if (textEffectsNode) {
+      const frameNode = textEffectsNode.querySelector('TextFrame');
       const shadowNode = textEffectsNode.querySelector('TextShadow');
       const reflectionNode = textEffectsNode.querySelector('TextReflection');
+
+      if (frameNode) {
+        const thickness = parseFloat(
+          getElementText(frameNode, 'FrameThinkness') ||
+          getElementText(frameNode, 'FrameThickness') ||
+          '0'
+        )
+        const frameOpacity = parseFloat(getElementText(frameNode, 'FrameOpacity') || '1')
+
+        let frameColor = '#000000'
+        const brushNode = frameNode.querySelector('FrameBrush')
+        const colorBrush = brushNode?.querySelector('ColorBrush')
+        if (colorBrush?.textContent) {
+          frameColor = parseColor(colorBrush.textContent, true)
+        }
+
+        textEffects = {
+          ...textEffects,
+          frame: {
+            thickness,
+            opacity: frameOpacity,
+            color: frameColor
+          }
+        }
+      }
 
       if (shadowNode) {
         const blur = parseFloat(getElementText(shadowNode, 'Blur') || '0');

@@ -13,46 +13,6 @@ interface SlideRendererProps {
   resourceMap?: Record<string, string>; // sourceId -> blob URL
 }
 
-const TEXT_TOP_PADDING_ANCHORS = [
-  { fontSize: 30, paddingTop: 12 },
-  { fontSize: 35, paddingTop: 14 },
-  { fontSize: 45, paddingTop: 15 },
-  { fontSize: 60, paddingTop: 16 }
-]
-const TOP_PADDING_FONT_SIZE_RATIO = 0.75
-
-/**
- * 根据字号推导文本顶部 padding
- * 规则：基于锚点做分段线性插值，保证给定字号命中目标值
- */
-function estimateTopPaddingByFontSize(fontSize: number): number {
-  const anchors = TEXT_TOP_PADDING_ANCHORS
-  if (anchors.length === 0) return 12
-
-  if (fontSize <= anchors[0].fontSize) {
-    const first = anchors[0]
-    const second = anchors[1]
-    if (!second) return first.paddingTop
-    const slope = (second.paddingTop - first.paddingTop) / (second.fontSize - first.fontSize)
-    return Math.max(8, first.paddingTop + (fontSize - first.fontSize) * slope)
-  }
-
-  for (let i = 0; i < anchors.length - 1; i += 1) {
-    const start = anchors[i]
-    const end = anchors[i + 1]
-    if (fontSize <= end.fontSize) {
-      const t = (fontSize - start.fontSize) / (end.fontSize - start.fontSize)
-      return start.paddingTop + (end.paddingTop - start.paddingTop) * t
-    }
-  }
-
-  const last = anchors[anchors.length - 1]
-  const prev = anchors[anchors.length - 2]
-  if (!prev) return last.paddingTop
-  const slope = (last.paddingTop - prev.paddingTop) / (last.fontSize - prev.fontSize)
-  return Math.min(24, last.paddingTop + (fontSize - last.fontSize) * slope)
-}
-
 function buildTextGradient(run: TextElement['textLines'][number]['textRuns'][number]): string | undefined {
   const gradient = run.gradient
   if (!gradient || gradient.stops.length === 0) return undefined
@@ -75,32 +35,46 @@ function buildTextGradient(run: TextElement['textLines'][number]['textRuns'][num
 export function SlideRenderer({ slide, scale = 1, resourceMap = {} }: SlideRendererProps) {
   // 获取背景图片 URL
   const backgroundImageUrl = slide.backgroundImage ? resourceMap[slide.backgroundImage] : null;
+  const scaledWidth = slide.width * scale
+  const scaledHeight = slide.height * scale
 
   return (
     <div
       style={{
         position: 'relative',
-        width: slide.width * scale,
-        height: slide.height * scale,
-        backgroundColor: slide.backgroundColor,
-        backgroundImage: backgroundImageUrl ? `url(${backgroundImageUrl})` : undefined,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
+        width: scaledWidth,
+        height: scaledHeight,
         overflow: 'hidden',
         boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
         borderRadius: '4px',
         transformOrigin: 'top left',
       }}
     >
-      {slide.elements.map((element) => (
-        <ElementRenderer 
-          key={element.id} 
-          element={element} 
-          scale={scale} 
-          resourceMap={resourceMap} 
-        />
-      ))}
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          width: slide.width,
+          height: slide.height,
+          backgroundColor: slide.backgroundColor,
+          backgroundImage: backgroundImageUrl ? `url(${backgroundImageUrl})` : undefined,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          transform: `scale(${scale})`,
+          transformOrigin: 'top left'
+        }}
+      >
+        {slide.elements.map((element) => (
+          <ElementRenderer
+            key={element.id}
+            element={element}
+            scale={1}
+            resourceMap={resourceMap}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -184,13 +158,7 @@ function UnknownElementPlaceholder({ element, scale }: { element: SlideElement; 
 function TextElementRenderer({ element, scale }: { element: TextElement; scale: number }) {
   const { x, y, width, height, textLines } = element;
   const markerCounters: Record<string, number> = {};
-  const leftAlignedPadding = 12 * scale
-  const rightAlignedPadding = 12 * scale
-  const maxTextRunFontSize = Math.max(
-    ...textLines.flatMap(line => line.textRuns.map(run => run.fontSize)),
-    16
-  )
-  const topPadding = estimateTopPaddingByFontSize(maxTextRunFontSize * TOP_PADDING_FONT_SIZE_RATIO) * scale
+  const textOuterPadding = 10 * scale
 
   const toLatin = (value: number, lower = false): string => {
     let n = value;
@@ -281,6 +249,43 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
     return `${offsetX.toFixed(2)}px ${offsetY.toFixed(2)}px ${(shadow.blur * scale).toFixed(2)}px ${shadowColor}`;
   };
 
+  const mergeOpacityToColor = (color: string, opacity: number): string => {
+    const normalizedOpacity = Math.min(1, Math.max(0, opacity))
+    if (color.startsWith('rgba(')) {
+      return color.replace(
+        /,\s*([0-9.]+)\)$/,
+        (_, alpha) => `, ${(parseFloat(alpha) * normalizedOpacity).toFixed(2)})`
+      )
+    }
+    if (color.startsWith('rgb(')) {
+      return color.replace('rgb(', 'rgba(').replace(')', `, ${normalizedOpacity.toFixed(2)})`)
+    }
+    if (color.startsWith('#') && color.length === 7) {
+      const r = parseInt(color.slice(1, 3), 16)
+      const g = parseInt(color.slice(3, 5), 16)
+      const b = parseInt(color.slice(5, 7), 16)
+      return `rgba(${r}, ${g}, ${b}, ${normalizedOpacity.toFixed(2)})`
+    }
+    return color
+  }
+
+  const getTextStrokeStyle = (
+    run: TextElement['textLines'][number]['textRuns'][number]
+  ): Pick<CSSProperties, 'WebkitTextStrokeColor' | 'WebkitTextStrokeWidth'> => {
+    const frame = run.textEffects?.frame
+    if (!frame || frame.thickness <= 0) {
+      return {
+        WebkitTextStrokeColor: undefined,
+        WebkitTextStrokeWidth: undefined
+      }
+    }
+
+    return {
+      WebkitTextStrokeColor: mergeOpacityToColor(frame.color, frame.opacity),
+      WebkitTextStrokeWidth: `${(frame.thickness * scale).toFixed(2)}px`
+    }
+  }
+
   const justifyContent = (() => {
     switch (element.verticalTextAlignment) {
       case 'Center':
@@ -324,16 +329,16 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
     textLines.reduce((sum, line) => sum + estimateLineContentHeight(line) + (line.spaceBefore || 0) * scale + (line.spaceAfter || 0) * scale, 0),
     1
   );
-  const availableHeight = Math.max(mainHeight - topPadding, 0);
+  const availableHeight = Math.max(mainHeight - textOuterPadding * 2, 0);
   const contentTopOffset = (() => {
-    if (element.sizeToContent !== 'Manual' || availableHeight <= contentHeight) return topPadding;
+    if (element.sizeToContent !== 'Manual' || availableHeight <= contentHeight) return textOuterPadding;
     switch (element.verticalTextAlignment) {
       case 'Center':
-        return topPadding + (availableHeight - contentHeight) / 2;
+        return textOuterPadding + (availableHeight - contentHeight) / 2;
       case 'Bottom':
-        return topPadding + (availableHeight - contentHeight);
+        return textOuterPadding + (availableHeight - contentHeight);
       default:
-        return topPadding;
+        return textOuterPadding;
     }
   })();
   const textBottom = contentTopOffset + contentHeight;
@@ -347,7 +352,8 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
     minHeight: mainHeight,
     height: element.sizeToContent === 'Manual' ? mainHeight : 'auto',
     boxSizing: 'border-box',
-    paddingTop: topPadding,
+    padding: textOuterPadding,
+    paddingRight: 9.5 * scale,
     overflow: 'visible',
     pointerEvents: 'none',
     display: 'flex',
@@ -366,8 +372,8 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
       {textLines.map((line, lineIndex) => {
         const alignment = line.textAlignment.toLowerCase() as 'left' | 'center' | 'right'
         const basePaddingLeft = (line.marginLeft || 0) * scale
-        const alignmentPaddingLeft = alignment === 'left' ? leftAlignedPadding : 0
-        const alignmentPaddingRight = alignment === 'right' ? rightAlignedPadding : 0
+        const alignmentPaddingLeft = 0
+        const alignmentPaddingRight = 0
         const hasRenderableText = line.textRuns.some(run => run.text.replace(/[\r\n]/g, '').length > 0)
 
         return (
@@ -414,6 +420,7 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
                 (() => {
                   const gradient = buildTextGradient(run)
                   const opacity = (run.opacity ?? 1) * (run.gradient?.opacity ?? 1)
+                  const textStrokeStyle = getTextStrokeStyle(run)
                   return (
                     <span
                       key={runIndex}
@@ -431,6 +438,8 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
                         opacity,
                         textDecoration: run.decoration === 'Underline' ? 'underline' : 'none',
                         textShadow: getShadowStyle(run),
+                        WebkitTextStrokeWidth: textStrokeStyle.WebkitTextStrokeWidth,
+                        WebkitTextStrokeColor: textStrokeStyle.WebkitTextStrokeColor,
                         whiteSpace: 'pre-wrap',
                         wordBreak: 'break-word',
                       }}
@@ -441,23 +450,31 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
                 })()
               ))
               : (
-                <span
-                  style={{
-                    fontFamily: buildFontFamily(line.textRuns[0]?.fontFamily),
-                    fontSize: (line.textRuns[0]?.fontSize || 16) * scale,
-                    fontStyle: line.textRuns[0]?.fontStyle || 'normal',
-                    fontWeight: line.textRuns[0]?.fontWeight || 'normal',
-                    fontSynthesis: 'style weight',
-                    color: line.textRuns[0]?.color || '#000000',
-                    opacity: line.textRuns[0]?.opacity ?? 1,
-                    textDecoration: line.textRuns[0]?.decoration === 'Underline' ? 'underline' : 'none',
-                    textShadow: line.textRuns[0] ? getShadowStyle(line.textRuns[0]) : undefined,
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                  }}
-                >
-                  {'\u00A0'}
-                </span>
+                (() => {
+                  const fallbackRun = line.textRuns[0]
+                  const textStrokeStyle = fallbackRun ? getTextStrokeStyle(fallbackRun) : {}
+                  return (
+                    <span
+                      style={{
+                        fontFamily: buildFontFamily(line.textRuns[0]?.fontFamily),
+                        fontSize: (line.textRuns[0]?.fontSize || 16) * scale,
+                        fontStyle: line.textRuns[0]?.fontStyle || 'normal',
+                        fontWeight: line.textRuns[0]?.fontWeight || 'normal',
+                        fontSynthesis: 'style weight',
+                        color: line.textRuns[0]?.color || '#000000',
+                        opacity: line.textRuns[0]?.opacity ?? 1,
+                        textDecoration: line.textRuns[0]?.decoration === 'Underline' ? 'underline' : 'none',
+                        textShadow: line.textRuns[0] ? getShadowStyle(line.textRuns[0]) : undefined,
+                        WebkitTextStrokeWidth: textStrokeStyle.WebkitTextStrokeWidth,
+                        WebkitTextStrokeColor: textStrokeStyle.WebkitTextStrokeColor,
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {'\u00A0'}
+                    </span>
+                  )
+                })()
               )}
           </div>
         )

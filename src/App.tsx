@@ -234,12 +234,12 @@ function App() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isEditableTarget(event.target)) return
 
-      if (event.key === 'ArrowUp') {
+      if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
         event.preventDefault()
         setCurrentSlideIndex(prev => Math.max(prev - 1, 0))
       }
 
-      if (event.key === 'ArrowDown') {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
         event.preventDefault()
         setCurrentSlideIndex(prev => Math.min(prev + 1, slides.length - 1))
       }

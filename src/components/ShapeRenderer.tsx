@@ -79,8 +79,12 @@ export function ShapeRenderer({ element, scale }: ShapeRendererProps) {
   const mainWidth = (renderWidth + visualPadding * 2) * scale
   const mainHeight = (renderHeight + visualPadding * 2) * scale
 
-  // 倒影高度使用整块内容，避免文本与正文出现相对偏移
-  const reflectionVisibleHeight = mainHeight
+  // 使用 XML 渐变区间控制倒影长度，支持短/中/长差异
+  const reflectionLengthRatio = hasReflection
+    ? Math.max(0.05, Math.min(1, gradientEnd - gradientStart))
+    : 0
+  const reflectionVisibleHeight = mainHeight * reflectionLengthRatio
+  const reflectionSourceOffset = Math.max(0, mainHeight - reflectionVisibleHeight)
   
   // 遮罩：保留接近正文的一侧更清晰，向下逐渐淡出
   const maskImage = hasReflection
@@ -347,7 +351,17 @@ export function ShapeRenderer({ element, scale }: ShapeRendererProps) {
             overflow: 'hidden',
           }}
         >
-          {renderMainContent()}
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: -reflectionSourceOffset,
+              width: mainWidth,
+              height: mainHeight,
+            }}
+          >
+            {renderMainContent()}
+          </div>
         </div>
       )}
     </div>

@@ -42,6 +42,11 @@ export interface TextRun {
   opacity?: number;
   decoration?: 'None' | 'Underline';
   textEffects?: {
+    frame?: {
+      thickness: number;
+      opacity: number;
+      color: string;
+    };
     shadow?: {
       blur: number;
       direction: number;

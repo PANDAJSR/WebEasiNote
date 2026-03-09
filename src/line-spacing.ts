@@ -1,16 +1,10 @@
+export const XML_LINE_SPACING_TO_CSS_MULTIPLIER_FACTOR = 1 / 8
+
 /**
- * 希沃行距编码转换为 CSS line-height 倍数
- * 常见样本：
- * - 1 -> 单倍（约 1.0）
- * - 4 -> 1.5 倍
- * - 8 -> 2.0 倍
+ * 将 XML LineSpacing 映射为 CSS line-height 倍数
  */
 export function convertSeewoLineSpacingToMultiplier(lineSpacing?: number): number | null {
   if (!lineSpacing || lineSpacing <= 0) return null
 
-  if (lineSpacing <= 1) {
-    return 1
-  }
-
-  return 1 + lineSpacing / 8
+  return 1 + lineSpacing * XML_LINE_SPACING_TO_CSS_MULTIPLIER_FACTOR
 }
