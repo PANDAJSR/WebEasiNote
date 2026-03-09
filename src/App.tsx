@@ -21,6 +21,7 @@ type ENBXWatchState = {
   lastModified: number
   size: number
 }
+const AUTO_RELOAD_STORAGE_KEY = 'webeasinote:autoReloadEnabled'
 
 type PickerWindow = Window & {
   showOpenFilePicker?: (options?: {
@@ -53,11 +54,35 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [resourceMap, setResourceMap] = useState<Record<string, string>>({})
   const [watchedENBX, setWatchedENBX] = useState<ENBXWatchState | null>(null)
+  const [autoReloadEnabled, setAutoReloadEnabled] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const autoReloadingRef = useRef(false)
 
   const pickerWindow = window as PickerWindow
   const supportsOpenFilePicker = typeof pickerWindow.showOpenFilePicker === 'function'
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(AUTO_RELOAD_STORAGE_KEY)
+      if (saved === '1') {
+        setAutoReloadEnabled(true)
+      }
+    } catch (error) {
+      console.warn('[App] 读取自动重载配置失败', error)
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(AUTO_RELOAD_STORAGE_KEY, autoReloadEnabled ? '1' : '0')
+    } catch (error) {
+      console.warn('[App] 保存自动重载配置失败', error)
+    }
+
+    if (!autoReloadEnabled) {
+      setWatchedENBX(null)
+    }
+  }, [autoReloadEnabled])
 
   const revokeObjectUrls = (map: Record<string, string>) => {
     Object.values(map).forEach(url => {
@@ -184,11 +209,15 @@ function App() {
 
       const loaded = await loadENBXFile(file)
       if (loaded) {
-        setWatchedENBX({
-          handle: fileHandle,
-          lastModified: file.lastModified,
-          size: file.size
-        })
+        if (autoReloadEnabled) {
+          setWatchedENBX({
+            handle: fileHandle,
+            lastModified: file.lastModified,
+            size: file.size
+          })
+        } else {
+          setWatchedENBX(null)
+        }
       }
     } catch (err) {
       if ((err as Error).name === 'AbortError') return
@@ -286,7 +315,7 @@ function App() {
   }
 
   useEffect(() => {
-    if (!watchedENBX || viewMode !== 'viewer') return
+    if (!autoReloadEnabled || !watchedENBX || viewMode !== 'viewer') return
 
     let disposed = false
     const timerId = window.setInterval(async () => {
@@ -321,7 +350,7 @@ function App() {
       disposed = true
       window.clearInterval(timerId)
     }
-  }, [watchedENBX, viewMode])
+  }, [autoReloadEnabled, watchedENBX, viewMode])
 
   useEffect(() => {
     if (viewMode !== 'viewer') return
@@ -363,6 +392,8 @@ function App() {
           onFileSelect={handleFileSelect}
           onFilePickerSelect={handleFilePickerSelect}
           onFolderSelect={handleFolderSelect}
+          autoReloadEnabled={autoReloadEnabled}
+          onAutoReloadChange={setAutoReloadEnabled}
           fileInputRef={fileInputRef}
           supportsAutoReload={supportsOpenFilePicker}
         />
