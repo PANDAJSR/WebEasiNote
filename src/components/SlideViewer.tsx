@@ -131,15 +131,31 @@ export function SlideViewer({
           {slides.map((slideItem, index) => (
             <div
               key={`${slideItem.id}-${index}`}
-              style={{
-                position: 'absolute',
-                inset: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                visibility: index === currentIndex ? 'visible' : 'hidden',
-                pointerEvents: index === currentIndex ? 'auto' : 'none',
-              }}
+              style={(() => {
+                const isCurrent = index === currentIndex
+                const currentSlideNumber = currentIndex + 1
+                const sourceSlideNumber = index + 1
+                const shouldKeepAliveForCrossPlay = slideItem.elements.some(
+                  element => element.type === 'video'
+                    && element.isCrossSlidePlay
+                    && currentSlideNumber > sourceSlideNumber
+                    && (
+                      element.stopPlayPageNumber <= 0
+                      || currentSlideNumber < element.stopPlayPageNumber
+                    )
+                )
+
+                return {
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  visibility: isCurrent || shouldKeepAliveForCrossPlay ? 'visible' : 'hidden',
+                  opacity: isCurrent ? 1 : 0,
+                  pointerEvents: isCurrent ? 'auto' : 'none',
+                }
+              })()}
             >
               <SlideRenderer
                 slide={slideItem}
