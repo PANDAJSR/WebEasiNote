@@ -35,6 +35,11 @@ export const styles: Record<string, CSSProperties> = {
     color: '#4a5568',
     marginBottom: '24px',
   },
+  emptyHint: {
+    fontSize: '0.875rem',
+    color: '#64748b',
+    marginBottom: '24px',
+  },
   welcomeButtons: {
     display: 'flex',
     gap: '12px',
