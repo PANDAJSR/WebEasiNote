@@ -1,7 +1,8 @@
 {
-  "name": "seewo-whiteboard-viewer",
+  "name": "webeasinote",
   "version": "1.0.0",
-  "description": "Web viewer for Seewo Whiteboard ENBX files",
+  "description": "WebEasiNote viewer for Seewo  ENBX files",
+  "author": "PANDA-JSR",
   "license": "AGPL-3.0-only",
   "private": true,
   "type": "module",
