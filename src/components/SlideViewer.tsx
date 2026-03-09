@@ -59,10 +59,11 @@ export function SlideViewer({
   resourceMap = {}
 }: SlideViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [scale, setScale] = useState(1)
+  const [slideScaleMap, setSlideScaleMap] = useState<Record<string, number>>({})
   const [isSlidePanelOpen, setSlidePanelOpen] = useState(false)
   const isFirstSlide = currentIndex <= 0
   const isLastSlide = currentIndex >= slides.length - 1
+  const currentScale = slideScaleMap[slide.id] || 1
 
   const handlePrevSlide = () => {
     if (isFirstSlide) return
@@ -74,8 +75,8 @@ export function SlideViewer({
     onSlideChange(currentIndex + 1)
   }
 
-  // 计算合适的缩放比例，使幻灯片完全适应容器（减去底部栏高度）
-  const calculateScale = useCallback(() => {
+  // 预计算每一页缩放比例，切页时直接展示已渲染内容
+  const calculateSlideScaleMap = useCallback(() => {
     if (!containerRef.current) return
 
     const container = containerRef.current
@@ -83,27 +84,26 @@ export function SlideViewer({
     const containerWidth = container.clientWidth - 48 // 减去 padding
     const containerHeight = container.clientHeight - 48 - infoBarHeight
 
-    const slideWidth = slide.width
-    const slideHeight = slide.height
-
-    const scaleX = containerWidth / slideWidth
-    const scaleY = containerHeight / slideHeight
-
-    const newScale = Math.min(scaleX, scaleY, 1)
-    setScale(newScale)
-  }, [slide.width, slide.height])
+    const nextScaleMap: Record<string, number> = {}
+    slides.forEach(slideItem => {
+      const scaleX = containerWidth / slideItem.width
+      const scaleY = containerHeight / slideItem.height
+      nextScaleMap[slideItem.id] = Math.min(scaleX, scaleY, 1)
+    })
+    setSlideScaleMap(nextScaleMap)
+  }, [slides])
 
   // 监听窗口大小变化
   useEffect(() => {
-    calculateScale()
+    calculateSlideScaleMap()
 
     const handleResize = () => {
-      calculateScale()
+      calculateSlideScaleMap()
     }
 
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
-  }, [calculateScale])
+  }, [calculateSlideScaleMap])
 
   return (
     <div style={styles.slideViewerContainer}>
@@ -113,8 +113,35 @@ export function SlideViewer({
 
       {/* 幻灯片容器 */}
       <div ref={containerRef} style={styles.slideContainer}>
-        <div style={{ ...styles.slideWrapper, paddingBottom: '40px' }}>
-          <SlideRenderer slide={slide} scale={scale} resourceMap={resourceMap} />
+        <div
+          style={{
+            ...styles.slideWrapper,
+            paddingBottom: '40px',
+            position: 'relative',
+            width: '100%',
+            height: '100%',
+          }}
+        >
+          {slides.map((slideItem, index) => (
+            <div
+              key={`${slideItem.id}-${index}`}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                visibility: index === currentIndex ? 'visible' : 'hidden',
+                pointerEvents: index === currentIndex ? 'auto' : 'none',
+              }}
+            >
+              <SlideRenderer
+                slide={slideItem}
+                scale={slideScaleMap[slideItem.id] || 1}
+                resourceMap={resourceMap}
+              />
+            </div>
+          ))}
         </div>
       </div>
 
@@ -147,7 +174,7 @@ export function SlideViewer({
           </div>
           <div style={styles.infoItem}>
             <span style={styles.infoLabel}>缩放:</span>
-            <span>{Math.round(scale * 100)}%</span>
+            <span>{Math.round(currentScale * 100)}%</span>
           </div>
           <div style={styles.infoItem}>
             <span style={styles.infoLabel}>背景:</span>
