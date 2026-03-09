@@ -150,6 +150,23 @@ export interface PictureElement {
   };
 }
 
+export interface VideoElement {
+  type: 'video';
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  sourceId: string;
+  mediaName: string;
+  rotation: number;
+  volume: number;
+  clipStart: number;
+  isLoopPlay: boolean;
+  isAutoPlay: boolean;
+  thumbnailSourceId?: string;
+}
+
 export interface UnknownElement {
   type: 'unknown';
   id: string;
@@ -176,7 +193,7 @@ export interface SlideData {
   backgroundColor: string;
   backgroundImage?: string; // sourceId for ImageBrush background
   issues: SlideIssue[];
-  elements: (TextElement | ShapeElement | PictureElement | UnknownElement)[];
+  elements: (TextElement | ShapeElement | PictureElement | VideoElement | UnknownElement)[];
 }
 
 export interface CoursewareData {
@@ -184,4 +201,4 @@ export interface CoursewareData {
   slides: SlideData[];
 }
 
-export type SlideElement = TextElement | ShapeElement | PictureElement | UnknownElement;
+export type SlideElement = TextElement | ShapeElement | PictureElement | VideoElement | UnknownElement;

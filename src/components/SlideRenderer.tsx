@@ -2,8 +2,10 @@ import type { CSSProperties } from 'react';
 import type { SlideData, TextElement, SlideElement, UnknownElement } from '../parser';
 import type { ShapeElement } from '../shapes';
 import type { PictureElement } from '../pictures';
+import type { VideoElement } from '../videos'
 import { ShapeRenderer } from './ShapeRenderer';
 import { PictureRenderer } from './PictureRenderer';
+import { VideoRenderer } from './VideoRenderer'
 import { buildFontFamily } from '../font-utils';
 import { convertSeewoLineSpacingToMultiplier } from '../line-spacing';
 
@@ -98,6 +100,8 @@ function ElementRenderer({
       return <ShapeRenderer element={element as ShapeElement} scale={scale} />;
     case 'picture':
       return <PictureRenderer element={element as PictureElement} scale={scale} resourceMap={resourceMap} />;
+    case 'video':
+      return <VideoRenderer element={element as VideoElement} scale={scale} resourceMap={resourceMap} />
     case 'unknown':
       return <UnknownElementPlaceholder element={element as UnknownElement} scale={scale} />;
     default:

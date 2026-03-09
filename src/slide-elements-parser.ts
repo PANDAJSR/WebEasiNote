@@ -1,6 +1,7 @@
-import type { SlideElement, ShapeElement, PictureElement, SlideIssue } from './types'
+import type { SlideElement, ShapeElement, PictureElement, VideoElement, SlideIssue } from './types'
 import { parseShapeElement } from './shapes'
 import { parsePictureElement } from './pictures'
+import { parseVideoElement } from './videos'
 import { parseTextElement } from './text-parser'
 import { getDirectChildElement, getDirectChildText } from './xml-utils'
 
@@ -47,6 +48,23 @@ const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'Rotation',
     'DisplayRegion',
     'MetaData'
+  ]),
+  Video: new Set([
+    'Id',
+    'X',
+    'Y',
+    'Width',
+    'Height',
+    'Source',
+    'MediaName',
+    'ClipStart',
+    'Volume',
+    'Rotation',
+    'PlayPoints',
+    'NaturalVideoRotation',
+    'NaturalVideoRotationAdapted',
+    'ElementBehavior',
+    'Thumbnail'
   ]),
   Group: new Set(['Id', 'X', 'Y', 'Width', 'Height', 'Rotation', 'Elements'])
 }
@@ -124,6 +142,14 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         const pictureElement = parsePictureElement(node)
         if (pictureElement) {
           parsedElements.push(applyOffset(pictureElement as PictureElement, offsetX, offsetY))
+        }
+        break
+      }
+      case 'Video': {
+        collectUnknownParameters(node, 'Video', slideId, elementId, issues)
+        const videoElement = parseVideoElement(node)
+        if (videoElement) {
+          parsedElements.push(applyOffset(videoElement as VideoElement, offsetX, offsetY))
         }
         break
       }

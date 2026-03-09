@@ -16,6 +16,7 @@ TextLine,
 TextRun,
 ShapeElement,
   PictureElement,
+  VideoElement,
   UnknownElement,
   SlideIssue,
 SlideElement
