@@ -123,3 +123,6 @@ src/
 ## 浏览器支持
 - 现代浏览器（Chrome, Edge）
 - 依赖 File System Access API 进行文件夹选择
+
+## Git 版本管理
+- 每次修改都要帮我commit并push到远程仓库
