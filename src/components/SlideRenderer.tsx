@@ -13,6 +13,8 @@ interface SlideRendererProps {
   slide: SlideData;
   scale?: number;
   resourceMap?: Record<string, string>; // sourceId -> blob URL
+  slideIndex?: number;
+  currentIndex?: number;
 }
 
 function buildTextGradient(run: TextElement['textLines'][number]['textRuns'][number]): string | undefined {
@@ -34,7 +36,13 @@ function buildTextGradient(run: TextElement['textLines'][number]['textRuns'][num
 /**
  * 幻灯片渲染器 - 使用 DOM 实现矢量渲染
  */
-export function SlideRenderer({ slide, scale = 1, resourceMap = {} }: SlideRendererProps) {
+export function SlideRenderer({
+  slide,
+  scale = 1,
+  resourceMap = {},
+  slideIndex = 0,
+  currentIndex = 0
+}: SlideRendererProps) {
   // 获取背景图片 URL
   const backgroundImageUrl = slide.backgroundImage ? resourceMap[slide.backgroundImage] : null;
   const scaledWidth = slide.width * scale
@@ -74,6 +82,8 @@ export function SlideRenderer({ slide, scale = 1, resourceMap = {} }: SlideRende
             element={element}
             scale={1}
             resourceMap={resourceMap}
+            slideIndex={slideIndex}
+            currentIndex={currentIndex}
           />
         ))}
       </div>
@@ -87,11 +97,15 @@ export function SlideRenderer({ slide, scale = 1, resourceMap = {} }: SlideRende
 function ElementRenderer({ 
   element, 
   scale, 
-  resourceMap 
+  resourceMap,
+  slideIndex,
+  currentIndex
 }: { 
   element: SlideElement; 
   scale: number; 
   resourceMap: Record<string, string>;
+  slideIndex: number;
+  currentIndex: number;
 }) {
   switch (element.type) {
     case 'text':
@@ -101,7 +115,16 @@ function ElementRenderer({
     case 'picture':
       return <PictureRenderer element={element as PictureElement} scale={scale} resourceMap={resourceMap} />;
     case 'video':
-      return <VideoRenderer element={element as VideoElement} scale={scale} resourceMap={resourceMap} />
+      return (
+        <VideoRenderer
+          element={element as VideoElement}
+          scale={scale}
+          resourceMap={resourceMap}
+          isCurrentSlide={slideIndex === currentIndex}
+          currentSlideNumber={currentIndex + 1}
+          sourceSlideNumber={slideIndex + 1}
+        />
+      )
     case 'unknown':
       return <UnknownElementPlaceholder element={element as UnknownElement} scale={scale} />;
     default:

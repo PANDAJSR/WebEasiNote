@@ -164,6 +164,8 @@ export interface VideoElement {
   clipStart: number;
   isLoopPlay: boolean;
   isAutoPlay: boolean;
+  isCrossSlidePlay: boolean;
+  stopPlayPageNumber: number;
   thumbnailSourceId?: string;
 }
 

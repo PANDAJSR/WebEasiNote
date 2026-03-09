@@ -5,15 +5,47 @@ interface VideoRendererProps {
   element: VideoElement
   scale: number
   resourceMap: Record<string, string>
+  isCurrentSlide: boolean
+  currentSlideNumber: number
+  sourceSlideNumber: number
 }
 
 /**
  * 视频渲染器（浏览器原生控件）
  */
-export function VideoRenderer({ element, scale, resourceMap }: VideoRendererProps) {
-  const { x, y, width, height, sourceId, mediaName, rotation, volume, clipStart, isLoopPlay, isAutoPlay } = element
+export function VideoRenderer({
+  element,
+  scale,
+  resourceMap,
+  isCurrentSlide,
+  currentSlideNumber,
+  sourceSlideNumber
+}: VideoRendererProps) {
+  const {
+    x,
+    y,
+    width,
+    height,
+    sourceId,
+    mediaName,
+    rotation,
+    volume,
+    clipStart,
+    isLoopPlay,
+    isAutoPlay,
+    isCrossSlidePlay,
+    stopPlayPageNumber
+  } = element
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
+
+  const canCrossSlideContinue = isCrossSlidePlay
+    && currentSlideNumber > sourceSlideNumber
+    && (
+      stopPlayPageNumber <= 0
+      || currentSlideNumber < stopPlayPageNumber
+    )
+  const shouldKeepPlaying = isCurrentSlide || canCrossSlideContinue
 
   useEffect(() => {
     const url = resourceMap[sourceId]
@@ -24,6 +56,11 @@ export function VideoRenderer({ element, scale, resourceMap }: VideoRendererProp
     if (!videoRef.current) return
     videoRef.current.volume = Math.max(0, Math.min(1, volume))
   }, [volume, videoUrl])
+
+  useEffect(() => {
+    if (!videoRef.current || shouldKeepPlaying) return
+    videoRef.current.pause()
+  }, [shouldKeepPlaying])
 
   if (!videoUrl) {
     return (

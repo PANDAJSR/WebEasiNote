@@ -44,7 +44,13 @@ function SlideThumbnail({
       <span style={styles.slideTabNumber}>{index + 1}</span>
       <div style={styles.slideTabPreviewViewport}>
         <div style={styles.slideTabPreviewContent}>
-          <SlideRenderer slide={slide} scale={previewScale} resourceMap={resourceMap} />
+          <SlideRenderer
+            slide={slide}
+            scale={previewScale}
+            resourceMap={resourceMap}
+            slideIndex={index}
+            currentIndex={-1}
+          />
         </div>
       </div>
     </button>
@@ -139,6 +145,8 @@ export function SlideViewer({
                 slide={slideItem}
                 scale={slideScaleMap[slideItem.id] || 1}
                 resourceMap={resourceMap}
+                slideIndex={index}
+                currentIndex={currentIndex}
               />
             </div>
           ))}

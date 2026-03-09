@@ -14,6 +14,8 @@ export interface VideoElement {
   clipStart: number
   isLoopPlay: boolean
   isAutoPlay: boolean
+  isCrossSlidePlay: boolean
+  stopPlayPageNumber: number
   thumbnailSourceId?: string
 }
 
@@ -47,6 +49,8 @@ export function parseVideoElement(videoNode: Element): VideoElement | null {
     const clipStart = Math.max(0, parseFloat(getElementText(videoNode, 'ClipStart') || '0'))
     const isLoopPlay = parseBoolean(getElementText(videoNode, 'ElementBehavior > IsLoopPlay'))
     const isAutoPlay = parseBoolean(getElementText(videoNode, 'ElementBehavior > IsAutoPlay'))
+    const isCrossSlidePlay = parseBoolean(getElementText(videoNode, 'ElementBehavior > IsCrossSlidePlay'))
+    const stopPlayPageNumber = Math.max(0, parseInt(getElementText(videoNode, 'ElementBehavior > StopPlayPageNumber') || '0', 10))
     const thumbnailSourceIdRaw = getElementText(videoNode, 'Thumbnail')
     const thumbnailSourceId = thumbnailSourceIdRaw?.replace('id://', '') || undefined
 
@@ -64,6 +68,8 @@ export function parseVideoElement(videoNode: Element): VideoElement | null {
       clipStart,
       isLoopPlay,
       isAutoPlay,
+      isCrossSlidePlay,
+      stopPlayPageNumber,
       thumbnailSourceId
     }
   } catch (error) {
