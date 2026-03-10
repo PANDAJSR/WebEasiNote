@@ -34,6 +34,7 @@ export interface ShapeElement {
   y: number;
   width: number;
   height: number;
+  rotation?: number;
   opacity?: number;
   backgroundColor: string;
   foregroundColor: string;
@@ -71,6 +72,7 @@ export function parseShapeElement(shapeNode: Element): ShapeElement | null {
     const y = parseFloat(getDirectChildText(shapeNode, 'Y') || getElementText(shapeNode, 'Y') || '0');
     const width = parseFloat(getDirectChildText(shapeNode, 'Width') || getElementText(shapeNode, 'Width') || '100');
     const height = parseFloat(getDirectChildText(shapeNode, 'Height') || getElementText(shapeNode, 'Height') || '50');
+    const rotation = parseFloat(getDirectChildText(shapeNode, 'Rotation') || getElementText(shapeNode, 'Rotation') || '0');
 
     console.log(`  [Shape] 位置: (${x}, ${y}), 尺寸: ${width}x${height}`);
 
@@ -257,6 +259,7 @@ export function parseShapeElement(shapeNode: Element): ShapeElement | null {
       y,
       width,
       height,
+      rotation: Number.isFinite(rotation) ? rotation : 0,
       opacity,
       backgroundColor,
       foregroundColor,

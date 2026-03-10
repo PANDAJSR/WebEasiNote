@@ -109,6 +109,7 @@ export interface ShapeElement {
   y: number;
   width: number;
   height: number;
+  rotation?: number;
   opacity?: number;
   backgroundColor: string;
   foregroundColor: string;

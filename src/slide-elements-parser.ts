@@ -25,6 +25,7 @@ const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'Y',
     'Width',
     'Height',
+    'Rotation',
     'Opacity',
     'Background',
     'Foreground',
