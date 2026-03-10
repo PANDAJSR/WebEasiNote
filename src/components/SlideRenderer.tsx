@@ -3,9 +3,11 @@ import type { SlideData, TextElement, SlideElement, UnknownElement } from '../pa
 import type { ShapeElement } from '../shapes';
 import type { PictureElement } from '../pictures';
 import type { VideoElement } from '../videos'
+import type { TableElement } from '../types'
 import { ShapeRenderer } from './ShapeRenderer';
 import { PictureRenderer } from './PictureRenderer';
 import { VideoRenderer } from './VideoRenderer'
+import { TableRenderer } from './TableRenderer'
 import { buildFontFamily } from '../font-utils';
 import { convertSeewoLineSpacingToMultiplier } from '../line-spacing';
 
@@ -125,6 +127,8 @@ function ElementRenderer({
           sourceSlideNumber={slideIndex + 1}
         />
       )
+    case 'table':
+      return <TableRenderer element={element as TableElement} scale={scale} />
     case 'unknown':
       return <UnknownElementPlaceholder element={element as UnknownElement} scale={scale} />;
     default:

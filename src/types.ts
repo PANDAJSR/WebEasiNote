@@ -169,6 +169,33 @@ export interface VideoElement {
   thumbnailSourceId?: string;
 }
 
+export interface TableCell {
+  rowSpan: number;
+  columnSpan: number;
+  hMerged: boolean;
+  vMerged: boolean;
+  textLines: TextLine[];
+}
+
+export interface TableElement {
+  type: 'table';
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  cellHPadding: number;
+  cellVPadding: number;
+  strokeColor: string;
+  strokeThickness: number;
+  headerFillColor?: string;
+  rowFillColors: string[];
+  columnWidths: number[];
+  rowHeights: number[];
+  rows: TableCell[][];
+}
+
 export interface UnknownElement {
   type: 'unknown';
   id: string;
@@ -195,7 +222,7 @@ export interface SlideData {
   backgroundColor: string;
   backgroundImage?: string; // sourceId for ImageBrush background
   issues: SlideIssue[];
-  elements: (TextElement | ShapeElement | PictureElement | VideoElement | UnknownElement)[];
+  elements: (TextElement | ShapeElement | PictureElement | VideoElement | TableElement | UnknownElement)[];
 }
 
 export interface CoursewareData {
@@ -203,4 +230,4 @@ export interface CoursewareData {
   slides: SlideData[];
 }
 
-export type SlideElement = TextElement | ShapeElement | PictureElement | VideoElement | UnknownElement;
+export type SlideElement = TextElement | ShapeElement | PictureElement | VideoElement | TableElement | UnknownElement;

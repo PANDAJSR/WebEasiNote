@@ -3,6 +3,7 @@ import { parseShapeElement } from './shapes'
 import { parsePictureElement } from './pictures'
 import { parseVideoElement } from './videos'
 import { parseTextElement } from './text-parser'
+import { parseTableElement } from './tables'
 import { getDirectChildElement, getDirectChildText } from './xml-utils'
 
 interface ParseElementsOptions {
@@ -65,6 +66,24 @@ const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'NaturalVideoRotationAdapted',
     'ElementBehavior',
     'Thumbnail'
+  ]),
+  Table: new Set([
+    'Id',
+    'X',
+    'Y',
+    'Width',
+    'Height',
+    'Rotation',
+    'CellHPadding',
+    'CellVPadding',
+    'Skin',
+    'ColumnWidths',
+    'Rows',
+    'RotateOrigin',
+    'ShowRotateOrigin',
+    'IsLocked',
+    'SaveInfoMetadata',
+    'CanClone'
   ]),
   Group: new Set(['Id', 'X', 'Y', 'Width', 'Height', 'Rotation', 'Elements'])
 }
@@ -153,6 +172,14 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         }
         break
       }
+      case 'Table': {
+        collectUnknownParameters(node, 'Table', slideId, elementId, issues)
+        const tableElement = parseTableElement(node)
+        if (tableElement) {
+          parsedElements.push(applyOffset(tableElement, offsetX, offsetY))
+        }
+        break
+      }
       case 'Group': {
         collectUnknownParameters(node, 'Group', slideId, elementId, issues)
         const groupX = parseNumber(getDirectChildText(node, 'X'))
@@ -176,6 +203,10 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         })
         parsedElements.push(...groupChildren.elements)
         issues.push(...groupChildren.issues)
+        break
+      }
+      case 'Topic': {
+        console.log(`[Slide ${slideId}] 跳过 Topic 元素（按需忽略）`)
         break
       }
       default: {
