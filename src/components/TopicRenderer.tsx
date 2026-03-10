@@ -16,9 +16,21 @@ interface RenderNode {
   parentCenterY: number
   parentWidth: number
   parentHeight: number
+  width: number
+  height: number
 }
 
 type TopicLayoutMode = 'horizontal' | 'vertical'
+
+const HORIZONTAL_NODE_PADDING = 28
+const VERTICAL_NODE_PADDING = 12
+
+function getNodeVisualSize(contentWidth: number, contentHeight: number): { width: number; height: number } {
+  return {
+    width: Math.max(contentWidth + HORIZONTAL_NODE_PADDING * 2, 72),
+    height: Math.max(contentHeight + VERTICAL_NODE_PADDING * 2, 34)
+  }
+}
 
 function collectRenderNodes(
   nodes: TopicNode[],
@@ -31,9 +43,10 @@ function collectRenderNodes(
   const collected: RenderNode[] = []
 
   nodes.forEach(node => {
+    const visualSize = getNodeVisualSize(node.contentWidth, node.contentHeight)
     // Seewo Topic 的 Location 是节点左上角相对父节点中心的偏移
-    const centerX = parentCenterX + node.location.x + node.width / 2
-    const centerY = parentCenterY + node.location.y + node.height / 2
+    const centerX = parentCenterX + node.location.x + visualSize.width / 2
+    const centerY = parentCenterY + node.location.y + visualSize.height / 2
     collected.push({
       node,
       level,
@@ -42,12 +55,14 @@ function collectRenderNodes(
       parentCenterX,
       parentCenterY,
       parentWidth,
-      parentHeight
+      parentHeight,
+      width: visualSize.width,
+      height: visualSize.height
     })
 
     if (node.children.length > 0) {
       collected.push(
-        ...collectRenderNodes(node.children, centerX, centerY, node.width, node.height, level + 1)
+        ...collectRenderNodes(node.children, centerX, centerY, visualSize.width, visualSize.height, level + 1)
       )
     }
   })
@@ -56,8 +71,8 @@ function collectRenderNodes(
 }
 
 function renderHorizontalBranchPath(entry: RenderNode, scale: number) {
-  const childLeftX = (entry.centerX - entry.node.width / 2) * scale
-  const childRightX = (entry.centerX + entry.node.width / 2) * scale
+  const childLeftX = (entry.centerX - entry.width / 2) * scale
+  const childRightX = (entry.centerX + entry.width / 2) * scale
   const parentRightX = (entry.parentCenterX + entry.parentWidth / 2) * scale
   const parentLeftX = (entry.parentCenterX - entry.parentWidth / 2) * scale
 
@@ -85,7 +100,7 @@ function renderVerticalBranchPath(
   const parentBottomX = entry.parentCenterX * scale
   const parentBottomY = (entry.parentCenterY + entry.parentHeight / 2) * scale
   const childTopX = entry.centerX * scale
-  const childTopY = (entry.centerY - entry.node.height / 2) * scale
+  const childTopY = (entry.centerY - entry.height / 2) * scale
   const middleY = parentBottomY + (childTopY - parentBottomY) * 0.55
   const radius = Math.min(14 * scale, Math.max(4 * scale, Math.abs(childTopX - parentBottomX) * 0.25))
   const dir = childTopX >= parentBottomX ? 1 : -1
@@ -167,8 +182,9 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
   const [expanded, setExpanded] = useState(true)
   const rootCenterX = element.x
   const rootCenterY = element.y
-  const rootWidth = element.contentWidth
-  const rootHeight = element.contentHeight
+  const rootVisualSize = getNodeVisualSize(element.contentWidth, element.contentHeight)
+  const rootWidth = rootVisualSize.width
+  const rootHeight = rootVisualSize.height
 
   const renderedNodes = collectRenderNodes(
     element.children,
@@ -283,10 +299,10 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
       {expanded && renderedNodes.map(entry => (
         <TopicNodeBox
           key={entry.node.id}
-          x={entry.centerX - entry.node.width / 2}
-          y={entry.centerY - entry.node.height / 2}
-          width={entry.node.width}
-          height={entry.node.height}
+          x={entry.centerX - entry.width / 2}
+          y={entry.centerY - entry.height / 2}
+          width={entry.width}
+          height={entry.height}
           title={entry.node.title}
           fillColor={entry.node.fillColor}
           strokeColor={entry.node.strokeColor}

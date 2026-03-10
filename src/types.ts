@@ -204,8 +204,8 @@ export interface TopicNode {
     x: number;
     y: number;
   };
-  width: number;
-  height: number;
+  contentWidth: number;
+  contentHeight: number;
   fillColor: string;
   strokeColor: string;
   textColor: string;
