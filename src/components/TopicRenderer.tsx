@@ -29,9 +29,29 @@ const HORIZONTAL_NODE_GAP_Y = 26
 const VERTICAL_NODE_GAP_X = 34
 const VERTICAL_NODE_GAP_Y = 68
 
-function getNodeVisualSize(contentWidth: number, contentHeight: number): { width: number; height: number } {
+function estimateSingleLineTextWidth(text: string, fontSize: number): number {
+  // 中文和全角字符按 1em，ASCII 按 0.56em 估算，避免节点过窄导致换行
+  let widthEm = 0
+  for (const ch of text) {
+    if (/[\u0000-\u00ff]/.test(ch)) {
+      widthEm += 0.56
+    } else {
+      widthEm += 1
+    }
+  }
+  return Math.max(0, widthEm * fontSize)
+}
+
+function getNodeVisualSize(
+  contentWidth: number,
+  contentHeight: number,
+  text: string,
+  fontSize: number
+): { width: number; height: number } {
+  const textWidth = estimateSingleLineTextWidth(text, fontSize)
+  const textDrivenWidth = textWidth + HORIZONTAL_NODE_PADDING * 2 + 2
   return {
-    width: Math.max(contentWidth + HORIZONTAL_NODE_PADDING * 2, 72),
+    width: Math.max(contentWidth + HORIZONTAL_NODE_PADDING * 2, textDrivenWidth, 72),
     height: Math.max(contentHeight + VERTICAL_NODE_PADDING * 2, 34)
   }
 }
@@ -47,7 +67,7 @@ function collectVerticalRenderNodes(
   if (nodes.length === 0) return []
 
   const collected: RenderNode[] = []
-  const visualSizes = nodes.map(node => getNodeVisualSize(node.contentWidth, node.contentHeight))
+  const visualSizes = nodes.map(node => getNodeVisualSize(node.contentWidth, node.contentHeight, node.title, node.fontSize))
   const totalWidth = visualSizes.reduce((sum, size) => sum + size.width, 0) + VERTICAL_NODE_GAP_X * (nodes.length - 1)
   let cursorX = parentCenterX - totalWidth / 2
   const topY = parentCenterY + parentHeight / 2 + VERTICAL_NODE_GAP_Y
@@ -93,7 +113,7 @@ function collectHorizontalSideNodes(
   if (sideNodes.length === 0) return []
 
   const collected: RenderNode[] = []
-  const visualSizes = sideNodes.map(node => getNodeVisualSize(node.contentWidth, node.contentHeight))
+  const visualSizes = sideNodes.map(node => getNodeVisualSize(node.contentWidth, node.contentHeight, node.title, node.fontSize))
   const totalHeight = visualSizes.reduce((sum, size) => sum + size.height, 0) + HORIZONTAL_NODE_GAP_Y * (sideNodes.length - 1)
   let cursorY = parentCenterY - totalHeight / 2
 
@@ -246,7 +266,7 @@ function TopicNodeBox({
           fontWeight: isRoot ? 700 : 500,
           color: textColor,
           lineHeight: 1.1,
-          whiteSpace: 'pre-wrap'
+          whiteSpace: 'nowrap'
         }}
       >
         {title}
@@ -259,7 +279,7 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
   const [expanded, setExpanded] = useState(true)
   const rootCenterX = element.x
   const rootCenterY = element.y
-  const rootVisualSize = getNodeVisualSize(element.contentWidth, element.contentHeight)
+  const rootVisualSize = getNodeVisualSize(element.contentWidth, element.contentHeight, element.title, element.fontSize)
   const rootWidth = rootVisualSize.width
   const rootHeight = rootVisualSize.height
   const layoutMode: TopicLayoutMode =
