@@ -24,6 +24,10 @@ type TopicLayoutMode = 'horizontal' | 'vertical'
 
 const HORIZONTAL_NODE_PADDING = 28
 const VERTICAL_NODE_PADDING = 12
+const HORIZONTAL_NODE_GAP_X = 92
+const HORIZONTAL_NODE_GAP_Y = 26
+const VERTICAL_NODE_GAP_X = 34
+const VERTICAL_NODE_GAP_Y = 68
 
 function getNodeVisualSize(contentWidth: number, contentHeight: number): { width: number; height: number } {
   return {
@@ -32,7 +36,7 @@ function getNodeVisualSize(contentWidth: number, contentHeight: number): { width
   }
 }
 
-function collectRenderNodes(
+function collectVerticalRenderNodes(
   nodes: TopicNode[],
   parentCenterX: number,
   parentCenterY: number,
@@ -40,13 +44,18 @@ function collectRenderNodes(
   parentHeight: number,
   level = 1
 ): RenderNode[] {
-  const collected: RenderNode[] = []
+  if (nodes.length === 0) return []
 
-  nodes.forEach(node => {
-    const visualSize = getNodeVisualSize(node.contentWidth, node.contentHeight)
-    // Seewo Topic 的 Location 是节点左上角相对父节点中心的偏移
-    const centerX = parentCenterX + node.location.x + visualSize.width / 2
-    const centerY = parentCenterY + node.location.y + visualSize.height / 2
+  const collected: RenderNode[] = []
+  const visualSizes = nodes.map(node => getNodeVisualSize(node.contentWidth, node.contentHeight))
+  const totalWidth = visualSizes.reduce((sum, size) => sum + size.width, 0) + VERTICAL_NODE_GAP_X * (nodes.length - 1)
+  let cursorX = parentCenterX - totalWidth / 2
+  const topY = parentCenterY + parentHeight / 2 + VERTICAL_NODE_GAP_Y
+
+  nodes.forEach((node, index) => {
+    const visualSize = visualSizes[index]
+    const centerX = cursorX + visualSize.width / 2
+    const centerY = topY + visualSize.height / 2
     collected.push({
       node,
       level,
@@ -62,12 +71,79 @@ function collectRenderNodes(
 
     if (node.children.length > 0) {
       collected.push(
-        ...collectRenderNodes(node.children, centerX, centerY, visualSize.width, visualSize.height, level + 1)
+        ...collectVerticalRenderNodes(node.children, centerX, centerY, visualSize.width, visualSize.height, level + 1)
       )
     }
+
+    cursorX += visualSize.width + VERTICAL_NODE_GAP_X
   })
 
   return collected
+}
+
+function collectHorizontalSideNodes(
+  sideNodes: TopicNode[],
+  side: -1 | 1,
+  parentCenterX: number,
+  parentCenterY: number,
+  parentWidth: number,
+  parentHeight: number,
+  level: number
+): RenderNode[] {
+  if (sideNodes.length === 0) return []
+
+  const collected: RenderNode[] = []
+  const visualSizes = sideNodes.map(node => getNodeVisualSize(node.contentWidth, node.contentHeight))
+  const totalHeight = visualSizes.reduce((sum, size) => sum + size.height, 0) + HORIZONTAL_NODE_GAP_Y * (sideNodes.length - 1)
+  let cursorY = parentCenterY - totalHeight / 2
+
+  sideNodes.forEach((node, index) => {
+    const visualSize = visualSizes[index]
+    const centerX = parentCenterX + side * (parentWidth / 2 + HORIZONTAL_NODE_GAP_X + visualSize.width / 2)
+    const centerY = cursorY + visualSize.height / 2
+
+    collected.push({
+      node,
+      level,
+      centerX,
+      centerY,
+      parentCenterX,
+      parentCenterY,
+      parentWidth,
+      parentHeight,
+      width: visualSize.width,
+      height: visualSize.height
+    })
+
+    if (node.children.length > 0) {
+      collected.push(
+        ...collectHorizontalRenderNodes(node.children, centerX, centerY, visualSize.width, visualSize.height, level + 1)
+      )
+    }
+
+    cursorY += visualSize.height + HORIZONTAL_NODE_GAP_Y
+  })
+
+  return collected
+}
+
+function collectHorizontalRenderNodes(
+  nodes: TopicNode[],
+  parentCenterX: number,
+  parentCenterY: number,
+  parentWidth: number,
+  parentHeight: number,
+  level = 1
+): RenderNode[] {
+  if (nodes.length === 0) return []
+
+  const leftNodes = nodes.filter(node => node.location.x < 0)
+  const rightNodes = nodes.filter(node => node.location.x >= 0)
+
+  return [
+    ...collectHorizontalSideNodes(leftNodes, -1, parentCenterX, parentCenterY, parentWidth, parentHeight, level),
+    ...collectHorizontalSideNodes(rightNodes, 1, parentCenterX, parentCenterY, parentWidth, parentHeight, level)
+  ]
 }
 
 function renderHorizontalBranchPath(entry: RenderNode, scale: number) {
@@ -185,20 +261,16 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
   const rootVisualSize = getNodeVisualSize(element.contentWidth, element.contentHeight)
   const rootWidth = rootVisualSize.width
   const rootHeight = rootVisualSize.height
-
-  const renderedNodes = collectRenderNodes(
-    element.children,
-    rootCenterX,
-    rootCenterY,
-    rootWidth,
-    rootHeight
-  )
-
-  const hasChildren = renderedNodes.length > 0
   const layoutMode: TopicLayoutMode =
     element.topicType === 'Organization' || element.branchType === 'PolyLineWithRadius'
       ? 'vertical'
       : 'horizontal'
+
+  const renderedNodes = layoutMode === 'vertical'
+    ? collectVerticalRenderNodes(element.children, rootCenterX, rootCenterY, rootWidth, rootHeight)
+    : collectHorizontalRenderNodes(element.children, rootCenterX, rootCenterY, rootWidth, rootHeight)
+
+  const hasChildren = renderedNodes.length > 0
   const rootBottomY = rootCenterY + rootHeight / 2
 
   return (
