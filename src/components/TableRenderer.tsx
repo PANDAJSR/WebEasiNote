@@ -124,7 +124,7 @@ export function TableRenderer({ element, scale }: TableRendererProps) {
                       colSpan={cell.columnSpan}
                       style={{
                         border: `${Math.max(1, element.strokeThickness * scale)}px solid ${element.strokeColor}`,
-                        padding: `${element.cellVPadding * scale}px ${element.cellHPadding * scale}px`,
+                        padding: `${9 * scale}px`,
                         backgroundColor: rowFillColor,
                         verticalAlign: 'top',
                         overflowWrap: 'break-word'
