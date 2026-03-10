@@ -82,9 +82,10 @@ function sumWithGap(values: number[], gap: number): number {
   return values.reduce((sum, value) => sum + value, 0) + gap * (values.length - 1)
 }
 
-function measureVerticalNode(node: TopicNode): VerticalMeasure {
+function measureVerticalNode(node: TopicNode, isNodeExpanded: (id: string) => boolean): VerticalMeasure {
   const visualSize = getNodeVisualSize(node.contentWidth, node.contentHeight, node.title, node.fontSize)
-  const children = node.children.map(measureVerticalNode)
+  const expanded = isNodeExpanded(node.id)
+  const children = expanded ? node.children.map(child => measureVerticalNode(child, isNodeExpanded)) : []
   const childrenWidth = sumWithGap(children.map(item => item.subtreeWidth), VERTICAL_NODE_GAP_X)
   return {
     node,
@@ -95,9 +96,10 @@ function measureVerticalNode(node: TopicNode): VerticalMeasure {
   }
 }
 
-function measureHorizontalNode(node: TopicNode): HorizontalMeasure {
+function measureHorizontalNode(node: TopicNode, isNodeExpanded: (id: string) => boolean): HorizontalMeasure {
   const visualSize = getNodeVisualSize(node.contentWidth, node.contentHeight, node.title, node.fontSize)
-  const measuredChildren = node.children.map(measureHorizontalNode)
+  const expanded = isNodeExpanded(node.id)
+  const measuredChildren = expanded ? node.children.map(child => measureHorizontalNode(child, isNodeExpanded)) : []
   const leftChildren = measuredChildren.filter(item => item.node.location.x < 0)
   const rightChildren = measuredChildren.filter(item => item.node.location.x >= 0)
   const leftHeight = sumWithGap(leftChildren.map(item => item.subtreeHeight), HORIZONTAL_NODE_GAP_Y)
@@ -375,7 +377,7 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
     if (!rootExpanded) return []
 
     if (layoutMode === 'vertical') {
-      const measured = element.children.map(measureVerticalNode)
+      const measured = element.children.map(child => measureVerticalNode(child, isNodeExpanded))
       const totalWidth = sumWithGap(measured.map(item => item.subtreeWidth), VERTICAL_NODE_GAP_X)
       let cursorX = rootCenterX - totalWidth / 2
       const topY = rootCenterY + rootHeight / 2 + VERTICAL_NODE_GAP_Y
@@ -397,7 +399,7 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
       return rendered
     }
 
-    const measured = element.children.map(measureHorizontalNode)
+    const measured = element.children.map(child => measureHorizontalNode(child, isNodeExpanded))
     const leftChildren = measured.filter(item => item.node.location.x < 0)
     const rightChildren = measured.filter(item => item.node.location.x >= 0)
     return [
