@@ -22,7 +22,7 @@ interface RenderNode {
 
 type TopicLayoutMode = 'horizontal' | 'vertical'
 
-const HORIZONTAL_NODE_PADDING = 8
+const HORIZONTAL_NODE_PADDING = 6
 const VERTICAL_NODE_PADDING = 4
 const HORIZONTAL_NODE_GAP_X = 92
 const HORIZONTAL_NODE_GAP_Y = 26
