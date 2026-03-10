@@ -26,8 +26,9 @@ function collectRenderNodes(
   const collected: RenderNode[] = []
 
   nodes.forEach(node => {
-    const centerX = parentCenterX + node.location.x
-    const centerY = parentCenterY + node.location.y
+    // Seewo Topic 的 Location 是节点左上角相对父节点中心的偏移
+    const centerX = parentCenterX + node.location.x + node.width / 2
+    const centerY = parentCenterY + node.location.y + node.height / 2
     collected.push({
       node,
       level,
