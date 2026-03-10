@@ -9,6 +9,7 @@ interface TopicRendererProps {
 
 interface RenderNode {
   node: TopicNode
+  nodeId: string
   level: number
   centerX: number
   centerY: number
@@ -19,6 +20,8 @@ interface RenderNode {
   width: number
   height: number
   siblingCount: number
+  hasChildren: boolean
+  expanded: boolean
 }
 
 type TopicLayoutMode = 'horizontal' | 'vertical'
@@ -116,12 +119,15 @@ function placeVerticalMeasuredNode(
   topY: number,
   parent: { centerX: number; centerY: number; width: number; height: number },
   level: number,
-  siblingCount: number
+  siblingCount: number,
+  isNodeExpanded: (id: string) => boolean
 ): RenderNode[] {
   const centerX = subtreeLeftX + measured.subtreeWidth / 2
   const centerY = topY + measured.nodeHeight / 2
+  const expanded = isNodeExpanded(measured.node.id)
   const current: RenderNode = {
     node: measured.node,
+    nodeId: measured.node.id,
     level,
     centerX,
     centerY,
@@ -131,10 +137,12 @@ function placeVerticalMeasuredNode(
     parentHeight: parent.height,
     width: measured.nodeWidth,
     height: measured.nodeHeight,
-    siblingCount
+    siblingCount,
+    hasChildren: measured.node.children.length > 0,
+    expanded
   }
 
-  if (measured.children.length === 0) {
+  if (measured.children.length === 0 || !expanded) {
     return [current]
   }
 
@@ -149,7 +157,8 @@ function placeVerticalMeasuredNode(
         childrenTopY,
         { centerX, centerY, width: measured.nodeWidth, height: measured.nodeHeight },
         level + 1,
-        measured.children.length
+        measured.children.length,
+        isNodeExpanded
       )
     )
     childCursorX += child.subtreeWidth + VERTICAL_NODE_GAP_X
@@ -162,7 +171,8 @@ function placeHorizontalSide(
   sideChildren: HorizontalMeasure[],
   side: -1 | 1,
   parent: { centerX: number; centerY: number; width: number; height: number },
-  level: number
+  level: number,
+  isNodeExpanded: (id: string) => boolean
 ): RenderNode[] {
   if (sideChildren.length === 0) return []
 
@@ -173,8 +183,10 @@ function placeHorizontalSide(
   sideChildren.forEach(child => {
     const childCenterY = cursorY + child.subtreeHeight / 2
     const childCenterX = parent.centerX + side * (parent.width / 2 + HORIZONTAL_NODE_GAP_X + child.nodeWidth / 2)
+    const expanded = isNodeExpanded(child.node.id)
     rendered.push({
       node: child.node,
+      nodeId: child.node.id,
       level,
       centerX: childCenterX,
       centerY: childCenterY,
@@ -184,15 +196,23 @@ function placeHorizontalSide(
       parentHeight: parent.height,
       width: child.nodeWidth,
       height: child.nodeHeight,
-      siblingCount: sideChildren.length
+      siblingCount: sideChildren.length,
+      hasChildren: child.node.children.length > 0,
+      expanded
     })
+
+    if (!expanded) {
+      cursorY += child.subtreeHeight + HORIZONTAL_NODE_GAP_Y
+      return
+    }
 
     rendered.push(
       ...placeHorizontalSide(
         child.leftChildren,
         -1,
         { centerX: childCenterX, centerY: childCenterY, width: child.nodeWidth, height: child.nodeHeight },
-        level + 1
+        level + 1,
+        isNodeExpanded
       )
     )
     rendered.push(
@@ -200,7 +220,8 @@ function placeHorizontalSide(
         child.rightChildren,
         1,
         { centerX: childCenterX, centerY: childCenterY, width: child.nodeWidth, height: child.nodeHeight },
-        level + 1
+        level + 1,
+        isNodeExpanded
       )
     )
 
@@ -325,7 +346,7 @@ function TopicNodeBox({
 }
 
 export function TopicRenderer({ element, scale }: TopicRendererProps) {
-  const [expanded, setExpanded] = useState(true)
+  const [collapsedNodeIds, setCollapsedNodeIds] = useState<Set<string>>(new Set())
   const rootCenterX = element.x
   const rootCenterY = element.y
   const rootVisualSize = getNodeVisualSize(element.contentWidth, element.contentHeight, element.title, element.fontSize)
@@ -335,8 +356,24 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
     element.topicType === 'Organization' || element.branchType === 'PolyLineWithRadius'
       ? 'vertical'
       : 'horizontal'
+  const isNodeExpanded = (id: string) => !collapsedNodeIds.has(id)
+  const toggleNodeExpanded = (id: string) => {
+    setCollapsedNodeIds(previous => {
+      const next = new Set(previous)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+  const rootHasChildren = element.children.length > 0
+  const rootExpanded = isNodeExpanded(element.id)
 
   const renderedNodes = (() => {
+    if (!rootExpanded) return []
+
     if (layoutMode === 'vertical') {
       const measured = element.children.map(measureVerticalNode)
       const totalWidth = sumWithGap(measured.map(item => item.subtreeWidth), VERTICAL_NODE_GAP_X)
@@ -351,7 +388,8 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
             topY,
             { centerX: rootCenterX, centerY: rootCenterY, width: rootWidth, height: rootHeight },
             1,
-            measured.length
+            measured.length,
+            isNodeExpanded
           )
         )
         cursorX += item.subtreeWidth + VERTICAL_NODE_GAP_X
@@ -367,18 +405,19 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
         leftChildren,
         -1,
         { centerX: rootCenterX, centerY: rootCenterY, width: rootWidth, height: rootHeight },
-        1
+        1,
+        isNodeExpanded
       ),
       ...placeHorizontalSide(
         rightChildren,
         1,
         { centerX: rootCenterX, centerY: rootCenterY, width: rootWidth, height: rootHeight },
-        1
+        1,
+        isNodeExpanded
       )
     ]
   })()
 
-  const hasChildren = renderedNodes.length > 0
   const rootBottomY = rootCenterY + rootHeight / 2
 
   return (
@@ -404,7 +443,7 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
           overflow: 'visible'
         }}
       >
-        {expanded && renderedNodes.map(entry => (
+        {renderedNodes.map(entry => (
           <path
             key={`branch-${entry.node.id}`}
             d={
@@ -421,10 +460,10 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
         ))}
       </svg>
 
-      {hasChildren && (
+      {rootHasChildren && (
         <button
           type='button'
-          onClick={() => setExpanded(value => !value)}
+          onClick={() => toggleNodeExpanded(element.id)}
           style={{
             position: 'absolute',
             left: (
@@ -455,9 +494,9 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
             zIndex: 20,
             padding: 0
           }}
-          aria-label={expanded ? '折叠子节点' : '展开子节点'}
+          aria-label={rootExpanded ? '折叠子节点' : '展开子节点'}
         >
-          {expanded ? '-' : '+'}
+          {rootExpanded ? '-' : '+'}
         </button>
       )}
 
@@ -476,21 +515,61 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
         isRoot
       />
 
-      {expanded && renderedNodes.map(entry => (
-        <TopicNodeBox
-          key={entry.node.id}
-          x={entry.centerX - entry.width / 2}
-          y={entry.centerY - entry.height / 2}
-          width={entry.width}
-          height={entry.height}
-          title={entry.node.title}
-          fillColor={entry.node.fillColor}
-          strokeColor={entry.node.strokeColor}
-          textColor={entry.node.textColor}
-          fontFamily={entry.node.fontFamily}
-          fontSize={entry.node.fontSize}
-          scale={scale}
-        />
+      {renderedNodes.map(entry => (
+        <div key={entry.node.id}>
+          <TopicNodeBox
+            x={entry.centerX - entry.width / 2}
+            y={entry.centerY - entry.height / 2}
+            width={entry.width}
+            height={entry.height}
+            title={entry.node.title}
+            fillColor={entry.node.fillColor}
+            strokeColor={entry.node.strokeColor}
+            textColor={entry.node.textColor}
+            fontFamily={entry.node.fontFamily}
+            fontSize={entry.node.fontSize}
+            scale={scale}
+          />
+          {entry.hasChildren && (
+            <button
+              type='button'
+              onClick={() => toggleNodeExpanded(entry.nodeId)}
+              style={{
+                position: 'absolute',
+                left: (
+                  layoutMode === 'vertical'
+                    ? entry.centerX - 12
+                    : entry.centerX + entry.width / 2 - 12
+                ) * scale,
+                top: (
+                  layoutMode === 'vertical'
+                    ? entry.centerY + entry.height / 2 - 12
+                    : entry.centerY - 12
+                ) * scale,
+                width: 24 * scale,
+                height: 24 * scale,
+                borderRadius: '50%',
+                border: `${1.6 * scale}px solid #95aad8`,
+                backgroundColor: '#f5f9ff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#95aad8',
+                fontSize: 16 * scale,
+                lineHeight: 1,
+                fontWeight: 700,
+                boxSizing: 'border-box',
+                cursor: 'pointer',
+                pointerEvents: 'auto',
+                zIndex: 20,
+                padding: 0
+              }}
+              aria-label={entry.expanded ? '折叠子节点' : '展开子节点'}
+            >
+              {entry.expanded ? '-' : '+'}
+            </button>
+          )}
+        </div>
       ))}
     </div>
   )
