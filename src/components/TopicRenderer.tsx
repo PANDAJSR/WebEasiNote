@@ -22,8 +22,8 @@ interface RenderNode {
 
 type TopicLayoutMode = 'horizontal' | 'vertical'
 
-const HORIZONTAL_NODE_PADDING = 12
-const VERTICAL_NODE_PADDING = 6
+const HORIZONTAL_NODE_PADDING = 8
+const VERTICAL_NODE_PADDING = 4
 const HORIZONTAL_NODE_GAP_X = 92
 const HORIZONTAL_NODE_GAP_Y = 26
 const VERTICAL_NODE_GAP_X = 34
@@ -227,6 +227,7 @@ function TopicNodeBox({
         width: width * scale,
         height: height * scale,
         border: `${(isRoot ? 2.2 : 1.8) * scale}px solid ${strokeColor}`,
+        boxShadow: `0 0 0 ${(isRoot ? 1.2 : 1) * scale}px ${strokeColor}`,
         borderRadius: 14 * scale,
         backgroundColor: fillColor,
         boxSizing: 'border-box',
