@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { buildFontFamily } from '../font-utils'
 import type { TopicElement, TopicNode } from '../types'
 
@@ -136,6 +137,7 @@ function TopicNodeBox({
 }
 
 export function TopicRenderer({ element, scale }: TopicRendererProps) {
+  const [expanded, setExpanded] = useState(true)
   const rootCenterX = element.x
   const rootCenterY = element.y
   const rootWidth = element.contentWidth
@@ -148,7 +150,7 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
     rootWidth
   )
 
-  const needsCenterPoint = renderedNodes.length > 0
+  const hasChildren = renderedNodes.length > 0
 
   return (
     <div
@@ -173,7 +175,7 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
           overflow: 'visible'
         }}
       >
-        {renderedNodes.map(entry => (
+        {expanded && renderedNodes.map(entry => (
           <path
             key={`branch-${entry.node.id}`}
             d={renderBranchPath(entry, scale)}
@@ -186,8 +188,10 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
         ))}
       </svg>
 
-      {needsCenterPoint && (
-        <div
+      {hasChildren && (
+        <button
+          type='button'
+          onClick={() => setExpanded(value => !value)}
           style={{
             position: 'absolute',
             left: (rootCenterX + rootWidth / 2 - 14) * scale,
@@ -204,11 +208,16 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
             fontSize: 20 * scale,
             lineHeight: 1,
             fontWeight: 700,
-            boxSizing: 'border-box'
+            boxSizing: 'border-box',
+            cursor: 'pointer',
+            pointerEvents: 'auto',
+            zIndex: 20,
+            padding: 0
           }}
+          aria-label={expanded ? '折叠子节点' : '展开子节点'}
         >
-          -
-        </div>
+          {expanded ? '-' : '+'}
+        </button>
       )}
 
       <TopicNodeBox
@@ -226,7 +235,7 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
         isRoot
       />
 
-      {renderedNodes.map(entry => (
+      {expanded && renderedNodes.map(entry => (
         <TopicNodeBox
           key={entry.node.id}
           x={entry.centerX - entry.node.width / 2}
