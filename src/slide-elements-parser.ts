@@ -4,6 +4,7 @@ import { parsePictureElement } from './pictures'
 import { parseVideoElement } from './videos'
 import { parseTextElement } from './text-parser'
 import { parseTableElement } from './tables'
+import { parseTopicElement } from './topics'
 import { getDirectChildElement, getDirectChildText } from './xml-utils'
 
 interface ParseElementsOptions {
@@ -86,7 +87,36 @@ const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'SaveInfoMetadata',
     'CanClone'
   ]),
-  Group: new Set(['Id', 'X', 'Y', 'Width', 'Height', 'Rotation', 'Elements'])
+  Group: new Set(['Id', 'X', 'Y', 'Width', 'Height', 'Rotation', 'Elements']),
+  Topic: new Set([
+    'Title',
+    'Type',
+    'Skin',
+    'SkinInfo',
+    'NodeLink',
+    'RelationalId',
+    'ContentWidth',
+    'ContentHeight',
+    'ExpandBehavior',
+    'RightSubHide',
+    'IsSymmetry',
+    'Erasable',
+    'NodeStyle',
+    'NodeStyleInfo',
+    'BranchType',
+    'Children',
+    'Rotation',
+    'RotateOrigin',
+    'X',
+    'Y',
+    'Width',
+    'Height',
+    'ShowRotateOrigin',
+    'IsLocked',
+    'SaveInfoMetadata',
+    'Id',
+    'CanClone'
+  ])
 }
 
 function parseNumber(value: string | null, fallback = 0): number {
@@ -207,7 +237,11 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         break
       }
       case 'Topic': {
-        console.log(`[Slide ${slideId}] 跳过 Topic 元素（按需忽略）`)
+        collectUnknownParameters(node, 'Topic', slideId, elementId, issues)
+        const topicElement = parseTopicElement(node)
+        if (topicElement) {
+          parsedElements.push(applyOffset(topicElement, offsetX, offsetY))
+        }
         break
       }
       default: {

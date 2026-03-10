@@ -197,6 +197,43 @@ export interface TableElement {
   rows: TableCell[][];
 }
 
+export interface TopicNode {
+  id: string;
+  title: string;
+  location: {
+    x: number;
+    y: number;
+  };
+  width: number;
+  height: number;
+  fillColor: string;
+  strokeColor: string;
+  textColor: string;
+  fontFamily: string;
+  fontSize: number;
+  children: TopicNode[];
+}
+
+export interface TopicElement {
+  type: 'topic';
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  title: string;
+  contentWidth: number;
+  contentHeight: number;
+  fillColor: string;
+  strokeColor: string;
+  textColor: string;
+  fontFamily: string;
+  fontSize: number;
+  branchColor: string;
+  children: TopicNode[];
+}
+
 export interface UnknownElement {
   type: 'unknown';
   id: string;
@@ -223,7 +260,7 @@ export interface SlideData {
   backgroundColor: string;
   backgroundImage?: string; // sourceId for ImageBrush background
   issues: SlideIssue[];
-  elements: (TextElement | ShapeElement | PictureElement | VideoElement | TableElement | UnknownElement)[];
+  elements: (TextElement | ShapeElement | PictureElement | VideoElement | TableElement | TopicElement | UnknownElement)[];
 }
 
 export interface CoursewareData {
@@ -231,4 +268,4 @@ export interface CoursewareData {
   slides: SlideData[];
 }
 
-export type SlideElement = TextElement | ShapeElement | PictureElement | VideoElement | TableElement | UnknownElement;
+export type SlideElement = TextElement | ShapeElement | PictureElement | VideoElement | TableElement | TopicElement | UnknownElement;
