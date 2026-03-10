@@ -56,114 +56,153 @@ function getNodeVisualSize(
   }
 }
 
-function collectVerticalRenderNodes(
-  nodes: TopicNode[],
-  parentCenterX: number,
-  parentCenterY: number,
-  parentWidth: number,
-  parentHeight: number,
-  level = 1
-): RenderNode[] {
-  if (nodes.length === 0) return []
-
-  const collected: RenderNode[] = []
-  const visualSizes = nodes.map(node => getNodeVisualSize(node.contentWidth, node.contentHeight, node.title, node.fontSize))
-  const totalWidth = visualSizes.reduce((sum, size) => sum + size.width, 0) + VERTICAL_NODE_GAP_X * (nodes.length - 1)
-  let cursorX = parentCenterX - totalWidth / 2
-  const topY = parentCenterY + parentHeight / 2 + VERTICAL_NODE_GAP_Y
-
-  nodes.forEach((node, index) => {
-    const visualSize = visualSizes[index]
-    const centerX = cursorX + visualSize.width / 2
-    const centerY = topY + visualSize.height / 2
-    collected.push({
-      node,
-      level,
-      centerX,
-      centerY,
-      parentCenterX,
-      parentCenterY,
-      parentWidth,
-      parentHeight,
-      width: visualSize.width,
-      height: visualSize.height
-    })
-
-    if (node.children.length > 0) {
-      collected.push(
-        ...collectVerticalRenderNodes(node.children, centerX, centerY, visualSize.width, visualSize.height, level + 1)
-      )
-    }
-
-    cursorX += visualSize.width + VERTICAL_NODE_GAP_X
-  })
-
-  return collected
+interface VerticalMeasure {
+  node: TopicNode
+  nodeWidth: number
+  nodeHeight: number
+  subtreeWidth: number
+  children: VerticalMeasure[]
 }
 
-function collectHorizontalSideNodes(
-  sideNodes: TopicNode[],
-  side: -1 | 1,
-  parentCenterX: number,
-  parentCenterY: number,
-  parentWidth: number,
-  parentHeight: number,
+interface HorizontalMeasure {
+  node: TopicNode
+  nodeWidth: number
+  nodeHeight: number
+  subtreeHeight: number
+  leftChildren: HorizontalMeasure[]
+  rightChildren: HorizontalMeasure[]
+}
+
+function sumWithGap(values: number[], gap: number): number {
+  if (values.length === 0) return 0
+  return values.reduce((sum, value) => sum + value, 0) + gap * (values.length - 1)
+}
+
+function measureVerticalNode(node: TopicNode): VerticalMeasure {
+  const visualSize = getNodeVisualSize(node.contentWidth, node.contentHeight, node.title, node.fontSize)
+  const children = node.children.map(measureVerticalNode)
+  const childrenWidth = sumWithGap(children.map(item => item.subtreeWidth), VERTICAL_NODE_GAP_X)
+  return {
+    node,
+    nodeWidth: visualSize.width,
+    nodeHeight: visualSize.height,
+    subtreeWidth: Math.max(visualSize.width, childrenWidth),
+    children
+  }
+}
+
+function measureHorizontalNode(node: TopicNode): HorizontalMeasure {
+  const visualSize = getNodeVisualSize(node.contentWidth, node.contentHeight, node.title, node.fontSize)
+  const measuredChildren = node.children.map(measureHorizontalNode)
+  const leftChildren = measuredChildren.filter(item => item.node.location.x < 0)
+  const rightChildren = measuredChildren.filter(item => item.node.location.x >= 0)
+  const leftHeight = sumWithGap(leftChildren.map(item => item.subtreeHeight), HORIZONTAL_NODE_GAP_Y)
+  const rightHeight = sumWithGap(rightChildren.map(item => item.subtreeHeight), HORIZONTAL_NODE_GAP_Y)
+
+  return {
+    node,
+    nodeWidth: visualSize.width,
+    nodeHeight: visualSize.height,
+    subtreeHeight: Math.max(visualSize.height, leftHeight, rightHeight),
+    leftChildren,
+    rightChildren
+  }
+}
+
+function placeVerticalMeasuredNode(
+  measured: VerticalMeasure,
+  subtreeLeftX: number,
+  topY: number,
+  parent: { centerX: number; centerY: number; width: number; height: number },
   level: number
 ): RenderNode[] {
-  if (sideNodes.length === 0) return []
+  const centerX = subtreeLeftX + measured.subtreeWidth / 2
+  const centerY = topY + measured.nodeHeight / 2
+  const current: RenderNode = {
+    node: measured.node,
+    level,
+    centerX,
+    centerY,
+    parentCenterX: parent.centerX,
+    parentCenterY: parent.centerY,
+    parentWidth: parent.width,
+    parentHeight: parent.height,
+    width: measured.nodeWidth,
+    height: measured.nodeHeight
+  }
 
-  const collected: RenderNode[] = []
-  const visualSizes = sideNodes.map(node => getNodeVisualSize(node.contentWidth, node.contentHeight, node.title, node.fontSize))
-  const totalHeight = visualSizes.reduce((sum, size) => sum + size.height, 0) + HORIZONTAL_NODE_GAP_Y * (sideNodes.length - 1)
-  let cursorY = parentCenterY - totalHeight / 2
+  if (measured.children.length === 0) {
+    return [current]
+  }
 
-  sideNodes.forEach((node, index) => {
-    const visualSize = visualSizes[index]
-    const centerX = parentCenterX + side * (parentWidth / 2 + HORIZONTAL_NODE_GAP_X + visualSize.width / 2)
-    const centerY = cursorY + visualSize.height / 2
-
-    collected.push({
-      node,
-      level,
-      centerX,
-      centerY,
-      parentCenterX,
-      parentCenterY,
-      parentWidth,
-      parentHeight,
-      width: visualSize.width,
-      height: visualSize.height
-    })
-
-    if (node.children.length > 0) {
-      collected.push(
-        ...collectHorizontalRenderNodes(node.children, centerX, centerY, visualSize.width, visualSize.height, level + 1)
+  const childrenTopY = centerY + measured.nodeHeight / 2 + VERTICAL_NODE_GAP_Y
+  let childCursorX = centerX - sumWithGap(measured.children.map(item => item.subtreeWidth), VERTICAL_NODE_GAP_X) / 2
+  const descendants: RenderNode[] = []
+  measured.children.forEach(child => {
+    descendants.push(
+      ...placeVerticalMeasuredNode(
+        child,
+        childCursorX,
+        childrenTopY,
+        { centerX, centerY, width: measured.nodeWidth, height: measured.nodeHeight },
+        level + 1
       )
-    }
-
-    cursorY += visualSize.height + HORIZONTAL_NODE_GAP_Y
+    )
+    childCursorX += child.subtreeWidth + VERTICAL_NODE_GAP_X
   })
 
-  return collected
+  return [current, ...descendants]
 }
 
-function collectHorizontalRenderNodes(
-  nodes: TopicNode[],
-  parentCenterX: number,
-  parentCenterY: number,
-  parentWidth: number,
-  parentHeight: number,
-  level = 1
+function placeHorizontalSide(
+  sideChildren: HorizontalMeasure[],
+  side: -1 | 1,
+  parent: { centerX: number; centerY: number; width: number; height: number },
+  level: number
 ): RenderNode[] {
-  if (nodes.length === 0) return []
+  if (sideChildren.length === 0) return []
 
-  const leftNodes = nodes.filter(node => node.location.x < 0)
-  const rightNodes = nodes.filter(node => node.location.x >= 0)
+  const totalHeight = sumWithGap(sideChildren.map(item => item.subtreeHeight), HORIZONTAL_NODE_GAP_Y)
+  let cursorY = parent.centerY - totalHeight / 2
+  const rendered: RenderNode[] = []
 
-  return [
-    ...collectHorizontalSideNodes(leftNodes, -1, parentCenterX, parentCenterY, parentWidth, parentHeight, level),
-    ...collectHorizontalSideNodes(rightNodes, 1, parentCenterX, parentCenterY, parentWidth, parentHeight, level)
-  ]
+  sideChildren.forEach(child => {
+    const childCenterY = cursorY + child.subtreeHeight / 2
+    const childCenterX = parent.centerX + side * (parent.width / 2 + HORIZONTAL_NODE_GAP_X + child.nodeWidth / 2)
+    rendered.push({
+      node: child.node,
+      level,
+      centerX: childCenterX,
+      centerY: childCenterY,
+      parentCenterX: parent.centerX,
+      parentCenterY: parent.centerY,
+      parentWidth: parent.width,
+      parentHeight: parent.height,
+      width: child.nodeWidth,
+      height: child.nodeHeight
+    })
+
+    rendered.push(
+      ...placeHorizontalSide(
+        child.leftChildren,
+        -1,
+        { centerX: childCenterX, centerY: childCenterY, width: child.nodeWidth, height: child.nodeHeight },
+        level + 1
+      )
+    )
+    rendered.push(
+      ...placeHorizontalSide(
+        child.rightChildren,
+        1,
+        { centerX: childCenterX, centerY: childCenterY, width: child.nodeWidth, height: child.nodeHeight },
+        level + 1
+      )
+    )
+
+    cursorY += child.subtreeHeight + HORIZONTAL_NODE_GAP_Y
+  })
+
+  return rendered
 }
 
 function renderHorizontalBranchPath(entry: RenderNode, scale: number) {
@@ -287,9 +326,46 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
       ? 'vertical'
       : 'horizontal'
 
-  const renderedNodes = layoutMode === 'vertical'
-    ? collectVerticalRenderNodes(element.children, rootCenterX, rootCenterY, rootWidth, rootHeight)
-    : collectHorizontalRenderNodes(element.children, rootCenterX, rootCenterY, rootWidth, rootHeight)
+  const renderedNodes = (() => {
+    if (layoutMode === 'vertical') {
+      const measured = element.children.map(measureVerticalNode)
+      const totalWidth = sumWithGap(measured.map(item => item.subtreeWidth), VERTICAL_NODE_GAP_X)
+      let cursorX = rootCenterX - totalWidth / 2
+      const topY = rootCenterY + rootHeight / 2 + VERTICAL_NODE_GAP_Y
+      const rendered: RenderNode[] = []
+      measured.forEach(item => {
+        rendered.push(
+          ...placeVerticalMeasuredNode(
+            item,
+            cursorX,
+            topY,
+            { centerX: rootCenterX, centerY: rootCenterY, width: rootWidth, height: rootHeight },
+            1
+          )
+        )
+        cursorX += item.subtreeWidth + VERTICAL_NODE_GAP_X
+      })
+      return rendered
+    }
+
+    const measured = element.children.map(measureHorizontalNode)
+    const leftChildren = measured.filter(item => item.node.location.x < 0)
+    const rightChildren = measured.filter(item => item.node.location.x >= 0)
+    return [
+      ...placeHorizontalSide(
+        leftChildren,
+        -1,
+        { centerX: rootCenterX, centerY: rootCenterY, width: rootWidth, height: rootHeight },
+        1
+      ),
+      ...placeHorizontalSide(
+        rightChildren,
+        1,
+        { centerX: rootCenterX, centerY: rootCenterY, width: rootWidth, height: rootHeight },
+        1
+      )
+    ]
+  })()
 
   const hasChildren = renderedNodes.length > 0
   const rootBottomY = rootCenterY + rootHeight / 2
