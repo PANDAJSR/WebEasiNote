@@ -18,6 +18,7 @@ interface RenderNode {
   parentHeight: number
   width: number
   height: number
+  siblingCount: number
 }
 
 type TopicLayoutMode = 'horizontal' | 'vertical'
@@ -114,7 +115,8 @@ function placeVerticalMeasuredNode(
   subtreeLeftX: number,
   topY: number,
   parent: { centerX: number; centerY: number; width: number; height: number },
-  level: number
+  level: number,
+  siblingCount: number
 ): RenderNode[] {
   const centerX = subtreeLeftX + measured.subtreeWidth / 2
   const centerY = topY + measured.nodeHeight / 2
@@ -128,7 +130,8 @@ function placeVerticalMeasuredNode(
     parentWidth: parent.width,
     parentHeight: parent.height,
     width: measured.nodeWidth,
-    height: measured.nodeHeight
+    height: measured.nodeHeight,
+    siblingCount
   }
 
   if (measured.children.length === 0) {
@@ -145,7 +148,8 @@ function placeVerticalMeasuredNode(
         childCursorX,
         childrenTopY,
         { centerX, centerY, width: measured.nodeWidth, height: measured.nodeHeight },
-        level + 1
+        level + 1,
+        measured.children.length
       )
     )
     childCursorX += child.subtreeWidth + VERTICAL_NODE_GAP_X
@@ -179,7 +183,8 @@ function placeHorizontalSide(
       parentWidth: parent.width,
       parentHeight: parent.height,
       width: child.nodeWidth,
-      height: child.nodeHeight
+      height: child.nodeHeight,
+      siblingCount: sideChildren.length
     })
 
     rendered.push(
@@ -236,6 +241,11 @@ function renderVerticalBranchPath(
   const parentBottomY = (entry.parentCenterY + entry.parentHeight / 2) * scale
   const childTopX = entry.centerX * scale
   const childTopY = (entry.centerY - entry.height / 2) * scale
+
+  if (entry.siblingCount === 1) {
+    return `M ${parentBottomX} ${parentBottomY} L ${childTopX} ${childTopY}`
+  }
+
   const middleY = parentBottomY + (childTopY - parentBottomY) * 0.55
   const radius = Math.min(14 * scale, Math.max(4 * scale, Math.abs(childTopX - parentBottomX) * 0.25))
   const dir = childTopX >= parentBottomX ? 1 : -1
@@ -340,7 +350,8 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
             cursorX,
             topY,
             { centerX: rootCenterX, centerY: rootCenterY, width: rootWidth, height: rootHeight },
-            1
+            1,
+            measured.length
           )
         )
         cursorX += item.subtreeWidth + VERTICAL_NODE_GAP_X
