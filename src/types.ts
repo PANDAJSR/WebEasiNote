@@ -222,6 +222,8 @@ export interface TopicElement {
   width: number;
   height: number;
   rotation: number;
+  topicType: string;
+  branchType: string;
   title: string;
   contentWidth: number;
   contentHeight: number;

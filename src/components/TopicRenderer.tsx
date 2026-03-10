@@ -15,13 +15,17 @@ interface RenderNode {
   parentCenterX: number
   parentCenterY: number
   parentWidth: number
+  parentHeight: number
 }
+
+type TopicLayoutMode = 'horizontal' | 'vertical'
 
 function collectRenderNodes(
   nodes: TopicNode[],
   parentCenterX: number,
   parentCenterY: number,
   parentWidth: number,
+  parentHeight: number,
   level = 1
 ): RenderNode[] {
   const collected: RenderNode[] = []
@@ -37,12 +41,13 @@ function collectRenderNodes(
       centerY,
       parentCenterX,
       parentCenterY,
-      parentWidth
+      parentWidth,
+      parentHeight
     })
 
     if (node.children.length > 0) {
       collected.push(
-        ...collectRenderNodes(node.children, centerX, centerY, node.width, level + 1)
+        ...collectRenderNodes(node.children, centerX, centerY, node.width, node.height, level + 1)
       )
     }
   })
@@ -50,7 +55,7 @@ function collectRenderNodes(
   return collected
 }
 
-function renderBranchPath(entry: RenderNode, scale: number) {
+function renderHorizontalBranchPath(entry: RenderNode, scale: number) {
   const childLeftX = (entry.centerX - entry.node.width / 2) * scale
   const childRightX = (entry.centerX + entry.node.width / 2) * scale
   const parentRightX = (entry.parentCenterX + entry.parentWidth / 2) * scale
@@ -71,6 +76,28 @@ function renderBranchPath(entry: RenderNode, scale: number) {
   const c2y = endY
 
   return `M ${startX} ${startY} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${endX} ${endY}`
+}
+
+function renderVerticalBranchPath(
+  entry: RenderNode,
+  scale: number
+) {
+  const parentBottomX = entry.parentCenterX * scale
+  const parentBottomY = (entry.parentCenterY + entry.parentHeight / 2) * scale
+  const childTopX = entry.centerX * scale
+  const childTopY = (entry.centerY - entry.node.height / 2) * scale
+  const middleY = parentBottomY + (childTopY - parentBottomY) * 0.55
+  const radius = Math.min(14 * scale, Math.max(4 * scale, Math.abs(childTopX - parentBottomX) * 0.25))
+  const dir = childTopX >= parentBottomX ? 1 : -1
+
+  return [
+    `M ${parentBottomX} ${parentBottomY}`,
+    `L ${parentBottomX} ${middleY - radius}`,
+    `Q ${parentBottomX} ${middleY} ${parentBottomX + radius * dir} ${middleY}`,
+    `L ${childTopX - radius * dir} ${middleY}`,
+    `Q ${childTopX} ${middleY} ${childTopX} ${middleY + radius}`,
+    `L ${childTopX} ${childTopY}`
+  ].join(' ')
 }
 
 function TopicNodeBox({
@@ -147,10 +174,16 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
     element.children,
     rootCenterX,
     rootCenterY,
-    rootWidth
+    rootWidth,
+    rootHeight
   )
 
   const hasChildren = renderedNodes.length > 0
+  const layoutMode: TopicLayoutMode =
+    element.topicType === 'Organization' || element.branchType === 'PolyLineWithRadius'
+      ? 'vertical'
+      : 'horizontal'
+  const rootBottomY = rootCenterY + rootHeight / 2
 
   return (
     <div
@@ -178,7 +211,11 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
         {expanded && renderedNodes.map(entry => (
           <path
             key={`branch-${entry.node.id}`}
-            d={renderBranchPath(entry, scale)}
+            d={
+              layoutMode === 'vertical'
+                ? renderVerticalBranchPath(entry, scale)
+                : renderHorizontalBranchPath(entry, scale)
+            }
             fill='none'
             stroke={element.branchColor}
             strokeWidth={(entry.level === 1 ? 6 : 4) * scale}
@@ -194,8 +231,16 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
           onClick={() => setExpanded(value => !value)}
           style={{
             position: 'absolute',
-            left: (rootCenterX + rootWidth / 2 - 14) * scale,
-            top: (rootCenterY - 14) * scale,
+            left: (
+              layoutMode === 'vertical'
+                ? rootCenterX - 14
+                : rootCenterX + rootWidth / 2 - 14
+            ) * scale,
+            top: (
+              layoutMode === 'vertical'
+                ? rootBottomY - 14
+                : rootCenterY - 14
+            ) * scale,
             width: 28 * scale,
             height: 28 * scale,
             borderRadius: '50%',

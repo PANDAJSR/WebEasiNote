@@ -126,6 +126,8 @@ export function parseTopicElement(topicNode: Element): TopicElement | null {
     const width = parseNumber(getDirectChildText(topicNode, 'Width'), 320)
     const height = parseNumber(getDirectChildText(topicNode, 'Height'), 200)
     const rotation = parseNumber(getDirectChildText(topicNode, 'Rotation'))
+    const topicType = getDirectChildText(topicNode, 'Type') || 'MindMap'
+    const branchType = getDirectChildText(topicNode, 'BranchType') || 'Ellipse'
 
     const contentWidth = parseNumber(getDirectChildText(topicNode, 'ContentWidth'), 180)
     const contentHeight = parseNumber(getDirectChildText(topicNode, 'ContentHeight'), 56)
@@ -154,6 +156,8 @@ export function parseTopicElement(topicNode: Element): TopicElement | null {
       width,
       height,
       rotation,
+      topicType,
+      branchType,
       title: rootTitle.text,
       contentWidth,
       contentHeight,
