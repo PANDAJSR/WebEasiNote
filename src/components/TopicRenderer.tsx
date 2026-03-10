@@ -234,7 +234,7 @@ function TopicNodeBox({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: `${6 * scale}px ${14 * scale}px`,
+        padding: `${4 * scale}px ${6 * scale}px`,
         textAlign: 'center',
         pointerEvents: 'none'
       }}
