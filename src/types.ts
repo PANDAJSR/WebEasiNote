@@ -240,6 +240,21 @@ export interface TopicElement {
   children: TopicNode[];
 }
 
+export interface CylinderElement {
+  type: 'cylinder';
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  edgeThickness: number;
+  edgeColor: string;
+  topFillColor: string;
+  sideFillColor: string;
+  bottomFillColor: string;
+}
+
 export interface UnknownElement {
   type: 'unknown';
   id: string;
@@ -266,7 +281,7 @@ export interface SlideData {
   backgroundColor: string;
   backgroundImage?: string; // sourceId for ImageBrush background
   issues: SlideIssue[];
-  elements: (TextElement | ShapeElement | PictureElement | VideoElement | TableElement | TopicElement | UnknownElement)[];
+  elements: (TextElement | ShapeElement | PictureElement | VideoElement | TableElement | TopicElement | CylinderElement | UnknownElement)[];
 }
 
 export interface CoursewareData {
@@ -274,4 +289,4 @@ export interface CoursewareData {
   slides: SlideData[];
 }
 
-export type SlideElement = TextElement | ShapeElement | PictureElement | VideoElement | TableElement | TopicElement | UnknownElement;
+export type SlideElement = TextElement | ShapeElement | PictureElement | VideoElement | TableElement | TopicElement | CylinderElement | UnknownElement;

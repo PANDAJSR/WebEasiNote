@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { SlideData, TextElement, SlideElement, UnknownElement, TopicElement } from '../parser';
+import type { SlideData, TextElement, SlideElement, UnknownElement, TopicElement, CylinderElement } from '../parser';
 import type { ShapeElement } from '../shapes';
 import type { PictureElement } from '../pictures';
 import type { VideoElement } from '../videos'
@@ -9,6 +9,7 @@ import { PictureRenderer } from './PictureRenderer';
 import { VideoRenderer } from './VideoRenderer'
 import { TableRenderer } from './TableRenderer'
 import { TopicRenderer } from './TopicRenderer'
+import { CylinderRenderer } from './CylinderRenderer'
 import { buildFontFamily } from '../font-utils';
 import { convertSeewoLineSpacingToMultiplier } from '../line-spacing';
 
@@ -132,6 +133,8 @@ function ElementRenderer({
       return <TableRenderer element={element as TableElement} scale={scale} />
     case 'topic':
       return <TopicRenderer element={element as TopicElement} scale={scale} />
+    case 'cylinder':
+      return <CylinderRenderer element={element as CylinderElement} scale={scale} />
     case 'unknown':
       return <UnknownElementPlaceholder element={element as UnknownElement} scale={scale} />;
     default:

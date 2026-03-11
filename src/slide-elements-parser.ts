@@ -5,6 +5,7 @@ import { parseVideoElement } from './videos'
 import { parseTextElement } from './text-parser'
 import { parseTableElement } from './tables'
 import { parseTopicElement } from './topics'
+import { parseCylinderElement } from './cylinders'
 import { getDirectChildElement, getDirectChildText } from './xml-utils'
 
 interface ParseElementsOptions {
@@ -116,6 +117,30 @@ const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'SaveInfoMetadata',
     'Id',
     'CanClone'
+  ]),
+  Cylinder: new Set([
+    'ExpandType',
+    'ExpandDuration',
+    'ExpandedViewport',
+    'FoldedViewport',
+    'Size',
+    'Transform3D',
+    'EdgeThickness',
+    'EdgeBrush',
+    'Surfaces',
+    'Edges',
+    'Id',
+    'X',
+    'Y',
+    'Width',
+    'Height',
+    'Rotation',
+    'IsLocked',
+    'CanClone',
+    'Hyperlink',
+    'HasMask',
+    'RotateOrigin',
+    'SaveInfoMetadata'
   ])
 }
 
@@ -241,6 +266,14 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         const topicElement = parseTopicElement(node)
         if (topicElement) {
           parsedElements.push(applyOffset(topicElement, offsetX, offsetY))
+        }
+        break
+      }
+      case 'Cylinder': {
+        collectUnknownParameters(node, 'Cylinder', slideId, elementId, issues)
+        const cylinderElement = parseCylinderElement(node)
+        if (cylinderElement) {
+          parsedElements.push(applyOffset(cylinderElement, offsetX, offsetY))
         }
         break
       }
