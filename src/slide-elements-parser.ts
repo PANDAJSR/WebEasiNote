@@ -7,6 +7,7 @@ import { parseTableElement } from './tables'
 import { parseTopicElement } from './topics'
 import { parseCylinderElement } from './cylinders'
 import { parseConeElement } from './cones'
+import { parseCubeElement } from './cubes'
 import { getDirectChildElement, getDirectChildText } from './xml-utils'
 
 interface ParseElementsOptions {
@@ -144,6 +145,30 @@ const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'SaveInfoMetadata'
   ]),
   Cone: new Set([
+    'ExpandType',
+    'ExpandDuration',
+    'ExpandedViewport',
+    'FoldedViewport',
+    'Size',
+    'Transform3D',
+    'EdgeThickness',
+    'EdgeBrush',
+    'Surfaces',
+    'Edges',
+    'Id',
+    'X',
+    'Y',
+    'Width',
+    'Height',
+    'Rotation',
+    'IsLocked',
+    'CanClone',
+    'Hyperlink',
+    'HasMask',
+    'RotateOrigin',
+    'SaveInfoMetadata'
+  ]),
+  Cube: new Set([
     'ExpandType',
     'ExpandDuration',
     'ExpandedViewport',
@@ -307,6 +332,14 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         const coneElement = parseConeElement(node)
         if (coneElement) {
           parsedElements.push(applyOffset(coneElement, offsetX, offsetY))
+        }
+        break
+      }
+      case 'Cube': {
+        collectUnknownParameters(node, 'Cube', slideId, elementId, issues)
+        const cubeElement = parseCubeElement(node)
+        if (cubeElement) {
+          parsedElements.push(applyOffset(cubeElement, offsetX, offsetY))
         }
         break
       }

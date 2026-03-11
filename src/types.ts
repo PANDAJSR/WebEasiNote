@@ -269,6 +269,21 @@ export interface ConeElement {
   baseFillColor: string;
 }
 
+export interface CubeElement {
+  type: 'cube';
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  edgeThickness: number;
+  edgeColor: string;
+  topFillColor: string;
+  frontFillColor: string;
+  rightFillColor: string;
+}
+
 export interface UnknownElement {
   type: 'unknown';
   id: string;
@@ -295,7 +310,7 @@ export interface SlideData {
   backgroundColor: string;
   backgroundImage?: string; // sourceId for ImageBrush background
   issues: SlideIssue[];
-  elements: (TextElement | ShapeElement | PictureElement | VideoElement | TableElement | TopicElement | CylinderElement | ConeElement | UnknownElement)[];
+  elements: (TextElement | ShapeElement | PictureElement | VideoElement | TableElement | TopicElement | CylinderElement | ConeElement | CubeElement | UnknownElement)[];
 }
 
 export interface CoursewareData {
@@ -303,4 +318,4 @@ export interface CoursewareData {
   slides: SlideData[];
 }
 
-export type SlideElement = TextElement | ShapeElement | PictureElement | VideoElement | TableElement | TopicElement | CylinderElement | ConeElement | UnknownElement;
+export type SlideElement = TextElement | ShapeElement | PictureElement | VideoElement | TableElement | TopicElement | CylinderElement | ConeElement | CubeElement | UnknownElement;
