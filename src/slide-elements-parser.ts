@@ -9,6 +9,7 @@ import { parseCylinderElement } from './cylinders'
 import { parseConeElement } from './cones'
 import { parseCubeElement } from './cubes'
 import { parseGeometryElement } from './geometries'
+import { parseMathFormulaElement } from './math-formulas'
 import { getDirectChildElement, getDirectChildText } from './xml-utils'
 
 interface ParseElementsOptions {
@@ -207,6 +208,23 @@ const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'ShowRotateOrigin',
     'IsLocked',
     'CanClone'
+  ]),
+  MathFormula: new Set([
+    'Foreground',
+    'MathML',
+    'Id',
+    'X',
+    'Y',
+    'Width',
+    'Height',
+    'Rotation',
+    'IsLocked',
+    'CanClone',
+    'Animations',
+    'Hyperlink',
+    'HasMask',
+    'RotateOrigin',
+    'SaveInfoMetadata'
   ])
 }
 
@@ -364,6 +382,14 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         const geometryElement = parseGeometryElement(node)
         if (geometryElement) {
           parsedElements.push(applyOffset(geometryElement, offsetX, offsetY))
+        }
+        break
+      }
+      case 'MathFormula': {
+        collectUnknownParameters(node, 'MathFormula', slideId, elementId, issues)
+        const mathFormulaElement = parseMathFormulaElement(node)
+        if (mathFormulaElement) {
+          parsedElements.push(applyOffset(mathFormulaElement, offsetX, offsetY))
         }
         break
       }

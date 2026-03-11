@@ -323,6 +323,19 @@ export interface GeometryElement {
   marks: GeometryMark[];
 }
 
+export interface MathFormulaElement {
+  type: 'mathFormula';
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  color: string;
+  mathML: string;
+  fallbackText: string;
+}
+
 export interface UnknownElement {
   type: 'unknown';
   id: string;
@@ -349,7 +362,7 @@ export interface SlideData {
   backgroundColor: string;
   backgroundImage?: string; // sourceId for ImageBrush background
   issues: SlideIssue[];
-  elements: (TextElement | ShapeElement | PictureElement | VideoElement | TableElement | TopicElement | CylinderElement | ConeElement | CubeElement | GeometryElement | UnknownElement)[];
+  elements: (TextElement | ShapeElement | PictureElement | VideoElement | TableElement | TopicElement | CylinderElement | ConeElement | CubeElement | GeometryElement | MathFormulaElement | UnknownElement)[];
 }
 
 export interface CoursewareData {
@@ -357,4 +370,4 @@ export interface CoursewareData {
   slides: SlideData[];
 }
 
-export type SlideElement = TextElement | ShapeElement | PictureElement | VideoElement | TableElement | TopicElement | CylinderElement | ConeElement | CubeElement | GeometryElement | UnknownElement;
+export type SlideElement = TextElement | ShapeElement | PictureElement | VideoElement | TableElement | TopicElement | CylinderElement | ConeElement | CubeElement | GeometryElement | MathFormulaElement | UnknownElement;
