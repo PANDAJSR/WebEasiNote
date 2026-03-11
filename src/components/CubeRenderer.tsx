@@ -13,26 +13,32 @@ export function CubeRenderer({ element, scale }: CubeRendererProps) {
   const strokeWidth = Math.max(0.5, edgeThickness)
   const halfStroke = strokeWidth / 2
   const dashSize = Math.max(4, strokeWidth * 3)
+  const depthX = Math.max(8, width * 0.30)
+  const depthY = Math.max(8, height * 0.16)
+  const skewY = Math.max(4, Math.min(height * 0.12, depthY * 0.85))
 
-  const maxDepth = Math.max(8, Math.min(width, height) * 0.35)
-  const depthX = Math.min(maxDepth, width * 0.28)
-  const depthY = Math.min(maxDepth, height * 0.20)
-  const frontWidth = Math.max(1, width - depthX - strokeWidth)
-  const frontHeight = Math.max(1, height - depthY - strokeWidth)
+  const ax = halfStroke
+  const ay = depthY + halfStroke
+  const bx = Math.max(ax + 1, width - depthX - halfStroke)
+  const by = ay + skewY
+  const frontHeight = Math.max(1, height - depthY - skewY - strokeWidth)
+  const dx = ax
+  const dy = ay + frontHeight
+  const cx = bx
+  const cy = by + frontHeight
 
-  const frontLeft = halfStroke
-  const frontTop = depthY + halfStroke
-  const frontRight = frontLeft + frontWidth
-  const frontBottom = frontTop + frontHeight
+  const ex = ax + depthX
+  const ey = ay - depthY
+  const fx = bx + depthX
+  const fy = by - depthY
+  const hx = dx + depthX
+  const hy = dy - depthY
+  const gx = cx + depthX
+  const gy = cy - depthY
 
-  const backLeft = frontLeft + depthX
-  const backTop = halfStroke
-  const backRight = frontRight + depthX
-  const backBottom = frontBottom - depthY
-
-  const topFacePath = `M ${frontLeft} ${frontTop} L ${backLeft} ${backTop} L ${backRight} ${backTop} L ${frontRight} ${frontTop} Z`
-  const rightFacePath = `M ${frontRight} ${frontTop} L ${backRight} ${backTop} L ${backRight} ${backBottom} L ${frontRight} ${frontBottom} Z`
-  const frontFacePath = `M ${frontLeft} ${frontTop} L ${frontRight} ${frontTop} L ${frontRight} ${frontBottom} L ${frontLeft} ${frontBottom} Z`
+  const topFacePath = `M ${ax} ${ay} L ${ex} ${ey} L ${fx} ${fy} L ${bx} ${by} Z`
+  const rightFacePath = `M ${bx} ${by} L ${fx} ${fy} L ${gx} ${gy} L ${cx} ${cy} Z`
+  const frontFacePath = `M ${ax} ${ay} L ${bx} ${by} L ${cx} ${cy} L ${dx} ${dy} Z`
 
   return (
     <div
@@ -56,21 +62,21 @@ export function CubeRenderer({ element, scale }: CubeRendererProps) {
         <path d={rightFacePath} fill={rightFillColor} stroke='none' />
         <path d={frontFacePath} fill={frontFillColor} stroke='none' />
 
-        <path d={`M ${frontLeft} ${frontTop} L ${backLeft} ${backTop}`} fill='none' stroke={edgeColor} strokeWidth={strokeWidth} />
-        <path d={`M ${backLeft} ${backTop} L ${backRight} ${backTop}`} fill='none' stroke={edgeColor} strokeWidth={strokeWidth} />
-        <path d={`M ${backRight} ${backTop} L ${frontRight} ${frontTop}`} fill='none' stroke={edgeColor} strokeWidth={strokeWidth} />
+        <path d={`M ${ax} ${ay} L ${ex} ${ey}`} fill='none' stroke={edgeColor} strokeWidth={strokeWidth} />
+        <path d={`M ${ex} ${ey} L ${fx} ${fy}`} fill='none' stroke={edgeColor} strokeWidth={strokeWidth} />
+        <path d={`M ${fx} ${fy} L ${bx} ${by}`} fill='none' stroke={edgeColor} strokeWidth={strokeWidth} />
 
-        <path d={`M ${frontLeft} ${frontTop} L ${frontRight} ${frontTop}`} fill='none' stroke={edgeColor} strokeWidth={strokeWidth} />
-        <path d={`M ${frontRight} ${frontTop} L ${frontRight} ${frontBottom}`} fill='none' stroke={edgeColor} strokeWidth={strokeWidth} />
-        <path d={`M ${frontRight} ${frontBottom} L ${frontLeft} ${frontBottom}`} fill='none' stroke={edgeColor} strokeWidth={strokeWidth} />
-        <path d={`M ${frontLeft} ${frontBottom} L ${frontLeft} ${frontTop}`} fill='none' stroke={edgeColor} strokeWidth={strokeWidth} />
+        <path d={`M ${ax} ${ay} L ${bx} ${by}`} fill='none' stroke={edgeColor} strokeWidth={strokeWidth} />
+        <path d={`M ${bx} ${by} L ${cx} ${cy}`} fill='none' stroke={edgeColor} strokeWidth={strokeWidth} />
+        <path d={`M ${cx} ${cy} L ${dx} ${dy}`} fill='none' stroke={edgeColor} strokeWidth={strokeWidth} />
+        <path d={`M ${dx} ${dy} L ${ax} ${ay}`} fill='none' stroke={edgeColor} strokeWidth={strokeWidth} />
 
-        <path d={`M ${frontRight} ${frontTop} L ${backRight} ${backTop}`} fill='none' stroke={edgeColor} strokeWidth={strokeWidth} />
-        <path d={`M ${backRight} ${backTop} L ${backRight} ${backBottom}`} fill='none' stroke={edgeColor} strokeWidth={strokeWidth} />
-        <path d={`M ${backRight} ${backBottom} L ${frontRight} ${frontBottom}`} fill='none' stroke={edgeColor} strokeWidth={strokeWidth} />
+        <path d={`M ${bx} ${by} L ${fx} ${fy}`} fill='none' stroke={edgeColor} strokeWidth={strokeWidth} />
+        <path d={`M ${fx} ${fy} L ${gx} ${gy}`} fill='none' stroke={edgeColor} strokeWidth={strokeWidth} />
+        <path d={`M ${gx} ${gy} L ${cx} ${cy}`} fill='none' stroke={edgeColor} strokeWidth={strokeWidth} />
 
         <path
-          d={`M ${backLeft} ${backTop} L ${backLeft} ${backBottom}`}
+          d={`M ${ex} ${ey} L ${hx} ${hy}`}
           fill='none'
           stroke={edgeColor}
           strokeWidth={strokeWidth}
@@ -78,7 +84,7 @@ export function CubeRenderer({ element, scale }: CubeRendererProps) {
           strokeLinecap='round'
         />
         <path
-          d={`M ${backLeft} ${backBottom} L ${frontLeft} ${frontBottom}`}
+          d={`M ${hx} ${hy} L ${dx} ${dy}`}
           fill='none'
           stroke={edgeColor}
           strokeWidth={strokeWidth}
@@ -86,7 +92,7 @@ export function CubeRenderer({ element, scale }: CubeRendererProps) {
           strokeLinecap='round'
         />
         <path
-          d={`M ${backLeft} ${backBottom} L ${backRight} ${backBottom}`}
+          d={`M ${hx} ${hy} L ${gx} ${gy}`}
           fill='none'
           stroke={edgeColor}
           strokeWidth={strokeWidth}
