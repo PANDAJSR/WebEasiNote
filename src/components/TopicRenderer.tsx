@@ -1,6 +1,8 @@
+import type { CSSProperties, ReactNode } from 'react'
 import { useState } from 'react'
 import { buildFontFamily } from '../font-utils'
-import type { TopicElement, TopicNode } from '../types'
+import { convertSeewoLineSpacingToMultiplier } from '../line-spacing'
+import type { TextLine, TextRun, TopicElement, TopicNode } from '../types'
 
 interface TopicRendererProps {
   element: TopicElement
@@ -47,26 +49,59 @@ function estimateSingleLineTextWidth(text: string, fontSize: number): number {
   return Math.max(0, widthEm * fontSize)
 }
 
-function estimateTextBlockSize(text: string, fontSize: number): { width: number; height: number } {
-  const lines = text.split(/\r\n|\r|\n/)
-  const longestLineWidth = Math.max(
-    ...lines.map(line => estimateSingleLineTextWidth(line, fontSize)),
+function estimateLineHeight(line: TextLine, fallbackFontSize: number): number {
+  const maxRunFontSize = Math.max(...line.textRuns.map(run => run.fontSize), fallbackFontSize)
+  if (line.fixedLineSpacing && line.fixedLineSpacing > 0) {
+    return line.fixedLineSpacing
+  }
+  const multiplier = convertSeewoLineSpacingToMultiplier(line.lineSpacing)
+  if (multiplier) {
+    return maxRunFontSize * multiplier
+  }
+  return maxRunFontSize * TOPIC_TEXT_LINE_HEIGHT
+}
+
+function estimateTextBlockSize(
+  textLines: TextLine[],
+  fallbackText: string,
+  fallbackFontSize: number
+): { width: number; height: number } {
+  if (textLines.length === 0) {
+    const lines = fallbackText.split(/\r\n|\r|\n/)
+    const longestLineWidth = Math.max(
+      ...lines.map(line => estimateSingleLineTextWidth(line, fallbackFontSize)),
+      0
+    )
+    return {
+      width: longestLineWidth,
+      height: Math.max(lines.length, 1) * fallbackFontSize * TOPIC_TEXT_LINE_HEIGHT
+    }
+  }
+
+  const lineWidths = textLines.map(line => {
+    if (line.textRuns.length === 0) return 0
+    return line.textRuns.reduce(
+      (sum, run) => sum + estimateSingleLineTextWidth(run.text.replace(/[\r\n]/g, ''), run.fontSize || fallbackFontSize),
+      0
+    )
+  })
+  const width = Math.max(...lineWidths, 0)
+  const height = textLines.reduce(
+    (sum, line) => sum + estimateLineHeight(line, fallbackFontSize) + (line.spaceBefore || 0) + (line.spaceAfter || 0),
     0
   )
-  const lineCount = Math.max(lines.length, 1)
-  return {
-    width: longestLineWidth,
-    height: lineCount * fontSize * TOPIC_TEXT_LINE_HEIGHT
-  }
+
+  return { width, height: Math.max(height, fallbackFontSize * TOPIC_TEXT_LINE_HEIGHT) }
 }
 
 function getNodeVisualSize(
   contentWidth: number,
   contentHeight: number,
+  textLines: TextLine[],
   text: string,
   fontSize: number
 ): { width: number; height: number } {
-  const textBlockSize = estimateTextBlockSize(text, fontSize)
+  const textBlockSize = estimateTextBlockSize(textLines, text, fontSize)
   const textDrivenWidth = textBlockSize.width + HORIZONTAL_NODE_PADDING * 2 + 2
   const textDrivenHeight = textBlockSize.height + VERTICAL_NODE_PADDING * 2 + 2
   return {
@@ -98,7 +133,7 @@ function sumWithGap(values: number[], gap: number): number {
 }
 
 function measureVerticalNode(node: TopicNode, isNodeExpanded: (id: string) => boolean): VerticalMeasure {
-  const visualSize = getNodeVisualSize(node.contentWidth, node.contentHeight, node.title, node.fontSize)
+  const visualSize = getNodeVisualSize(node.contentWidth, node.contentHeight, node.textLines, node.title, node.fontSize)
   const expanded = isNodeExpanded(node.id)
   const children = expanded ? node.children.map(child => measureVerticalNode(child, isNodeExpanded)) : []
   const childrenWidth = sumWithGap(children.map(item => item.subtreeWidth), VERTICAL_NODE_GAP_X)
@@ -112,7 +147,7 @@ function measureVerticalNode(node: TopicNode, isNodeExpanded: (id: string) => bo
 }
 
 function measureHorizontalNode(node: TopicNode, isNodeExpanded: (id: string) => boolean): HorizontalMeasure {
-  const visualSize = getNodeVisualSize(node.contentWidth, node.contentHeight, node.title, node.fontSize)
+  const visualSize = getNodeVisualSize(node.contentWidth, node.contentHeight, node.textLines, node.title, node.fontSize)
   const expanded = isNodeExpanded(node.id)
   const measuredChildren = expanded ? node.children.map(child => measureHorizontalNode(child, isNodeExpanded)) : []
   const leftChildren = measuredChildren.filter(item => item.node.location.x < 0)
@@ -298,12 +333,89 @@ function renderVerticalBranchPath(
   ].join(' ')
 }
 
+function buildTextGradient(run: TextLine['textRuns'][number]): string | undefined {
+  const gradient = run.gradient
+  if (!gradient || gradient.stops.length === 0) return undefined
+
+  const dx = gradient.endPoint.x - gradient.startPoint.x
+  const dy = gradient.endPoint.y - gradient.startPoint.y
+  const angle = Number.isFinite(dx) && Number.isFinite(dy) && (dx !== 0 || dy !== 0)
+    ? (Math.atan2(dy, dx) * 180) / Math.PI + 90
+    : 180
+  const stops = gradient.stops
+    .map(stop => `${stop.color} ${(stop.offset * 100).toFixed(2)}%`)
+    .join(', ')
+
+  return `linear-gradient(${angle.toFixed(2)}deg, ${stops})`
+}
+
+function getShadowStyle(run: TextLine['textRuns'][number], scale: number): string | undefined {
+  const shadow = run.textEffects?.shadow
+  if (!shadow) return undefined
+
+  const radians = (shadow.direction * Math.PI) / 180
+  const offsetX = Math.cos(radians) * shadow.distance * scale
+  const offsetY = -Math.sin(radians) * shadow.distance * scale
+  let shadowColor = shadow.color
+  if (shadow.color.startsWith('rgba(')) {
+    shadowColor = shadow.color.replace(/,\s*([0-9.]+)\)$/, (_, alpha) => `, ${(parseFloat(alpha) * shadow.opacity).toFixed(2)})`)
+  } else if (shadow.color.startsWith('rgb(')) {
+    shadowColor = shadow.color.replace('rgb(', 'rgba(').replace(')', `, ${shadow.opacity.toFixed(2)})`)
+  } else if (shadow.color.startsWith('#') && shadow.color.length === 7) {
+    const r = parseInt(shadow.color.slice(1, 3), 16)
+    const g = parseInt(shadow.color.slice(3, 5), 16)
+    const b = parseInt(shadow.color.slice(5, 7), 16)
+    shadowColor = `rgba(${r}, ${g}, ${b}, ${shadow.opacity.toFixed(2)})`
+  }
+
+  return `${offsetX.toFixed(2)}px ${offsetY.toFixed(2)}px ${(shadow.blur * scale).toFixed(2)}px ${shadowColor}`
+}
+
+function mergeOpacityToColor(color: string, opacity: number): string {
+  const normalizedOpacity = Math.min(1, Math.max(0, opacity))
+  if (color.startsWith('rgba(')) {
+    return color.replace(
+      /,\s*([0-9.]+)\)$/,
+      (_, alpha) => `, ${(parseFloat(alpha) * normalizedOpacity).toFixed(2)})`
+    )
+  }
+  if (color.startsWith('rgb(')) {
+    return color.replace('rgb(', 'rgba(').replace(')', `, ${normalizedOpacity.toFixed(2)})`)
+  }
+  if (color.startsWith('#') && color.length === 7) {
+    const r = parseInt(color.slice(1, 3), 16)
+    const g = parseInt(color.slice(3, 5), 16)
+    const b = parseInt(color.slice(5, 7), 16)
+    return `rgba(${r}, ${g}, ${b}, ${normalizedOpacity.toFixed(2)})`
+  }
+  return color
+}
+
+function getTextStrokeStyle(
+  run: TextLine['textRuns'][number],
+  scale: number
+): Pick<CSSProperties, 'WebkitTextStrokeColor' | 'WebkitTextStrokeWidth'> {
+  const frame = run.textEffects?.frame
+  if (!frame || frame.thickness <= 0) {
+    return {
+      WebkitTextStrokeColor: undefined,
+      WebkitTextStrokeWidth: undefined
+    }
+  }
+
+  return {
+    WebkitTextStrokeColor: mergeOpacityToColor(frame.color, frame.opacity),
+    WebkitTextStrokeWidth: `${(frame.thickness * scale).toFixed(2)}px`
+  }
+}
+
 function TopicNodeBox({
   x,
   y,
   width,
   height,
   title,
+  textLines,
   fillColor,
   strokeColor,
   textColor,
@@ -318,6 +430,7 @@ function TopicNodeBox({
   width: number
   height: number
   title: string
+  textLines: TextLine[]
   fillColor: string
   strokeColor: string
   textColor: string
@@ -327,18 +440,225 @@ function TopicNodeBox({
   scale: number
   isRoot?: boolean
 }) {
-  const justifyContent =
-    textAlignment === 'Left'
-      ? 'flex-start'
-      : textAlignment === 'Right'
-        ? 'flex-end'
-        : 'center'
-  const cssTextAlign =
-    textAlignment === 'Left'
-      ? 'left'
-      : textAlignment === 'Right'
-        ? 'right'
-        : 'center'
+  const markerCounters: Record<string, number> = {}
+
+  const toLatin = (value: number, lower = false): string => {
+    let n = value
+    let result = ''
+    while (n > 0) {
+      n -= 1
+      result = String.fromCharCode(65 + (n % 26)) + result
+      n = Math.floor(n / 26)
+    }
+    return lower ? result.toLowerCase() : result
+  }
+
+  const toCircleNumber = (value: number): string => {
+    const circleNumbers = ['⓪', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩', '⑪', '⑫', '⑬', '⑭', '⑮', '⑯', '⑰', '⑱', '⑲', '⑳']
+    return circleNumbers[value] || `${value}`
+  }
+
+  const getMarkerText = (lineIndex: number, lines: TextLine[]): string | null => {
+    const line = lines[lineIndex]
+    if (!line?.textMarker || line.textMarker === 'None') return null
+
+    const style = line.textMarkerStyle
+    if (style?.char) return style.char
+
+    const counterKey = `${line.textMarker}-${style?.autoNumberType || ''}-${style?.startAt || 1}`
+    if (!(counterKey in markerCounters)) {
+      markerCounters[counterKey] = (style?.startAt || 1) - 1
+    }
+    markerCounters[counterKey] += 1
+    const n = markerCounters[counterKey]
+
+    switch (line.textMarker) {
+      case 'Circle':
+        return '●'
+      case 'Rect':
+      case 'Box':
+      case 'Square':
+        return '■'
+      case 'Tick':
+        return '✓'
+      case 'Decimal':
+        return `${n}.`
+      case 'Decimal1':
+        return `(${n})`
+      case 'Decimal2':
+        return toCircleNumber(n)
+      case 'UpperLatin':
+        return `${toLatin(n)}.`
+      case 'LowerLatin':
+        return `${toLatin(n, true)}.`
+      default:
+        return '•'
+    }
+  }
+
+  const getLineHeight = (line: TextLine): string => {
+    if (line.fixedLineSpacing && line.fixedLineSpacing > 0) {
+      return `${line.fixedLineSpacing * scale}px`
+    }
+    const multiplier = convertSeewoLineSpacingToMultiplier(line.lineSpacing)
+    if (multiplier) {
+      return `${multiplier}`
+    }
+    return `${TOPIC_TEXT_LINE_HEIGHT}`
+  }
+
+  const resolvedLines = textLines.length > 0
+    ? textLines
+    : (() => {
+      const fallbackRun: TextRun = {
+        text: title,
+        fontFamily,
+        fontSize,
+        fontStyle: 'normal',
+        fontWeight: isRoot ? 'bold' : 'normal',
+        color: textColor,
+        opacity: 1,
+        decoration: 'None'
+      }
+      const fallbackLine: TextLine = {
+        textRuns: [fallbackRun],
+        textAlignment,
+        textMarker: 'None',
+        indent: 0,
+        indentLevel: 0,
+        indentType: 'FirstLine',
+        marginLeft: 0,
+        direction: 'LeftToRight',
+        lineSpacing: TOPIC_TEXT_LINE_HEIGHT,
+        spaceBefore: 0,
+        spaceAfter: 0
+      }
+      return [fallbackLine]
+    })()
+
+  const reflectionEffect = (() => {
+    for (const line of resolvedLines) {
+      for (const run of line.textRuns) {
+        if (run.textEffects?.reflection) {
+          return run.textEffects.reflection
+        }
+      }
+    }
+    return undefined
+  })()
+  const hasReflection = !!reflectionEffect
+  const reflectionOffset = hasReflection ? reflectionEffect.distance * scale : 0
+  const reflectionOpacity = hasReflection ? reflectionEffect.opacity : 0
+  const reflectionDepth = hasReflection ? Math.min(1, Math.max(reflectionEffect.depth, 0.1)) : 0
+  const reflectionFadeStop = hasReflection
+    ? Math.min(95, Math.max(20, (1 - reflectionDepth) * 100))
+    : 0
+  const estimatedTextHeight = estimateTextBlockSize(resolvedLines, title, fontSize).height * scale
+
+  const renderTextContent = (): ReactNode => (
+    <>
+      {resolvedLines.map((line, lineIndex) => {
+        const lineAlignment = (line.textAlignment || textAlignment).toLowerCase() as 'left' | 'center' | 'right'
+        const hasRenderableText = line.textRuns.some(run => run.text.replace(/[\r\n]/g, '').length > 0)
+        const firstRun = line.textRuns[0]
+
+        return (
+          <div
+            key={lineIndex}
+            style={{
+              width: '100%',
+              position: 'relative',
+              paddingLeft: (line.marginLeft || 0) * scale,
+              textAlign: lineAlignment,
+              lineHeight: getLineHeight(line),
+              marginTop: (line.spaceBefore || 0) * scale,
+              marginBottom: (line.spaceAfter || 0) * scale,
+              direction: line.direction === 'RightToLeft' ? 'rtl' : 'ltr',
+              textIndent: line.indentType === 'FirstLine' && (line.indent || 0) !== 0
+                ? `${(line.indent || 0) * scale}px`
+                : undefined
+            }}
+          >
+            {(() => {
+              const markerText = getMarkerText(lineIndex, resolvedLines)
+              if (!markerText) return null
+              const markerWidth = Math.max((line.indent || line.marginLeft || 0) * scale, 12 * scale)
+              return (
+                <span
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    width: markerWidth,
+                    textAlign: 'right',
+                    paddingRight: 2 * scale,
+                    fontFamily: buildFontFamily(line.textMarkerStyle?.fontFamily),
+                    fontSize: (firstRun?.fontSize || fontSize) * scale,
+                    color: firstRun?.color || textColor,
+                    opacity: firstRun?.opacity ?? 1,
+                    lineHeight: 'inherit',
+                    whiteSpace: 'pre'
+                  }}
+                >
+                  {markerText}
+                </span>
+              )
+            })()}
+            {hasRenderableText
+              ? line.textRuns.map((run, runIndex) => {
+                const gradient = buildTextGradient(run)
+                const opacity = (run.opacity ?? 1) * (run.gradient?.opacity ?? 1)
+                const textStrokeStyle = getTextStrokeStyle(run, scale)
+                return (
+                  <span
+                    key={runIndex}
+                    style={{
+                      fontFamily: buildFontFamily(run.fontFamily || fontFamily),
+                      fontSize: (run.fontSize || fontSize) * scale,
+                      fontStyle: run.fontStyle || 'normal',
+                      fontWeight: run.fontWeight || 'normal',
+                      fontSynthesis: 'style weight',
+                      color: gradient ? 'transparent' : (run.color || textColor),
+                      backgroundImage: gradient,
+                      backgroundClip: gradient ? 'text' : undefined,
+                      WebkitBackgroundClip: gradient ? 'text' : undefined,
+                      WebkitTextFillColor: gradient ? 'transparent' : undefined,
+                      opacity,
+                      textDecoration: run.decoration === 'Underline' ? 'underline' : 'none',
+                      textShadow: getShadowStyle(run, scale),
+                      WebkitTextStrokeWidth: textStrokeStyle.WebkitTextStrokeWidth,
+                      WebkitTextStrokeColor: textStrokeStyle.WebkitTextStrokeColor,
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word'
+                    }}
+                  >
+                    {run.text}
+                  </span>
+                )
+              })
+              : (
+                <span
+                  style={{
+                    fontFamily: buildFontFamily(firstRun?.fontFamily || fontFamily),
+                    fontSize: (firstRun?.fontSize || fontSize) * scale,
+                    fontStyle: firstRun?.fontStyle || 'normal',
+                    fontWeight: firstRun?.fontWeight || 'normal',
+                    color: firstRun?.color || textColor,
+                    opacity: firstRun?.opacity ?? 1,
+                    textDecoration: firstRun?.decoration === 'Underline' ? 'underline' : 'none',
+                    textShadow: firstRun ? getShadowStyle(firstRun, scale) : undefined,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word'
+                  }}
+                >
+                  {'\u00A0'}
+                </span>
+              )}
+          </div>
+        )
+      })}
+    </>
+  )
 
   return (
     <div
@@ -347,34 +667,53 @@ function TopicNodeBox({
         left: x * scale,
         top: y * scale,
         width: width * scale,
-        height: height * scale,
-        border: `${(isRoot ? 2.2 : 1.8) * scale}px solid ${strokeColor}`,
-        boxShadow: `0 0 0 ${(isRoot ? 1.2 : 1) * scale}px ${strokeColor}`,
-        borderRadius: 14 * scale,
-        backgroundColor: fillColor,
-        boxSizing: 'border-box',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent,
-        padding: `${4 * scale}px ${4 * scale}px`,
-        textAlign: cssTextAlign,
-        pointerEvents: 'none'
+        height: height * scale + (hasReflection ? estimatedTextHeight + reflectionOffset : 0),
+        pointerEvents: 'none',
+        overflow: 'visible'
       }}
     >
-      <span
+      <div
         style={{
-          fontFamily: buildFontFamily(fontFamily),
-          fontSize: fontSize * scale,
-          fontWeight: isRoot ? 700 : 500,
-          color: textColor,
-          lineHeight: TOPIC_TEXT_LINE_HEIGHT,
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
-          width: '100%'
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          width: width * scale,
+          height: height * scale,
+          border: `${(isRoot ? 2.2 : 1.8) * scale}px solid ${strokeColor}`,
+          boxShadow: `0 0 0 ${(isRoot ? 1.2 : 1) * scale}px ${strokeColor}`,
+          borderRadius: 14 * scale,
+          backgroundColor: fillColor,
+          boxSizing: 'border-box',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          padding: `${4 * scale}px ${4 * scale}px`,
+          pointerEvents: 'none',
+          overflow: 'visible'
         }}
       >
-        {title}
-      </span>
+        {renderTextContent()}
+      </div>
+
+      {hasReflection && (
+        <div
+          style={{
+            position: 'absolute',
+            left: 4 * scale,
+            top: height * scale + reflectionOffset,
+            width: width * scale - 8 * scale,
+            height: estimatedTextHeight,
+            transform: 'scaleY(-1)',
+            transformOrigin: 'center top',
+            opacity: reflectionOpacity,
+            WebkitMaskImage: `linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0) ${reflectionFadeStop.toFixed(0)}%)`,
+            maskImage: `linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0) ${reflectionFadeStop.toFixed(0)}%)`,
+            overflow: 'hidden'
+          }}
+        >
+          <div>{renderTextContent()}</div>
+        </div>
+      )}
     </div>
   )
 }
@@ -383,7 +722,13 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
   const [collapsedNodeIds, setCollapsedNodeIds] = useState<Set<string>>(new Set())
   const rootCenterX = element.x
   const rootCenterY = element.y
-  const rootVisualSize = getNodeVisualSize(element.contentWidth, element.contentHeight, element.title, element.fontSize)
+  const rootVisualSize = getNodeVisualSize(
+    element.contentWidth,
+    element.contentHeight,
+    element.textLines,
+    element.title,
+    element.fontSize
+  )
   const rootWidth = rootVisualSize.width
   const rootHeight = rootVisualSize.height
   const layoutMode: TopicLayoutMode =
@@ -540,6 +885,7 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
         width={rootWidth}
         height={rootHeight}
         title={element.title}
+        textLines={element.textLines}
         fillColor={element.fillColor}
         strokeColor={element.strokeColor}
         textColor={element.textColor}
@@ -558,6 +904,7 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
             width={entry.width}
             height={entry.height}
             title={entry.node.title}
+            textLines={entry.node.textLines}
             fillColor={entry.node.fillColor}
             strokeColor={entry.node.strokeColor}
             textColor={entry.node.textColor}

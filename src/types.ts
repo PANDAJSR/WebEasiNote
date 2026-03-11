@@ -200,6 +200,7 @@ export interface TableElement {
 export interface TopicNode {
   id: string;
   title: string;
+  textLines: TextLine[];
   textAlignment: 'Left' | 'Center' | 'Right';
   location: {
     x: number;
@@ -226,6 +227,7 @@ export interface TopicElement {
   topicType: string;
   branchType: string;
   title: string;
+  textLines: TextLine[];
   textAlignment: 'Left' | 'Center' | 'Right';
   contentWidth: number;
   contentHeight: number;
