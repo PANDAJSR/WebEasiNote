@@ -32,6 +32,7 @@ const HORIZONTAL_NODE_GAP_X = 92
 const HORIZONTAL_NODE_GAP_Y = 26
 const VERTICAL_NODE_GAP_X = 34
 const VERTICAL_NODE_GAP_Y = 68
+const TOPIC_TEXT_LINE_HEIGHT = 1.1
 
 function estimateSingleLineTextWidth(text: string, fontSize: number): number {
   // 中文和全角字符按 1em，ASCII 按 0.56em 估算，避免节点过窄导致换行
@@ -46,17 +47,31 @@ function estimateSingleLineTextWidth(text: string, fontSize: number): number {
   return Math.max(0, widthEm * fontSize)
 }
 
+function estimateTextBlockSize(text: string, fontSize: number): { width: number; height: number } {
+  const lines = text.split(/\r\n|\r|\n/)
+  const longestLineWidth = Math.max(
+    ...lines.map(line => estimateSingleLineTextWidth(line, fontSize)),
+    0
+  )
+  const lineCount = Math.max(lines.length, 1)
+  return {
+    width: longestLineWidth,
+    height: lineCount * fontSize * TOPIC_TEXT_LINE_HEIGHT
+  }
+}
+
 function getNodeVisualSize(
   contentWidth: number,
   contentHeight: number,
   text: string,
   fontSize: number
 ): { width: number; height: number } {
-  const textWidth = estimateSingleLineTextWidth(text, fontSize)
-  const textDrivenWidth = textWidth + HORIZONTAL_NODE_PADDING * 2 + 2
+  const textBlockSize = estimateTextBlockSize(text, fontSize)
+  const textDrivenWidth = textBlockSize.width + HORIZONTAL_NODE_PADDING * 2 + 2
+  const textDrivenHeight = textBlockSize.height + VERTICAL_NODE_PADDING * 2 + 2
   return {
     width: Math.max(contentWidth + HORIZONTAL_NODE_PADDING * 2, textDrivenWidth, 72),
-    height: Math.max(contentHeight + VERTICAL_NODE_PADDING * 2, 34)
+    height: Math.max(contentHeight + VERTICAL_NODE_PADDING * 2, textDrivenHeight, 34)
   }
 }
 
@@ -337,8 +352,9 @@ function TopicNodeBox({
           fontSize: fontSize * scale,
           fontWeight: isRoot ? 700 : 500,
           color: textColor,
-          lineHeight: 1.1,
-          whiteSpace: 'nowrap'
+          lineHeight: TOPIC_TEXT_LINE_HEIGHT,
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word'
         }}
       >
         {title}
