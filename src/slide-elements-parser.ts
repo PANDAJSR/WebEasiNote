@@ -6,6 +6,7 @@ import { parseTextElement } from './text-parser'
 import { parseTableElement } from './tables'
 import { parseTopicElement } from './topics'
 import { parseCylinderElement } from './cylinders'
+import { parseConeElement } from './cones'
 import { getDirectChildElement, getDirectChildText } from './xml-utils'
 
 interface ParseElementsOptions {
@@ -119,6 +120,30 @@ const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'CanClone'
   ]),
   Cylinder: new Set([
+    'ExpandType',
+    'ExpandDuration',
+    'ExpandedViewport',
+    'FoldedViewport',
+    'Size',
+    'Transform3D',
+    'EdgeThickness',
+    'EdgeBrush',
+    'Surfaces',
+    'Edges',
+    'Id',
+    'X',
+    'Y',
+    'Width',
+    'Height',
+    'Rotation',
+    'IsLocked',
+    'CanClone',
+    'Hyperlink',
+    'HasMask',
+    'RotateOrigin',
+    'SaveInfoMetadata'
+  ]),
+  Cone: new Set([
     'ExpandType',
     'ExpandDuration',
     'ExpandedViewport',
@@ -274,6 +299,14 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         const cylinderElement = parseCylinderElement(node)
         if (cylinderElement) {
           parsedElements.push(applyOffset(cylinderElement, offsetX, offsetY))
+        }
+        break
+      }
+      case 'Cone': {
+        collectUnknownParameters(node, 'Cone', slideId, elementId, issues)
+        const coneElement = parseConeElement(node)
+        if (coneElement) {
+          parsedElements.push(applyOffset(coneElement, offsetX, offsetY))
         }
         break
       }
