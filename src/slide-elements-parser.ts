@@ -8,6 +8,7 @@ import { parseTopicElement } from './topics'
 import { parseCylinderElement } from './cylinders'
 import { parseConeElement } from './cones'
 import { parseCubeElement } from './cubes'
+import { parseGeometryElement } from './geometries'
 import { getDirectChildElement, getDirectChildText } from './xml-utils'
 
 interface ParseElementsOptions {
@@ -191,6 +192,21 @@ const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'HasMask',
     'RotateOrigin',
     'SaveInfoMetadata'
+  ]),
+  GeometryElement: new Set([
+    'Geometries',
+    'Angles',
+    'Marks',
+    'Id',
+    'X',
+    'Y',
+    'Width',
+    'Height',
+    'Rotation',
+    'RotateOrigin',
+    'ShowRotateOrigin',
+    'IsLocked',
+    'CanClone'
   ])
 }
 
@@ -340,6 +356,14 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         const cubeElement = parseCubeElement(node)
         if (cubeElement) {
           parsedElements.push(applyOffset(cubeElement, offsetX, offsetY))
+        }
+        break
+      }
+      case 'GeometryElement': {
+        collectUnknownParameters(node, 'GeometryElement', slideId, elementId, issues)
+        const geometryElement = parseGeometryElement(node)
+        if (geometryElement) {
+          parsedElements.push(applyOffset(geometryElement, offsetX, offsetY))
         }
         break
       }

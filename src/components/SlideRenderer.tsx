@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { SlideData, TextElement, SlideElement, UnknownElement, TopicElement, CylinderElement, ConeElement, CubeElement } from '../parser';
+import type { SlideData, TextElement, SlideElement, UnknownElement, TopicElement, CylinderElement, ConeElement, CubeElement, GeometryElement } from '../parser';
 import type { ShapeElement } from '../shapes';
 import type { PictureElement } from '../pictures';
 import type { VideoElement } from '../videos'
@@ -12,6 +12,7 @@ import { TopicRenderer } from './TopicRenderer'
 import { CylinderRenderer } from './CylinderRenderer'
 import { ConeRenderer } from './ConeRenderer'
 import { CubeRenderer } from './CubeRenderer'
+import { GeometryRenderer } from './GeometryRenderer'
 import { buildFontFamily } from '../font-utils';
 import { convertSeewoLineSpacingToMultiplier } from '../line-spacing';
 
@@ -141,6 +142,8 @@ function ElementRenderer({
       return <ConeRenderer element={element as ConeElement} scale={scale} />
     case 'cube':
       return <CubeRenderer element={element as CubeElement} scale={scale} />
+    case 'geometry':
+      return <GeometryRenderer element={element as GeometryElement} scale={scale} />
     case 'unknown':
       return <UnknownElementPlaceholder element={element as UnknownElement} scale={scale} />;
     default:

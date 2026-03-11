@@ -284,6 +284,45 @@ export interface CubeElement {
   rightFillColor: string;
 }
 
+export interface GeometryPoint {
+  x: number;
+  y: number;
+}
+
+export interface GeometryPrimitive {
+  type: string;
+  points: GeometryPoint[];
+  strokeColor: string;
+  strokeThickness: number;
+  lineType?: string;
+  segmentType?: string;
+  angleOfEllipse?: number;
+}
+
+export interface GeometryAngle {
+  value: number;
+  curPoint: GeometryPoint | null;
+  nextPoint: GeometryPoint | null;
+  prePoint: GeometryPoint | null;
+}
+
+export interface GeometryMark {
+  position: GeometryPoint;
+}
+
+export interface GeometryElement {
+  type: 'geometry';
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  geometries: GeometryPrimitive[];
+  angles: GeometryAngle[];
+  marks: GeometryMark[];
+}
+
 export interface UnknownElement {
   type: 'unknown';
   id: string;
@@ -310,7 +349,7 @@ export interface SlideData {
   backgroundColor: string;
   backgroundImage?: string; // sourceId for ImageBrush background
   issues: SlideIssue[];
-  elements: (TextElement | ShapeElement | PictureElement | VideoElement | TableElement | TopicElement | CylinderElement | ConeElement | CubeElement | UnknownElement)[];
+  elements: (TextElement | ShapeElement | PictureElement | VideoElement | TableElement | TopicElement | CylinderElement | ConeElement | CubeElement | GeometryElement | UnknownElement)[];
 }
 
 export interface CoursewareData {
@@ -318,4 +357,4 @@ export interface CoursewareData {
   slides: SlideData[];
 }
 
-export type SlideElement = TextElement | ShapeElement | PictureElement | VideoElement | TableElement | TopicElement | CylinderElement | ConeElement | CubeElement | UnknownElement;
+export type SlideElement = TextElement | ShapeElement | PictureElement | VideoElement | TableElement | TopicElement | CylinderElement | ConeElement | CubeElement | GeometryElement | UnknownElement;
