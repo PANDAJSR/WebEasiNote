@@ -21,6 +21,8 @@ export function CylinderRenderer({ element, scale }: CylinderRendererProps) {
   const rightX = Math.max(leftX + 1, width - strokeInset)
   const centerX = width / 2
   const dashSize = Math.max(4, strokeWidth * 3)
+  const bottomBackArc = `M ${leftX} ${bottomCy} A ${rx} ${ry} 0 0 1 ${rightX} ${bottomCy}`
+  const bottomFrontArc = `M ${leftX} ${bottomCy} A ${rx} ${ry} 0 0 0 ${rightX} ${bottomCy}`
 
   return (
     <div
@@ -50,7 +52,7 @@ export function CylinderRenderer({ element, scale }: CylinderRendererProps) {
         <line x1={leftX} y1={topCy} x2={leftX} y2={bottomCy} stroke={edgeColor} strokeWidth={strokeWidth} />
         <line x1={rightX} y1={topCy} x2={rightX} y2={bottomCy} stroke={edgeColor} strokeWidth={strokeWidth} />
         <path
-          d={`M ${leftX} ${bottomCy} Q ${centerX} ${bottomCy - ry} ${rightX} ${bottomCy}`}
+          d={bottomBackArc}
           fill='none'
           stroke={edgeColor}
           strokeWidth={strokeWidth}
@@ -58,7 +60,7 @@ export function CylinderRenderer({ element, scale }: CylinderRendererProps) {
           strokeLinecap='round'
         />
         <path
-          d={`M ${leftX} ${bottomCy} Q ${centerX} ${bottomCy + ry} ${rightX} ${bottomCy}`}
+          d={bottomFrontArc}
           fill={bottomFillColor}
           stroke={edgeColor}
           strokeWidth={strokeWidth}
