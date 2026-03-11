@@ -307,6 +307,7 @@ function TopicNodeBox({
   fillColor,
   strokeColor,
   textColor,
+  textAlignment,
   fontFamily,
   fontSize,
   scale,
@@ -320,11 +321,25 @@ function TopicNodeBox({
   fillColor: string
   strokeColor: string
   textColor: string
+  textAlignment: 'Left' | 'Center' | 'Right'
   fontFamily: string
   fontSize: number
   scale: number
   isRoot?: boolean
 }) {
+  const justifyContent =
+    textAlignment === 'Left'
+      ? 'flex-start'
+      : textAlignment === 'Right'
+        ? 'flex-end'
+        : 'center'
+  const cssTextAlign =
+    textAlignment === 'Left'
+      ? 'left'
+      : textAlignment === 'Right'
+        ? 'right'
+        : 'center'
+
   return (
     <div
       style={{
@@ -340,9 +355,9 @@ function TopicNodeBox({
         boxSizing: 'border-box',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent,
         padding: `${4 * scale}px ${4 * scale}px`,
-        textAlign: 'center',
+        textAlign: cssTextAlign,
         pointerEvents: 'none'
       }}
     >
@@ -354,7 +369,8 @@ function TopicNodeBox({
           color: textColor,
           lineHeight: TOPIC_TEXT_LINE_HEIGHT,
           whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word'
+          wordBreak: 'break-word',
+          width: '100%'
         }}
       >
         {title}
@@ -527,6 +543,7 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
         fillColor={element.fillColor}
         strokeColor={element.strokeColor}
         textColor={element.textColor}
+        textAlignment={element.textAlignment}
         fontFamily={element.fontFamily}
         fontSize={element.fontSize}
         scale={scale}
@@ -544,6 +561,7 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
             fillColor={entry.node.fillColor}
             strokeColor={entry.node.strokeColor}
             textColor={entry.node.textColor}
+            textAlignment={entry.node.textAlignment}
             fontFamily={entry.node.fontFamily}
             fontSize={entry.node.fontSize}
             scale={scale}

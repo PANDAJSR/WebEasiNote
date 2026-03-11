@@ -7,6 +7,7 @@ interface ParsedTitleStyle {
   fontFamily: string
   fontSize: number
   textColor: string
+  textAlignment: 'Left' | 'Center' | 'Right'
 }
 
 function parseNumber(value: string | null, fallback = 0): number {
@@ -31,13 +32,22 @@ function parsePoint(value: string | null): { x: number; y: number } {
   }
 }
 
+function parseTextAlignment(value: string | null | undefined): 'Left' | 'Center' | 'Right' {
+  if (!value) return 'Center'
+  const normalized = value.trim().toLowerCase()
+  if (normalized === 'left') return 'Left'
+  if (normalized === 'right') return 'Right'
+  return 'Center'
+}
+
 function parseTitleStyle(titleNode: Element | null): ParsedTitleStyle {
   if (!titleNode) {
     return {
       text: '',
       fontFamily: 'Arial',
       fontSize: 24,
-      textColor: '#000000'
+      textColor: '#000000',
+      textAlignment: 'Center'
     }
   }
 
@@ -63,11 +73,16 @@ function parseTitleStyle(titleNode: Element | null): ParsedTitleStyle {
     || titleNode.querySelector('DefaultRunProperty > TextRun > Foreground > ColorBrush')?.textContent
     || '#ff000000'
 
+  const textAlignmentRaw =
+    getDirectChildText(titleNode, 'TextAlignment')
+    || titleNode.querySelector('TextLines > TextLine > TextAlignment')?.textContent
+
   return {
     text: text.trim(),
     fontFamily: fontFamily.trim() || 'Arial',
     fontSize: convertSeewoFontSizeToCssPx(fontSizeRaw),
-    textColor: parseColor(colorRaw, true)
+    textColor: parseColor(colorRaw, true),
+    textAlignment: parseTextAlignment(textAlignmentRaw)
   }
 }
 
@@ -106,6 +121,7 @@ function parseTopicNode(nodeElement: Element, fallbackFill: string, fallbackStro
   return {
     id,
     title: title.text,
+    textAlignment: title.textAlignment,
     location,
     contentWidth: width,
     contentHeight: height,
@@ -159,6 +175,7 @@ export function parseTopicElement(topicNode: Element): TopicElement | null {
       topicType,
       branchType,
       title: rootTitle.text,
+      textAlignment: rootTitle.textAlignment,
       contentWidth,
       contentHeight,
       fillColor: rootStyle.fillColor,
