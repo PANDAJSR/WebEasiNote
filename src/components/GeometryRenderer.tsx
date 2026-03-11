@@ -159,6 +159,13 @@ export function GeometryRenderer({ element, scale }: GeometryRendererProps) {
           const sweepFlag = cross > 0 ? 1 : 0
           const smallArcFlag = value > 180 ? 1 : 0
           const arcPath = `M ${arcStart.x} ${arcStart.y} A ${radius} ${radius} 0 ${smallArcFlag} ${sweepFlag} ${arcEnd.x} ${arcEnd.y}`
+          const isRightAngle = Math.abs(value - 90) <= 1
+
+          const rightAngleCorner = {
+            x: angle.curPoint.x + (toPre.x + toNext.x) * radius,
+            y: angle.curPoint.y + (toPre.y + toNext.y) * radius
+          }
+          const rightAnglePath = `M ${arcStart.x} ${arcStart.y} L ${rightAngleCorner.x} ${rightAngleCorner.y} L ${arcEnd.x} ${arcEnd.y}`
 
           const bisector = normalizeVector(toPre.x + toNext.x, toPre.y + toNext.y)
           const labelRadius = radius + 18
@@ -167,7 +174,7 @@ export function GeometryRenderer({ element, scale }: GeometryRendererProps) {
 
           return (
             <g key={`angle-${index}`}>
-              <path d={arcPath} fill='none' stroke='#000000' strokeWidth={2} />
+              <path d={isRightAngle ? rightAnglePath : arcPath} fill='none' stroke='#000000' strokeWidth={2} />
               <text
                 x={labelX}
                 y={labelY}
