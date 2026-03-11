@@ -10,6 +10,7 @@ import { parseConeElement } from './cones'
 import { parseCubeElement } from './cubes'
 import { parseGeometryElement } from './geometries'
 import { parseMathFormulaElement } from './math-formulas'
+import { parseRuledPaperElement } from './ruled-papers'
 import { getDirectChildElement, getDirectChildText } from './xml-utils'
 
 interface ParseElementsOptions {
@@ -225,6 +226,27 @@ const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'HasMask',
     'RotateOrigin',
     'SaveInfoMetadata'
+  ]),
+  RuledPaper: new Set([
+    'RichText',
+    'LineColor',
+    'Background',
+    'Opacity',
+    'Words',
+    'Rotation',
+    'RotateOrigin',
+    'X',
+    'Y',
+    'Width',
+    'Height',
+    'ShowRotateOrigin',
+    'IsLocked',
+    'Id',
+    'CanClone',
+    'Hyperlink',
+    'HasMask',
+    'SaveInfoMetadata',
+    'Animations'
   ])
 }
 
@@ -390,6 +412,14 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         const mathFormulaElement = parseMathFormulaElement(node)
         if (mathFormulaElement) {
           parsedElements.push(applyOffset(mathFormulaElement, offsetX, offsetY))
+        }
+        break
+      }
+      case 'RuledPaper': {
+        collectUnknownParameters(node, 'RuledPaper', slideId, elementId, issues)
+        const ruledPaperElement = parseRuledPaperElement(node)
+        if (ruledPaperElement) {
+          parsedElements.push(applyOffset(ruledPaperElement, offsetX, offsetY))
         }
         break
       }

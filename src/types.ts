@@ -99,6 +99,11 @@ export interface TextElement {
   sizeToContent?: 'Manual' | 'Height' | 'WidthAndHeight';
   verticalTextAlignment?: 'Top' | 'Center' | 'Bottom';
   textLines: TextLine[];
+  ruledPaper?: {
+    lineColor: string;
+    backgroundColor: string;
+    opacity: number;
+  };
 }
 
 // 占位符类型，实际定义在 shapes.ts 和 pictures.ts

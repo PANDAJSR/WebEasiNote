@@ -3,6 +3,13 @@ import type { TextElement, TextLine, TextRun } from './types';
 import { getElementText, parseColor } from './xml-utils';
 import { convertSeewoFontSizeToCssPx } from './font-utils'
 
+export interface ParsedRichText {
+  arrangingType: 'Horizontal' | 'Vertical'
+  sizeToContent: 'Manual' | 'Height' | 'WidthAndHeight'
+  verticalTextAlignment: 'Top' | 'Center' | 'Bottom'
+  textLines: TextLine[]
+}
+
 function parsePoint(value: string | null): { x: number; y: number } | null {
   if (!value) return null
   const parts = value.split(',').map(item => parseFloat(item.trim()))
@@ -26,6 +33,62 @@ function parseGradientStops(value: string | null): Array<{ color: string; offset
     })
     .filter((item): item is { color: string; offset: number } => !!item)
     .sort((a, b) => a.offset - b.offset)
+}
+
+export function parseRichTextNode(richTextNode: Element): ParsedRichText {
+  const arrangingType = (getElementText(richTextNode, 'ArrangingType') || 'Horizontal') as 'Horizontal' | 'Vertical'
+  const sizeToContent = (getElementText(richTextNode, 'SizeToContent') || 'Manual') as 'Manual' | 'Height' | 'WidthAndHeight'
+  const verticalTextAlignment = (getElementText(richTextNode, 'VerticalTextAlignment') || 'Top') as 'Top' | 'Center' | 'Bottom'
+  const textLines: TextLine[] = []
+
+  const textLinesNode = richTextNode.querySelector('TextLines')
+  if (textLinesNode) {
+    const textLineNodes = textLinesNode.querySelectorAll('TextLine')
+    textLineNodes.forEach(lineNode => {
+      const textLine = parseTextLine(lineNode)
+      if (textLine) {
+        textLines.push(textLine)
+      }
+    })
+  }
+
+  const hasAnyTextRun = textLines.some(line => line.textRuns.length > 0)
+  if (!hasAnyTextRun) {
+    const text = getElementText(richTextNode, 'Text')
+    if (text) {
+      textLines.push({
+        textRuns: [
+          {
+            text,
+            fontFamily: 'Arial',
+            fontSize: convertSeewoFontSizeToCssPx(16),
+            fontStyle: 'normal',
+            fontWeight: 'normal',
+            color: '#000000',
+            opacity: 1,
+            decoration: 'None'
+          }
+        ],
+        textAlignment: 'Left',
+        textMarker: 'None',
+        indent: 0,
+        indentLevel: 0,
+        indentType: 'FirstLine',
+        marginLeft: 0,
+        direction: 'LeftToRight',
+        lineSpacing: 1,
+        spaceBefore: 0,
+        spaceAfter: 0
+      })
+    }
+  }
+
+  return {
+    arrangingType,
+    sizeToContent,
+    verticalTextAlignment,
+    textLines
+  }
 }
 
 /**
@@ -54,65 +117,19 @@ export function parseTextElement(textNode: Element): TextElement | null {
     }
     
     console.log(`  [Text] 找到 RichText 节点`);
-    const arrangingType = (getElementText(richTextNode, 'ArrangingType') || 'Horizontal') as 'Horizontal' | 'Vertical';
-    const sizeToContent = (getElementText(richTextNode, 'SizeToContent') || 'Manual') as 'Manual' | 'Height' | 'WidthAndHeight';
-    const verticalTextAlignment = (getElementText(richTextNode, 'VerticalTextAlignment') || 'Top') as 'Top' | 'Center' | 'Bottom';
-
-    const textLines: TextLine[] = []
-
-    // 获取 TextLines
-    const textLinesNode = richTextNode.querySelector('TextLines');
+    const textLinesNode = richTextNode.querySelector('TextLines')
     if (textLinesNode) {
-      const textLineNodes = textLinesNode.querySelectorAll('TextLine');
-      console.log(`  [Text] 找到 ${textLineNodes.length} 个 TextLine`);
-      
-      textLineNodes.forEach((lineNode, index) => {
-        const textLine = parseTextLine(lineNode);
-        if (textLine) {
-          textLines.push(textLine);
-          console.log(`  [Text]   TextLine #${index}: ${textLine.textRuns.length} 个 textRun`);
-        } else {
-          console.warn(`  [Text]   TextLine #${index} 解析失败`);
-        }
-      })
+      console.log(`  [Text] 找到 ${textLinesNode.querySelectorAll('TextLine').length} 个 TextLine`)
     } else {
-      console.warn(`  [Text] 未找到 TextLines 节点`);
+      console.warn(`  [Text] 未找到 TextLines 节点`)
     }
 
-    // 仅当整段文本没有任何可用 TextRun 时，才回退到 RichText.Text
-    // 避免空行 TextLine 触发整段文本重复渲染
-    const hasAnyTextRun = textLines.some(line => line.textRuns.length > 0)
-    if (!hasAnyTextRun) {
-      const text = getElementText(richTextNode, 'Text')
-      if (text) {
-        textLines.push({
-          textRuns: [
-            {
-              text,
-              fontFamily: 'Arial',
-              fontSize: convertSeewoFontSizeToCssPx(16),
-              fontStyle: 'normal',
-              fontWeight: 'normal',
-              color: '#000000',
-              opacity: 1,
-              decoration: 'None'
-            }
-          ],
-          textAlignment: 'Left',
-          textMarker: 'None',
-          indent: 0,
-          indentLevel: 0,
-          indentType: 'FirstLine',
-          marginLeft: 0,
-          direction: 'LeftToRight',
-          lineSpacing: 1,
-          spaceBefore: 0,
-          spaceAfter: 0
-        })
-      }
-    }
+    const parsedRichText = parseRichTextNode(richTextNode)
+    parsedRichText.textLines.forEach((line, index) => {
+      console.log(`  [Text]   TextLine #${index}: ${line.textRuns.length} 个 textRun`)
+    })
     
-    console.log(`  [Text] ✓ 解析完成, 共 ${textLines.length} 行文本`);
+    console.log(`  [Text] ✓ 解析完成, 共 ${parsedRichText.textLines.length} 行文本`);
 
     return {
       type: 'text',
@@ -124,10 +141,10 @@ export function parseTextElement(textNode: Element): TextElement | null {
       rotation,
       borderThickness,
       borderType,
-      arrangingType,
-      sizeToContent,
-      verticalTextAlignment,
-      textLines
+      arrangingType: parsedRichText.arrangingType,
+      sizeToContent: parsedRichText.sizeToContent,
+      verticalTextAlignment: parsedRichText.verticalTextAlignment,
+      textLines: parsedRichText.textLines
     };
   } catch (error) {
     console.error(`  [Text] ✗ 解析异常:`, error);

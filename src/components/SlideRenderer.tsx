@@ -208,6 +208,7 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
   const { x, y, width, height, textLines } = element;
   const markerCounters: Record<string, number> = {};
   const textOuterPadding = 10 * scale
+  const ruledPaper = element.ruledPaper
 
   const toLatin = (value: number, lower = false): string => {
     let n = value;
@@ -411,10 +412,66 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
     border: element.borderType && element.borderType !== 'None' && (element.borderThickness || 0) > 0
       ? `${(element.borderThickness || 0) * scale}px solid #000000`
       : undefined,
+    backgroundColor: ruledPaper?.backgroundColor,
     transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
     transformOrigin: 'center center',
     writingMode: element.arrangingType === 'Vertical' ? 'vertical-rl' : 'horizontal-tb'
   };
+
+  const renderRuledPaperGuides = () => {
+    if (!ruledPaper) return null
+
+    const usableHeight = Math.max(mainHeight - textOuterPadding * 2, 1)
+    const maxFontSize = Math.max(
+      ...textLines.flatMap(line => line.textRuns.map(run => run.fontSize * scale)),
+      48 * scale
+    )
+    const estimatedGroupHeight = Math.max(maxFontSize, 60 * scale)
+    const rowCount = Math.max(1, Math.round(usableHeight / estimatedGroupHeight))
+    const rowHeight = usableHeight / rowCount
+    const topBottomGap = rowHeight * 0.4
+    const middleGap = rowHeight * 0.2
+    const strokeColor = mergeOpacityToColor(ruledPaper.lineColor, ruledPaper.opacity)
+    const strokeWidth = Math.max(1, scale)
+    const lineY: number[] = []
+
+    for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
+      const rowStart = textOuterPadding + rowIndex * rowHeight
+      lineY.push(
+        rowStart,
+        rowStart + topBottomGap,
+        rowStart + topBottomGap + middleGap,
+        rowStart + rowHeight
+      )
+    }
+
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          width: width * scale,
+          height: mainHeight,
+          pointerEvents: 'none'
+        }}
+      >
+        {lineY.map((yPos, index) => (
+          <div
+            key={index}
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: yPos - strokeWidth / 2,
+              width: '100%',
+              height: strokeWidth,
+              backgroundColor: strokeColor
+            }}
+          />
+        ))}
+      </div>
+    )
+  }
 
   const renderTextContent = () => (
     <>
@@ -548,9 +605,11 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
           position: 'absolute',
           left: 0,
           top: 0,
+          overflow: ruledPaper ? 'hidden' : 'visible',
           ...textContainerStyle
         }}
       >
+        {renderRuledPaperGuides()}
         {renderTextContent()}
       </div>
 
