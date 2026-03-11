@@ -2,6 +2,35 @@ import type { TextLine } from './types';
 import { getElementText, getDirectChildElement, getDirectChildText, parseColor } from './xml-utils';
 import { convertSeewoFontSizeToCssPx } from './font-utils'
 
+interface NormalizedPathResult {
+  path: string
+  fillRule?: 'nonzero' | 'evenodd'
+}
+
+function normalizeSeewoPath(rawPath: string): NormalizedPathResult {
+  if (!rawPath) return { path: '' }
+
+  let normalizedPath = rawPath.trim()
+  let fillRule: 'nonzero' | 'evenodd' | undefined
+
+  // 兼容希沃导出的 F0/F1 前缀：F0=evenodd, F1=nonzero
+  const fillRuleMatch = normalizedPath.match(/^F([01])\s*/i)
+  if (fillRuleMatch) {
+    fillRule = fillRuleMatch[1] === '0' ? 'evenodd' : 'nonzero'
+    normalizedPath = normalizedPath.slice(fillRuleMatch[0].length).trim()
+  }
+
+  // 兜底：若开头不是 SVG 合法路径命令，尝试从首个 M/m 处恢复
+  if (normalizedPath && !/^[MmLlHhVvCcSsQqTtAaZz]/.test(normalizedPath)) {
+    const moveToIndex = normalizedPath.search(/[Mm]/)
+    if (moveToIndex > 0) {
+      normalizedPath = normalizedPath.slice(moveToIndex)
+    }
+  }
+
+  return { path: normalizedPath, fillRule }
+}
+
 function parsePoint(value: string | null): { x: number; y: number } | null {
   if (!value) return null
   const parts = value.split(',').map(item => parseFloat(item.trim()))
@@ -105,7 +134,9 @@ export function parseShapeElement(shapeNode: Element): ShapeElement | null {
 
     // 解析路径
     const pathElement = getDirectChildElement(shapeNode, 'Path');
-    const path = pathElement?.textContent || getDirectChildText(shapeNode, 'Path') || getElementText(shapeNode, 'Path') || '';
+    const rawPath = pathElement?.textContent || getDirectChildText(shapeNode, 'Path') || getElementText(shapeNode, 'Path') || '';
+    const normalizedPathResult = normalizeSeewoPath(rawPath)
+    const path = normalizedPathResult.path
     console.log(`  [Shape] SVG Path: ${path.substring(0, 50)}${path.length > 50 ? '...' : ''}`);
     const normalizeFillRule = (value?: string | null): 'nonzero' | 'evenodd' | undefined => {
       if (!value) return undefined
@@ -129,6 +160,9 @@ export function parseShapeElement(shapeNode: Element): ShapeElement | null {
       const pathGeometryNode = shapeNode.querySelector('PathGeometry')
       fillRule = normalizeFillRule(pathGeometryNode?.getAttribute('FillRule') || pathGeometryNode?.getAttribute('fill-rule'))
         || normalizeFillRule(getElementText(pathGeometryNode || shapeNode, 'FillRule'))
+    }
+    if (!fillRule) {
+      fillRule = normalizedPathResult.fillRule
     }
 
     // 解析几何类型
