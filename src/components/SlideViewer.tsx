@@ -106,6 +106,8 @@ export function SlideViewer({
   const isFirstSlide = currentIndex <= 0
   const isLastSlide = currentIndex >= slides.length - 1
   const currentScale = slideScaleMap[slide.id] || 1
+  const currentViewportWidth = Math.max(0, slide.width * currentScale)
+  const currentViewportHeight = Math.max(0, slide.height * currentScale)
 
   const handlePrevSlide = () => {
     if (isFirstSlide) return
@@ -214,10 +216,19 @@ export function SlideViewer({
             position: 'relative',
             width: '100%',
             height: '100%',
-            overflow: 'hidden',
           }}
         >
-          {slides.map((slideItem, index) => {
+          <div
+            style={{
+              position: 'relative',
+              width: `${currentViewportWidth}px`,
+              height: `${currentViewportHeight}px`,
+              overflow: 'hidden',
+              flexShrink: 0,
+              backgroundColor: '#000000',
+            }}
+          >
+            {slides.map((slideItem, index) => {
             const isCurrent = index === currentIndex
             const isLeaving = index === leavingSlideIndex
             const rawDuration = slideItem.transition?.durationMs ?? DEFAULT_FADE_DURATION_MS
@@ -258,10 +269,7 @@ export function SlideViewer({
                   top: 0,
                   left: 0,
                   right: 0,
-                  bottom: `${slideInfoBarHeight}px`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  bottom: 0,
                   zIndex,
                   visibility: isCurrent || isLeaving || shouldKeepAliveForCrossPlay ? 'visible' : 'hidden',
                   opacity: isCurrent || isLeaving ? 1 : 0,
@@ -284,7 +292,8 @@ export function SlideViewer({
                 </div>
               </div>
             )
-          })}
+            })}
+          </div>
         </div>
       </div>
 
