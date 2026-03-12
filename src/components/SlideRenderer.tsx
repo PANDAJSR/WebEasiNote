@@ -501,6 +501,7 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
               height: ruledPaper ? ruledRowHeight : undefined,
               display: ruledPaper ? 'flex' : undefined,
               alignItems: ruledPaper ? 'center' : undefined,
+              justifyContent: ruledPaper ? 'center' : undefined,
               transform: ruledPaper ? `translateY(${ruledTextVerticalOffset}px)` : undefined,
               textAlign: alignment,
               lineHeight: getLineHeight(line),
