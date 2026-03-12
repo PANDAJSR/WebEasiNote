@@ -17,6 +17,9 @@ import { MathFormulaRenderer } from './MathFormulaRenderer'
 import { buildFontFamily } from '../font-utils';
 import { convertSeewoLineSpacingToMultiplier } from '../line-spacing';
 
+// 四线三格文本垂直微调比例（相对单行格高）
+const RULED_PAPER_TEXT_VERTICAL_OFFSET_RATIO = -0.14
+
 interface SlideRendererProps {
   slide: SlideData;
   scale?: number;
@@ -213,7 +216,7 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
   const mainHeight = height * scale
   const ruledRowHeight = ruledPaper ? mainHeight / ruledRowCount : 0
   const containerPadding = ruledPaper ? 0 : textOuterPadding
-  const ruledTextVerticalOffset = ruledPaper ? -(ruledRowHeight * 0.14) : 0
+  const ruledTextVerticalOffset = ruledPaper ? ruledRowHeight * RULED_PAPER_TEXT_VERTICAL_OFFSET_RATIO : 0
 
   const toLatin = (value: number, lower = false): string => {
     let n = value;
