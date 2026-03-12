@@ -4,11 +4,14 @@ import { SlideViewer } from './SlideViewer';
 import type { CoursewareMetadata, SlideData, SlideIssue } from '../parser';
 import { isFontFamilyMissing } from '../font-utils';
 
+export type SlideChangeSource = 'keyboard' | 'pager' | 'thumbnail' | 'programmatic'
+
 interface ViewerProps {
   metadata: CoursewareMetadata;
   slides: SlideData[];
   currentIndex: number;
-  onSlideChange: (index: number) => void;
+  onSlideChange: (index: number, source?: SlideChangeSource) => void;
+  slideChangeSource: SlideChangeSource;
   onClear: () => void;
   resourceMap?: Record<string, string>;
 }
@@ -74,6 +77,7 @@ export function Viewer({
   slides, 
   currentIndex, 
   onSlideChange, 
+  slideChangeSource,
   onClear,
   resourceMap = {}
 }: ViewerProps) {
@@ -160,6 +164,7 @@ export function Viewer({
           slides={slides}
           currentIndex={currentIndex}
           onSlideChange={onSlideChange}
+          slideChangeSource={slideChangeSource}
           resourceMap={resourceMap}
         />
       </div>

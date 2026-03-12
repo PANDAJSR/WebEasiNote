@@ -4,12 +4,14 @@ import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons
 import { styles } from '../styles'
 import { SlideRenderer } from './SlideRenderer'
 import type { SlideData } from '../parser'
+import type { SlideChangeSource } from './Viewer'
 
 interface SlideViewerProps {
   slide: SlideData
   slides: SlideData[]
   currentIndex: number
-  onSlideChange: (index: number) => void
+  onSlideChange: (index: number, source?: SlideChangeSource) => void
+  slideChangeSource: SlideChangeSource
   resourceMap?: Record<string, string>
 }
 
@@ -18,7 +20,7 @@ interface SlideThumbnailProps {
   index: number
   isActive: boolean
   resourceMap: Record<string, string>
-  onSlideChange: (index: number) => void
+  onSlideChange: (index: number, source?: SlideChangeSource) => void
 }
 
 const thumbnailWidth = 96
@@ -50,6 +52,10 @@ if (typeof document !== 'undefined' && !document.getElementById(slideFadeKeyfram
       from { transform: translateX(0%); }
       to { transform: translateX(-100%); }
     }
+    @keyframes slideOutToRight {
+      from { transform: translateX(0%); }
+      to { transform: translateX(100%); }
+    }
   `
   document.head.appendChild(styleSheet)
 }
@@ -65,7 +71,7 @@ function SlideThumbnail({
 
   return (
     <button
-      onClick={() => onSlideChange(index)}
+      onClick={() => onSlideChange(index, 'thumbnail')}
       style={{
         ...styles.slideTab,
         ...(isActive ? styles.slideTabActive : {})
@@ -92,6 +98,7 @@ export function SlideViewer({
   slides,
   currentIndex,
   onSlideChange,
+  slideChangeSource,
   resourceMap = {}
 }: SlideViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -102,6 +109,7 @@ export function SlideViewer({
   const [leavingSlideIndex, setLeavingSlideIndex] = useState<number | null>(null)
   const [activeTransitionKey, setActiveTransitionKey] = useState<string>('None')
   const [activeTransitionDurationMs, setActiveTransitionDurationMs] = useState(DEFAULT_FADE_DURATION_MS)
+  const [isReverseBackTransition, setIsReverseBackTransition] = useState(false)
   const leaveAnimationTimerRef = useRef<number | null>(null)
   const isFirstSlide = currentIndex <= 0
   const isLastSlide = currentIndex >= slides.length - 1
@@ -111,12 +119,12 @@ export function SlideViewer({
 
   const handlePrevSlide = () => {
     if (isFirstSlide) return
-    onSlideChange(currentIndex - 1)
+    onSlideChange(currentIndex - 1, 'pager')
   }
 
   const handleNextSlide = () => {
     if (isLastSlide) return
-    onSlideChange(currentIndex + 1)
+    onSlideChange(currentIndex + 1, 'pager')
   }
 
   // 预计算每一页缩放比例，切页时直接展示已渲染内容
@@ -164,6 +172,11 @@ export function SlideViewer({
     const shouldAnimateTransition = nextTransitionKey === FADE_TRANSITION_KEY || nextTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
     const rawDuration = nextSlide?.transition?.durationMs ?? DEFAULT_FADE_DURATION_MS
     const transitionDurationMs = Math.max(0, Math.min(rawDuration, MAX_FADE_DURATION_MS))
+    const isBackward = currentIndex < previousIndex
+    const shouldUseReverseBackTransition =
+      isBackward
+      && (slideChangeSource === 'keyboard' || slideChangeSource === 'pager')
+      && nextTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
 
     if (leaveAnimationTimerRef.current !== null) {
       window.clearTimeout(leaveAnimationTimerRef.current)
@@ -173,20 +186,23 @@ export function SlideViewer({
     if (shouldAnimateTransition && previousIndex >= 0 && previousIndex !== currentIndex) {
       setActiveTransitionKey(nextTransitionKey)
       setActiveTransitionDurationMs(transitionDurationMs)
-      setAnimatedSlideIndex(currentIndex)
+      setAnimatedSlideIndex(shouldUseReverseBackTransition ? null : currentIndex)
       setLeavingSlideIndex(previousIndex)
+      setIsReverseBackTransition(shouldUseReverseBackTransition)
       leaveAnimationTimerRef.current = window.setTimeout(() => {
         setLeavingSlideIndex(null)
+        setIsReverseBackTransition(false)
         leaveAnimationTimerRef.current = null
       }, transitionDurationMs)
     } else {
       setActiveTransitionKey('None')
       setAnimatedSlideIndex(null)
       setLeavingSlideIndex(null)
+      setIsReverseBackTransition(false)
     }
 
     previousIndexRef.current = currentIndex
-  }, [currentIndex, slides])
+  }, [currentIndex, slides, slideChangeSource])
 
   useEffect(() => {
     return () => {
@@ -235,7 +251,17 @@ export function SlideViewer({
             const transitionDurationMs = Math.max(0, Math.min(rawDuration, MAX_FADE_DURATION_MS))
             const shouldAnimateIn = isCurrent && animatedSlideIndex === index
             const shouldAnimateOut = isLeaving
-            const zIndex = isCurrent ? 2 : isLeaving ? 1 : 0
+            const zIndex = isReverseBackTransition
+              ? isLeaving
+                ? 2
+                : isCurrent
+                  ? 1
+                  : 0
+              : isCurrent
+                ? 2
+                : isLeaving
+                  ? 1
+                  : 0
             const slideAnimation = shouldAnimateIn
               ? activeTransitionKey === FADE_TRANSITION_KEY
                 ? `slideFadeIn ${transitionDurationMs}ms ease forwards`
@@ -246,7 +272,9 @@ export function SlideViewer({
                 ? activeTransitionKey === FADE_TRANSITION_KEY
                   ? `slideFadeOut ${activeTransitionDurationMs}ms ease forwards`
                   : activeTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
-                    ? `slideOutToLeft ${activeTransitionDurationMs}ms ease forwards`
+                    ? isReverseBackTransition
+                      ? `slideOutToRight ${activeTransitionDurationMs}ms ease forwards`
+                      : `slideOutToLeft ${activeTransitionDurationMs}ms ease forwards`
                     : undefined
                 : undefined
             const currentSlideNumber = currentIndex + 1

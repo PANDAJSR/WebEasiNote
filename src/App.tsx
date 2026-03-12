@@ -13,6 +13,7 @@ import { WelcomeView } from './components/WelcomeView'
 import { LoadingView } from './components/LoadingView'
 import { ErrorView } from './components/ErrorView'
 import { Viewer } from './components/Viewer'
+import type { SlideChangeSource } from './components/Viewer'
 import { styles } from './styles'
 
 type ViewMode = 'welcome' | 'loading' | 'error' | 'viewer'
@@ -51,6 +52,7 @@ function App() {
   const [metadata, setMetadata] = useState<CoursewareMetadata | null>(null)
   const [slides, setSlides] = useState<SlideData[]>([])
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0)
+  const [slideChangeSource, setSlideChangeSource] = useState<SlideChangeSource>('programmatic')
   const [error, setError] = useState<string | null>(null)
   const [resourceMap, setResourceMap] = useState<Record<string, string>>({})
   const [watchedENBX, setWatchedENBX] = useState<ENBXWatchState | null>(null)
@@ -145,6 +147,7 @@ function App() {
         revokeObjectUrls(previousMap)
         return loadedMap
       })
+      setSlideChangeSource('programmatic')
       setCurrentSlideIndex(previousIndex => {
         if (!isAutoReload) return 0
         if (slideData.length === 0) return 0
@@ -282,6 +285,7 @@ function App() {
         revokeObjectUrls(previousMap)
         return loadedMap
       })
+      setSlideChangeSource('programmatic')
       setCurrentSlideIndex(0)
       setViewMode('viewer')
     } catch (err) {
@@ -301,6 +305,7 @@ function App() {
     setMetadata(null)
     setSlides([])
     setResourceMap({})
+    setSlideChangeSource('programmatic')
     setCurrentSlideIndex(0)
     setError(null)
     setWatchedENBX(null)
@@ -310,7 +315,8 @@ function App() {
     }
   }
 
-  const handleSlideChange = (index: number) => {
+  const handleSlideChange = (index: number, source: SlideChangeSource = 'programmatic') => {
+    setSlideChangeSource(source)
     setCurrentSlideIndex(index)
   }
 
@@ -372,11 +378,13 @@ function App() {
 
       if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
         event.preventDefault()
+        setSlideChangeSource('keyboard')
         setCurrentSlideIndex(prev => Math.max(prev - 1, 0))
       }
 
       if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
         event.preventDefault()
+        setSlideChangeSource('keyboard')
         setCurrentSlideIndex(prev => Math.min(prev + 1, slides.length - 1))
       }
     }
@@ -406,6 +414,7 @@ function App() {
           slides={slides}
           currentIndex={currentSlideIndex}
           onSlideChange={handleSlideChange}
+          slideChangeSource={slideChangeSource}
           onClear={handleClear}
           resourceMap={resourceMap}
         />
