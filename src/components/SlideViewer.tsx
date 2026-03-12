@@ -33,8 +33,8 @@ const SLIDE_TO_TOP_TRANSITION_KEY = 'SlideToTop'
 const SLIDE_TO_BOTTOM_TRANSITION_KEY = 'SlideToBottom'
 const DEFAULT_FADE_DURATION_MS = 300
 const MAX_FADE_DURATION_MS = 8000
-const DEFAULT_TRANSFORM = 'translate3d(0%, 0%, 0%)'
-const ENABLE_TRANSITION_DEBUG_LOG = true
+const DEFAULT_TRANSFORM = 'translate3d(0%, 0%, 0px)'
+const ENABLE_TRANSITION_DEBUG_LOG = false
 type LayerSnapshot = {
   opacity: number
   transform: string
@@ -57,16 +57,16 @@ function normalizeTransitionKey(transitionKey: string): string {
 function resolveEnteringStartTransform(transitionKey: string, isReverseBackTransition: boolean): string {
   const normalizedTransitionKey = normalizeTransitionKey(transitionKey)
   if (normalizedTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY) {
-    return isReverseBackTransition ? 'translate3d(-100%, 0%, 0%)' : 'translate3d(100%, 0%, 0%)'
+    return isReverseBackTransition ? 'translate3d(-100%, 0%, 0px)' : 'translate3d(100%, 0%, 0px)'
   }
   if (normalizedTransitionKey === SLIDE_TO_RIGHT_TRANSITION_KEY) {
-    return isReverseBackTransition ? 'translate3d(100%, 0%, 0%)' : 'translate3d(-100%, 0%, 0%)'
+    return isReverseBackTransition ? 'translate3d(100%, 0%, 0px)' : 'translate3d(-100%, 0%, 0px)'
   }
   if (normalizedTransitionKey === SLIDE_TO_TOP_TRANSITION_KEY) {
-    return isReverseBackTransition ? 'translate3d(0%, -100%, 0%)' : 'translate3d(0%, 100%, 0%)'
+    return isReverseBackTransition ? 'translate3d(0%, -100%, 0px)' : 'translate3d(0%, 100%, 0px)'
   }
   if (normalizedTransitionKey === SLIDE_TO_BOTTOM_TRANSITION_KEY) {
-    return isReverseBackTransition ? 'translate3d(0%, 100%, 0%)' : 'translate3d(0%, -100%, 0%)'
+    return isReverseBackTransition ? 'translate3d(0%, 100%, 0px)' : 'translate3d(0%, -100%, 0px)'
   }
   return DEFAULT_TRANSFORM
 }
@@ -74,16 +74,16 @@ function resolveEnteringStartTransform(transitionKey: string, isReverseBackTrans
 function resolveLeavingTargetTransform(transitionKey: string, isReverseBackTransition: boolean): string {
   const normalizedTransitionKey = normalizeTransitionKey(transitionKey)
   if (normalizedTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY) {
-    return isReverseBackTransition ? 'translate3d(100%, 0%, 0%)' : 'translate3d(-100%, 0%, 0%)'
+    return isReverseBackTransition ? 'translate3d(100%, 0%, 0px)' : 'translate3d(-100%, 0%, 0px)'
   }
   if (normalizedTransitionKey === SLIDE_TO_RIGHT_TRANSITION_KEY) {
-    return isReverseBackTransition ? 'translate3d(-100%, 0%, 0%)' : 'translate3d(100%, 0%, 0%)'
+    return isReverseBackTransition ? 'translate3d(-100%, 0%, 0px)' : 'translate3d(100%, 0%, 0px)'
   }
   if (normalizedTransitionKey === SLIDE_TO_TOP_TRANSITION_KEY) {
-    return isReverseBackTransition ? 'translate3d(0%, 100%, 0%)' : 'translate3d(0%, -100%, 0%)'
+    return isReverseBackTransition ? 'translate3d(0%, 100%, 0px)' : 'translate3d(0%, -100%, 0px)'
   }
   if (normalizedTransitionKey === SLIDE_TO_BOTTOM_TRANSITION_KEY) {
-    return isReverseBackTransition ? 'translate3d(0%, -100%, 0%)' : 'translate3d(0%, 100%, 0%)'
+    return isReverseBackTransition ? 'translate3d(0%, -100%, 0px)' : 'translate3d(0%, 100%, 0px)'
   }
   return DEFAULT_TRANSFORM
 }
