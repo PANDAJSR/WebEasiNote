@@ -31,9 +31,12 @@ const SLIDE_TO_LEFT_TRANSITION_KEY = 'SlideToLeft'
 const SLIDE_TO_RIGHT_TRANSITION_KEY = 'SlideToRight'
 const SLIDE_TO_TOP_TRANSITION_KEY = 'SlideToTop'
 const SLIDE_TO_BOTTOM_TRANSITION_KEY = 'SlideToBottom'
+const CIRCLE_IN_TRANSITION_KEY = 'CircleIn'
 const DEFAULT_FADE_DURATION_MS = 300
 const MAX_FADE_DURATION_MS = 8000
 const DEFAULT_TRANSFORM = 'translate3d(0%, 0%, 0px)'
+const CIRCLE_IN_START_CLIP_PATH = 'circle(150% at 50% 50%)'
+const CIRCLE_IN_END_CLIP_PATH = 'circle(0% at 50% 50%)'
 const ENABLE_TRANSITION_DEBUG_LOG = false
 type LayerSnapshot = {
   opacity: number
@@ -94,6 +97,10 @@ function isDirectionalSlideTransition(transitionKey: string): boolean {
     || normalizedTransitionKey === SLIDE_TO_RIGHT_TRANSITION_KEY
     || normalizedTransitionKey === SLIDE_TO_TOP_TRANSITION_KEY
     || normalizedTransitionKey === SLIDE_TO_BOTTOM_TRANSITION_KEY
+}
+
+function isCircleInTransition(transitionKey: string): boolean {
+  return normalizeTransitionKey(transitionKey) === CIRCLE_IN_TRANSITION_KEY
 }
 
 function SlideThumbnail({
@@ -237,7 +244,9 @@ export function SlideViewer({
       activeTransitionFromSlide?.transition?.key || 'None'
     )
     const shouldAnimateTransition =
-      resolvedTransitionKey === FADE_TRANSITION_KEY || isDirectionalSlideTransition(resolvedTransitionKey)
+      resolvedTransitionKey === FADE_TRANSITION_KEY
+      || isDirectionalSlideTransition(resolvedTransitionKey)
+      || isCircleInTransition(resolvedTransitionKey)
     const rawDuration = activeTransitionFromSlide?.transition?.durationMs ?? DEFAULT_FADE_DURATION_MS
     const transitionDurationMs = Math.max(0, Math.min(rawDuration, MAX_FADE_DURATION_MS))
     const shouldUseReverseBackTransition =
@@ -435,9 +444,12 @@ export function SlideViewer({
             const isAnimating = Boolean(isEntering || isLeaving)
             const isTransitionRunning = transitionState?.phase === 'running'
             const snapshot = layerSnapshots[index]
-            const zIndex = isCurrent ? 2 : isLeaving ? 1 : 0
             const transitionKey = transitionState?.key || 'None'
+            const zIndex = transitionKey === CIRCLE_IN_TRANSITION_KEY
+              ? isLeaving ? 2 : isCurrent ? 1 : 0
+              : isCurrent ? 2 : isLeaving ? 1 : 0
             const isFadeTransition = transitionKey === FADE_TRANSITION_KEY
+            const isCircleIn = transitionKey === CIRCLE_IN_TRANSITION_KEY
             const enteringStartTransform = resolveEnteringStartTransform(
               transitionKey,
               Boolean(transitionState?.isReverseBackTransition)
@@ -468,8 +480,13 @@ export function SlideViewer({
                     ? snapshot?.transform ?? DEFAULT_TRANSFORM
                     : DEFAULT_TRANSFORM
                 : DEFAULT_TRANSFORM
+            const layerClipPath = isLeaving && isCircleIn
+              ? isTransitionRunning ? CIRCLE_IN_END_CLIP_PATH : CIRCLE_IN_START_CLIP_PATH
+              : undefined
             const layerTransition = isAnimating && isTransitionRunning
-              ? `transform ${transitionState?.durationMs || 0}ms ease, opacity ${transitionState?.durationMs || 0}ms ease`
+              ? isCircleIn
+                ? `clip-path ${transitionState?.durationMs || 0}ms ease`
+                : `transform ${transitionState?.durationMs || 0}ms ease, opacity ${transitionState?.durationMs || 0}ms ease`
               : 'none'
             if (ENABLE_TRANSITION_DEBUG_LOG && (isEntering || isLeaving)) {
               console.log('[SlideViewer] 渲染计算值', {
@@ -479,6 +496,7 @@ export function SlideViewer({
                 key: transitionKey,
                 layerOpacity,
                 layerTransform,
+                layerClipPath,
                 layerTransition
               })
             }
@@ -517,8 +535,11 @@ export function SlideViewer({
                     ...styles.slideLayerContainer,
                     transform: layerTransform,
                     opacity: layerOpacity,
+                    clipPath: layerClipPath,
                     transition: layerTransition,
-                    willChange: isAnimating ? 'transform, opacity' : undefined,
+                    willChange: isAnimating
+                      ? isCircleIn ? 'clip-path' : 'transform, opacity'
+                      : undefined,
                   }}
                 >
                   <SlideRenderer
