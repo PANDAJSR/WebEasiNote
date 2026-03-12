@@ -38,8 +38,12 @@ const MAX_FADE_DURATION_MS = 8000
 const DEFAULT_TRANSFORM = 'translate3d(0%, 0%, 0px)'
 const CIRCLE_IN_START_CLIP_PATH = 'circle(150% at 50% 50%)'
 const CIRCLE_IN_END_CLIP_PATH = 'circle(0% at 50% 50%)'
-const LINE_REVEAL_START_MASK = 'linear-gradient(135deg, transparent 0%, #000 0%)'
-const LINE_REVEAL_END_MASK = 'linear-gradient(135deg, transparent 100%, #000 100%)'
+const LINE_REVEAL_MASK_IMAGE = 'linear-gradient(135deg, #000 38%, transparent 62%)'
+const LINE_REVEAL_MASK_SIZE = '280% 280%'
+const LINE_REVEAL_START_MASK_POSITION = '-180% -180%'
+const LINE_REVEAL_END_MASK_POSITION = '180% 180%'
+const LINE_REVEAL_START_CLIP_PATH = 'inset(0% 0% 0% 0%)'
+const LINE_REVEAL_END_CLIP_PATH = 'inset(0% 0% 0% 100%)'
 const ENABLE_TRANSITION_DEBUG_LOG = false
 type LayerSnapshot = {
   opacity: number
@@ -508,21 +512,29 @@ export function SlideViewer({
                 : isLeaving
                   ? isTransitionRunning ? CIRCLE_IN_END_CLIP_PATH : CIRCLE_IN_START_CLIP_PATH
                   : undefined
-              : undefined
-            const layerMaskImage = isLineReveal
+              : isLineReveal
+                ? isLineRevealReverse
+                  ? isEntering
+                    ? isTransitionRunning ? LINE_REVEAL_START_CLIP_PATH : LINE_REVEAL_END_CLIP_PATH
+                    : undefined
+                  : isLeaving
+                    ? isTransitionRunning ? LINE_REVEAL_END_CLIP_PATH : LINE_REVEAL_START_CLIP_PATH
+                    : undefined
+                : undefined
+            const layerMaskPosition = isLineReveal
               ? isLineRevealReverse
                 ? isEntering
-                  ? isTransitionRunning ? LINE_REVEAL_START_MASK : LINE_REVEAL_END_MASK
+                  ? isTransitionRunning ? LINE_REVEAL_START_MASK_POSITION : LINE_REVEAL_END_MASK_POSITION
                   : undefined
                 : isLeaving
-                  ? isTransitionRunning ? LINE_REVEAL_END_MASK : LINE_REVEAL_START_MASK
+                  ? isTransitionRunning ? LINE_REVEAL_END_MASK_POSITION : LINE_REVEAL_START_MASK_POSITION
                   : undefined
               : undefined
             const layerTransition = isAnimating && isTransitionRunning
               ? isCircleIn
                 ? `clip-path ${transitionState?.durationMs || 0}ms ease`
                 : isLineReveal
-                  ? `mask-image ${transitionState?.durationMs || 0}ms ease, -webkit-mask-image ${transitionState?.durationMs || 0}ms ease`
+                  ? `clip-path ${transitionState?.durationMs || 0}ms ease, mask-position ${transitionState?.durationMs || 0}ms ease, -webkit-mask-position ${transitionState?.durationMs || 0}ms ease`
                 : `transform ${transitionState?.durationMs || 0}ms ease, opacity ${transitionState?.durationMs || 0}ms ease`
               : 'none'
             if (ENABLE_TRANSITION_DEBUG_LOG && (isEntering || isLeaving)) {
@@ -534,7 +546,7 @@ export function SlideViewer({
                 layerOpacity,
                 layerTransform,
                 layerClipPath,
-                layerMaskImage,
+                layerMaskPosition,
                 layerTransition
               })
             }
@@ -574,14 +586,20 @@ export function SlideViewer({
                     transform: layerTransform,
                     opacity: layerOpacity,
                     clipPath: layerClipPath,
-                    maskImage: layerMaskImage,
-                    WebkitMaskImage: layerMaskImage,
+                    maskImage: isLineReveal ? LINE_REVEAL_MASK_IMAGE : undefined,
+                    WebkitMaskImage: isLineReveal ? LINE_REVEAL_MASK_IMAGE : undefined,
+                    maskSize: isLineReveal ? LINE_REVEAL_MASK_SIZE : undefined,
+                    WebkitMaskSize: isLineReveal ? LINE_REVEAL_MASK_SIZE : undefined,
+                    maskRepeat: isLineReveal ? 'no-repeat' : undefined,
+                    WebkitMaskRepeat: isLineReveal ? 'no-repeat' : undefined,
+                    maskPosition: layerMaskPosition,
+                    WebkitMaskPosition: layerMaskPosition,
                     transition: layerTransition,
                     willChange: isAnimating
                       ? isCircleIn
                         ? 'clip-path'
                         : isLineReveal
-                          ? 'mask-image'
+                          ? 'clip-path, mask-position'
                           : 'transform, opacity'
                       : undefined,
                   }}
