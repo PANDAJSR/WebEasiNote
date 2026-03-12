@@ -209,6 +209,10 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
   const markerCounters: Record<string, number> = {};
   const textOuterPadding = 10 * scale
   const ruledPaper = element.ruledPaper
+  const ruledRowCount = ruledPaper ? Math.max(1, textLines.length || 1) : 0
+  const mainHeight = height * scale
+  const ruledRowHeight = ruledPaper ? mainHeight / ruledRowCount : 0
+  const containerPadding = ruledPaper ? 0 : textOuterPadding
 
   const toLatin = (value: number, lower = false): string => {
     let n = value;
@@ -267,6 +271,9 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
   };
 
   const getLineHeight = (line: TextElement['textLines'][number]): string => {
+    if (ruledPaper) {
+      return '1'
+    }
     if (line.fixedLineSpacing && line.fixedLineSpacing > 0) {
       return `${line.fixedLineSpacing * scale}px`;
     }
@@ -362,9 +369,11 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
   const reflectionOffset = hasReflection ? reflectionEffect.distance * scale : 0;
   const reflectionOpacity = hasReflection ? reflectionEffect.opacity : 0;
   const reflectionDepth = hasReflection ? Math.min(1, Math.max(reflectionEffect.depth, 0.1)) : 0;
-  const mainHeight = height * scale;
   const estimateLineContentHeight = (line: TextElement['textLines'][number]): number => {
     const maxRunFontSize = Math.max(...line.textRuns.map(run => run.fontSize * scale), 16 * scale);
+    if (ruledPaper) {
+      return ruledRowHeight
+    }
     if (line.fixedLineSpacing && line.fixedLineSpacing > 0) {
       return line.fixedLineSpacing * scale;
     }
@@ -379,16 +388,17 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
     textLines.reduce((sum, line) => sum + estimateLineContentHeight(line) + (line.spaceBefore || 0) * scale + (line.spaceAfter || 0) * scale, 0),
     1
   );
-  const availableHeight = Math.max(mainHeight - textOuterPadding * 2, 0);
+  const availableHeight = Math.max(mainHeight - containerPadding * 2, 0);
   const contentTopOffset = (() => {
-    if (element.sizeToContent !== 'Manual' || availableHeight <= contentHeight) return textOuterPadding;
+    if (ruledPaper) return 0
+    if (element.sizeToContent !== 'Manual' || availableHeight <= contentHeight) return containerPadding;
     switch (element.verticalTextAlignment) {
       case 'Center':
-        return textOuterPadding + (availableHeight - contentHeight) / 2;
+        return containerPadding + (availableHeight - contentHeight) / 2;
       case 'Bottom':
-        return textOuterPadding + (availableHeight - contentHeight);
+        return containerPadding + (availableHeight - contentHeight);
       default:
-        return textOuterPadding;
+        return containerPadding;
     }
   })();
   const textBottom = contentTopOffset + contentHeight;
@@ -402,7 +412,7 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
     minHeight: mainHeight,
     height: element.sizeToContent === 'Manual' ? mainHeight : 'auto',
     boxSizing: 'border-box',
-    padding: textOuterPadding,
+    padding: containerPadding,
     paddingRight: 9.5 * scale,
     overflow: 'visible',
     pointerEvents: 'none',
@@ -421,16 +431,15 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
   const renderRuledPaperGuides = () => {
     if (!ruledPaper) return null
 
-    const usableHeight = Math.max(mainHeight - textOuterPadding * 2, 1)
-    const rowCount = Math.max(1, textLines.length || 1)
-    const rowHeight = usableHeight / rowCount
+    const rowCount = ruledRowCount
+    const rowHeight = ruledRowHeight
     const segment = rowHeight / 3
     const strokeColor = mergeOpacityToColor(ruledPaper.lineColor, ruledPaper.opacity)
     const strokeWidth = Math.max(1, scale)
     const lineY: number[] = []
 
     for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
-      const rowStart = textOuterPadding + rowIndex * rowHeight
+      const rowStart = rowIndex * rowHeight
       lineY.push(
         rowStart,
         rowStart + segment,
@@ -484,10 +493,14 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
               position: 'relative',
               paddingLeft: basePaddingLeft + alignmentPaddingLeft,
               paddingRight: alignmentPaddingRight,
+              minHeight: ruledPaper ? ruledRowHeight : undefined,
+              height: ruledPaper ? ruledRowHeight : undefined,
+              display: ruledPaper ? 'flex' : undefined,
+              alignItems: ruledPaper ? 'center' : undefined,
               textAlign: alignment,
               lineHeight: getLineHeight(line),
-              marginTop: (line.spaceBefore || 0) * scale,
-              marginBottom: (line.spaceAfter || 0) * scale,
+              marginTop: ruledPaper ? 0 : (line.spaceBefore || 0) * scale,
+              marginBottom: ruledPaper ? 0 : (line.spaceAfter || 0) * scale,
               direction: line.direction === 'RightToLeft' ? 'rtl' : 'ltr',
               textIndent: line.indentType === 'FirstLine' && (line.indent || 0) !== 0
                 ? `${(line.indent || 0) * scale}px`
