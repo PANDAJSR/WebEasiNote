@@ -427,6 +427,7 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
       ? `${(element.borderThickness || 0) * scale}px solid #000000`
       : undefined,
     backgroundColor: ruledPaper?.backgroundColor,
+    boxShadow: ruledPaper ? `0 ${(10 * scale).toFixed(2)}px ${(24 * scale).toFixed(2)}px rgba(0, 0, 0, 0.18)` : undefined,
     transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
     transformOrigin: 'center center',
     writingMode: element.arrangingType === 'Vertical' ? 'vertical-rl' : 'horizontal-tb'
