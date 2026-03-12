@@ -203,30 +203,43 @@ export function SlideViewer({
             height: '100%',
           }}
         >
-          {slides.map((slideItem, index) => (
-            <div
-              key={`${slideItem.id}-${index}`}
-              style={(() => {
-                const isCurrent = index === currentIndex
-                const isLeaving = index === leavingSlideIndex
-                const rawDuration = slideItem.transition?.durationMs ?? DEFAULT_FADE_DURATION_MS
-                const transitionDurationMs = Math.max(0, Math.min(rawDuration, MAX_FADE_DURATION_MS))
-                const shouldAnimateIn = isCurrent && animatedSlideIndex === index
-                const shouldAnimateOut = isLeaving
-                const zIndex = isCurrent ? 2 : isLeaving ? 1 : 0
-                const currentSlideNumber = currentIndex + 1
-                const sourceSlideNumber = index + 1
-                const shouldKeepAliveForCrossPlay = slideItem.elements.some(
-                  element => element.type === 'video'
-                    && element.isCrossSlidePlay
-                    && currentSlideNumber > sourceSlideNumber
-                    && (
-                      element.stopPlayPageNumber <= 0
-                      || currentSlideNumber < element.stopPlayPageNumber
-                    )
+          {slides.map((slideItem, index) => {
+            const isCurrent = index === currentIndex
+            const isLeaving = index === leavingSlideIndex
+            const rawDuration = slideItem.transition?.durationMs ?? DEFAULT_FADE_DURATION_MS
+            const transitionDurationMs = Math.max(0, Math.min(rawDuration, MAX_FADE_DURATION_MS))
+            const shouldAnimateIn = isCurrent && animatedSlideIndex === index
+            const shouldAnimateOut = isLeaving
+            const zIndex = isCurrent ? 2 : isLeaving ? 1 : 0
+            const slideAnimation = shouldAnimateIn
+              ? activeTransitionKey === FADE_TRANSITION_KEY
+                ? `slideFadeIn ${transitionDurationMs}ms ease forwards`
+                : activeTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
+                  ? `slideInFromRight ${transitionDurationMs}ms ease forwards`
+                  : undefined
+              : shouldAnimateOut
+                ? activeTransitionKey === FADE_TRANSITION_KEY
+                  ? `slideFadeOut ${activeTransitionDurationMs}ms ease forwards`
+                  : activeTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
+                    ? `slideOutToLeft ${activeTransitionDurationMs}ms ease forwards`
+                    : undefined
+                : undefined
+            const currentSlideNumber = currentIndex + 1
+            const sourceSlideNumber = index + 1
+            const shouldKeepAliveForCrossPlay = slideItem.elements.some(
+              element => element.type === 'video'
+                && element.isCrossSlidePlay
+                && currentSlideNumber > sourceSlideNumber
+                && (
+                  element.stopPlayPageNumber <= 0
+                  || currentSlideNumber < element.stopPlayPageNumber
                 )
+            )
 
-                return {
+            return (
+              <div
+                key={`${slideItem.id}-${index}`}
+                style={{
                   position: 'absolute',
                   inset: 0,
                   display: 'flex',
@@ -236,31 +249,25 @@ export function SlideViewer({
                   visibility: isCurrent || isLeaving || shouldKeepAliveForCrossPlay ? 'visible' : 'hidden',
                   opacity: isCurrent || isLeaving ? 1 : 0,
                   pointerEvents: isCurrent ? 'auto' : 'none',
-                  animation: shouldAnimateIn
-                    ? activeTransitionKey === FADE_TRANSITION_KEY
-                      ? `slideFadeIn ${transitionDurationMs}ms ease forwards`
-                      : activeTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
-                        ? `slideInFromRight ${transitionDurationMs}ms ease forwards`
-                        : undefined
-                    : shouldAnimateOut
-                      ? activeTransitionKey === FADE_TRANSITION_KEY
-                        ? `slideFadeOut ${activeTransitionDurationMs}ms ease forwards`
-                        : activeTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
-                          ? `slideOutToLeft ${activeTransitionDurationMs}ms ease forwards`
-                          : undefined
-                      : undefined,
-                }
-              })()}
-            >
-              <SlideRenderer
-                slide={slideItem}
-                scale={slideScaleMap[slideItem.id] || 1}
-                resourceMap={resourceMap}
-                slideIndex={index}
-                currentIndex={currentIndex}
-              />
-            </div>
-          ))}
+                }}
+              >
+                <div
+                  style={{
+                    animation: slideAnimation,
+                    willChange: slideAnimation ? 'transform, opacity' : undefined,
+                  }}
+                >
+                  <SlideRenderer
+                    slide={slideItem}
+                    scale={slideScaleMap[slideItem.id] || 1}
+                    resourceMap={resourceMap}
+                    slideIndex={index}
+                    currentIndex={currentIndex}
+                  />
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
 
