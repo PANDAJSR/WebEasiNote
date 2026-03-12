@@ -18,7 +18,7 @@ import { buildFontFamily } from '../font-utils';
 import { convertSeewoLineSpacingToMultiplier } from '../line-spacing';
 
 // 四线三格文本垂直微调比例（相对单行格高）
-const RULED_PAPER_TEXT_VERTICAL_OFFSET_RATIO = -0.14
+const RULED_PAPER_TEXT_VERTICAL_OFFSET_RATIO = -0.12
 
 interface SlideRendererProps {
   slide: SlideData;
@@ -417,7 +417,7 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
     height: element.sizeToContent === 'Manual' ? mainHeight : 'auto',
     boxSizing: 'border-box',
     padding: containerPadding,
-    paddingRight: 9.5 * scale,
+    paddingRight: ruledPaper ? containerPadding : 9.5 * scale,
     overflow: 'visible',
     pointerEvents: 'none',
     display: 'flex',
@@ -483,8 +483,8 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
   const renderTextContent = () => (
     <>
       {textLines.map((line, lineIndex) => {
-        const alignment = line.textAlignment.toLowerCase() as 'left' | 'center' | 'right'
-        const basePaddingLeft = (line.marginLeft || 0) * scale
+        const alignment = ruledPaper ? 'center' : (line.textAlignment.toLowerCase() as 'left' | 'center' | 'right')
+        const basePaddingLeft = ruledPaper ? 0 : (line.marginLeft || 0) * scale
         const alignmentPaddingLeft = 0
         const alignmentPaddingRight = 0
         const hasRenderableText = line.textRuns.some(run => run.text.replace(/[\r\n]/g, '').length > 0)
@@ -507,7 +507,7 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
               marginTop: ruledPaper ? 0 : (line.spaceBefore || 0) * scale,
               marginBottom: ruledPaper ? 0 : (line.spaceAfter || 0) * scale,
               direction: line.direction === 'RightToLeft' ? 'rtl' : 'ltr',
-              textIndent: line.indentType === 'FirstLine' && (line.indent || 0) !== 0
+              textIndent: !ruledPaper && line.indentType === 'FirstLine' && (line.indent || 0) !== 0
                 ? `${(line.indent || 0) * scale}px`
                 : undefined
             }}
