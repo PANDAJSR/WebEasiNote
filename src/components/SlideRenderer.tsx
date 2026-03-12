@@ -213,6 +213,7 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
   const mainHeight = height * scale
   const ruledRowHeight = ruledPaper ? mainHeight / ruledRowCount : 0
   const containerPadding = ruledPaper ? 0 : textOuterPadding
+  const ruledTextVerticalOffset = ruledPaper ? -(ruledRowHeight * 0.14) : 0
 
   const toLatin = (value: number, lower = false): string => {
     let n = value;
@@ -497,6 +498,7 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
               height: ruledPaper ? ruledRowHeight : undefined,
               display: ruledPaper ? 'flex' : undefined,
               alignItems: ruledPaper ? 'center' : undefined,
+              transform: ruledPaper ? `translateY(${ruledTextVerticalOffset}px)` : undefined,
               textAlign: alignment,
               lineHeight: getLineHeight(line),
               marginTop: ruledPaper ? 0 : (line.spaceBefore || 0) * scale,
