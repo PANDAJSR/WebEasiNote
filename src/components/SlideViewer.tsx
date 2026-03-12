@@ -162,6 +162,22 @@ export function SlideViewer({
     console.log(`[SlideViewer] ${message}`)
   }, [])
 
+  const logLayerComputedStyle = useCallback((label: string, index: number) => {
+    if (!ENABLE_TRANSITION_DEBUG_LOG) return
+    const layer = layerRefs.current[index]
+    if (!layer) {
+      console.log(`[SlideViewer] ${label}`, { index, missing: true })
+      return
+    }
+    const computedStyle = window.getComputedStyle(layer)
+    console.log(`[SlideViewer] ${label}`, {
+      index,
+      opacity: computedStyle.opacity,
+      transform: computedStyle.transform,
+      transition: computedStyle.transition
+    })
+  }, [])
+
   const handlePrevSlide = () => {
     if (isFirstSlide) return
     onSlideChange(currentIndex - 1, 'pager')
@@ -323,6 +339,27 @@ export function SlideViewer({
 
     previousIndexRef.current = currentIndex
   }, [currentIndex, slides, slideChangeSource, transitionState])
+
+  useEffect(() => {
+    if (!transitionState) return
+    logTransitionDebug('当前 transitionState', {
+      id: transitionState.id,
+      phase: transitionState.phase,
+      key: transitionState.key,
+      durationMs: transitionState.durationMs,
+      enteringIndex: transitionState.enteringIndex,
+      leavingIndex: transitionState.leavingIndex
+    })
+    logLayerComputedStyle('样式快照(同步)', transitionState.enteringIndex)
+    logLayerComputedStyle('样式快照(同步)', transitionState.leavingIndex)
+    const rafId = window.requestAnimationFrame(() => {
+      logLayerComputedStyle('样式快照(下一帧)', transitionState.enteringIndex)
+      logLayerComputedStyle('样式快照(下一帧)', transitionState.leavingIndex)
+    })
+    return () => {
+      window.cancelAnimationFrame(rafId)
+    }
+  }, [transitionState, logLayerComputedStyle, logTransitionDebug])
 
   useEffect(() => {
     if (!transitionState || transitionState.phase !== 'running') return
