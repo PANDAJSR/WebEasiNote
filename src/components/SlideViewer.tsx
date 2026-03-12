@@ -201,13 +201,20 @@ export function SlideViewer({
       )}
 
       {/* 幻灯片容器 */}
-      <div ref={containerRef} style={styles.slideContainer}>
+      <div
+        ref={containerRef}
+        style={{
+          ...styles.slideContainer,
+          position: 'relative',
+        }}
+      >
         <div
           style={{
             ...styles.slideWrapper,
             position: 'relative',
             width: '100%',
-            height: `calc(100% - ${slideInfoBarHeight}px)`,
+            height: '100%',
+            overflow: 'hidden',
           }}
         >
           {slides.map((slideItem, index) => {
@@ -248,7 +255,10 @@ export function SlideViewer({
                 key={`${slideItem.id}-${index}`}
                 style={{
                   position: 'absolute',
-                  inset: 0,
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: `${slideInfoBarHeight}px`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
