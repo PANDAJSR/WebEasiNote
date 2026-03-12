@@ -168,18 +168,23 @@ export function SlideViewer({
     if (previousIndexRef.current === currentIndex) return
     const previousIndex = previousIndexRef.current
     const nextSlide = slides[currentIndex]
-    const nextTransitionKey = nextSlide?.transition?.key || 'None'
-    const shouldAnimateTransition = nextTransitionKey === FADE_TRANSITION_KEY || nextTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
-    const rawDuration = nextSlide?.transition?.durationMs ?? DEFAULT_FADE_DURATION_MS
-    const transitionDurationMs = Math.max(0, Math.min(rawDuration, MAX_FADE_DURATION_MS))
+    const leavingSlide = previousIndex >= 0 ? slides[previousIndex] : undefined
     const isBackward = currentIndex < previousIndex
+    const isNonThumbnailBack = isBackward && slideChangeSource !== 'thumbnail'
+    const nextTransitionKey = nextSlide?.transition?.key || 'None'
+    const leavingTransitionKey = leavingSlide?.transition?.key || 'None'
+    const activeTransitionFromSlide = isNonThumbnailBack ? leavingSlide : nextSlide
+    const resolvedTransitionKey = activeTransitionFromSlide?.transition?.key || 'None'
+    const shouldAnimateTransition =
+      resolvedTransitionKey === FADE_TRANSITION_KEY || resolvedTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
+    const rawDuration = activeTransitionFromSlide?.transition?.durationMs ?? DEFAULT_FADE_DURATION_MS
+    const transitionDurationMs = Math.max(0, Math.min(rawDuration, MAX_FADE_DURATION_MS))
     const shouldUseReverseBackTransition =
-      isBackward
-      && slideChangeSource !== 'thumbnail'
-      && nextTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
+      isNonThumbnailBack
+      && resolvedTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
 
     console.log(
-      `[SlideViewer] 切页: ${previousIndex + 1} -> ${currentIndex + 1}, 来源=${slideChangeSource}, 反向动画=${shouldUseReverseBackTransition}`
+      `[SlideViewer] 切页: ${previousIndex + 1} -> ${currentIndex + 1}, 来源=${slideChangeSource}, 目标页过渡=${nextTransitionKey}, 离开页过渡=${leavingTransitionKey}, 生效过渡=${resolvedTransitionKey}, 反向动画=${shouldUseReverseBackTransition}`
     )
 
     if (leaveAnimationTimerRef.current !== null) {
@@ -188,7 +193,7 @@ export function SlideViewer({
     }
 
     if (shouldAnimateTransition && previousIndex >= 0 && previousIndex !== currentIndex) {
-      setActiveTransitionKey(nextTransitionKey)
+      setActiveTransitionKey(resolvedTransitionKey)
       setActiveTransitionDurationMs(transitionDurationMs)
       setAnimatedSlideIndex(shouldUseReverseBackTransition ? null : currentIndex)
       setLeavingSlideIndex(previousIndex)
