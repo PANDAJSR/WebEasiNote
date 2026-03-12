@@ -471,6 +471,17 @@ export function SlideViewer({
             const layerTransition = isAnimating && isTransitionRunning
               ? `transform ${transitionState?.durationMs || 0}ms ease, opacity ${transitionState?.durationMs || 0}ms ease`
               : 'none'
+            if (ENABLE_TRANSITION_DEBUG_LOG && (isEntering || isLeaving)) {
+              console.log('[SlideViewer] 渲染计算值', {
+                index,
+                role: isEntering ? 'entering' : 'leaving',
+                phase: transitionState?.phase,
+                key: transitionKey,
+                layerOpacity,
+                layerTransform,
+                layerTransition
+              })
+            }
             const currentSlideNumber = currentIndex + 1
             const sourceSlideNumber = index + 1
             const shouldKeepAliveForCrossPlay = slideItem.elements.some(
