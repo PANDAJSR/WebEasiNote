@@ -383,7 +383,7 @@ export const styles: Record<string, CSSProperties> = {
     justifyContent: 'center',
     backgroundColor: '#000000',
     overflow: 'auto',
-    padding: '24px',
+    padding: 0,
   },
   slideWrapper: {
     display: 'flex',
