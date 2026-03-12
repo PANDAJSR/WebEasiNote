@@ -28,8 +28,12 @@ const thumbnailHeight = 56
 const slideInfoBarHeight = 40
 const FADE_TRANSITION_KEY = 'Fade'
 const SLIDE_TO_LEFT_TRANSITION_KEY = 'SlideToLeft'
+const SLIDE_TO_RIGHT_TRANSITION_KEY = 'SlideToRight'
+const SLIDE_TO_TOP_TRANSITION_KEY = 'SlideToTop'
+const SLIDE_TO_BOTTOM_TRANSITION_KEY = 'SlideToBottom'
 const DEFAULT_FADE_DURATION_MS = 300
 const MAX_FADE_DURATION_MS = 8000
+const DEFAULT_TRANSFORM = 'translate3d(0%, 0%, 0%)'
 type LayerSnapshot = {
   opacity: number
   transform: string
@@ -46,13 +50,42 @@ interface TransitionState {
 }
 
 function resolveEnteringStartTransform(transitionKey: string, isReverseBackTransition: boolean): string {
-  if (transitionKey !== SLIDE_TO_LEFT_TRANSITION_KEY) return 'translateX(0%)'
-  return isReverseBackTransition ? 'translateX(-100%)' : 'translateX(100%)'
+  if (transitionKey === SLIDE_TO_LEFT_TRANSITION_KEY) {
+    return isReverseBackTransition ? 'translate3d(-100%, 0%, 0%)' : 'translate3d(100%, 0%, 0%)'
+  }
+  if (transitionKey === SLIDE_TO_RIGHT_TRANSITION_KEY) {
+    return isReverseBackTransition ? 'translate3d(100%, 0%, 0%)' : 'translate3d(-100%, 0%, 0%)'
+  }
+  if (transitionKey === SLIDE_TO_TOP_TRANSITION_KEY) {
+    return isReverseBackTransition ? 'translate3d(0%, -100%, 0%)' : 'translate3d(0%, 100%, 0%)'
+  }
+  if (transitionKey === SLIDE_TO_BOTTOM_TRANSITION_KEY) {
+    return isReverseBackTransition ? 'translate3d(0%, 100%, 0%)' : 'translate3d(0%, -100%, 0%)'
+  }
+  return DEFAULT_TRANSFORM
 }
 
 function resolveLeavingTargetTransform(transitionKey: string, isReverseBackTransition: boolean): string {
-  if (transitionKey !== SLIDE_TO_LEFT_TRANSITION_KEY) return 'translateX(0%)'
-  return isReverseBackTransition ? 'translateX(100%)' : 'translateX(-100%)'
+  if (transitionKey === SLIDE_TO_LEFT_TRANSITION_KEY) {
+    return isReverseBackTransition ? 'translate3d(100%, 0%, 0%)' : 'translate3d(-100%, 0%, 0%)'
+  }
+  if (transitionKey === SLIDE_TO_RIGHT_TRANSITION_KEY) {
+    return isReverseBackTransition ? 'translate3d(-100%, 0%, 0%)' : 'translate3d(100%, 0%, 0%)'
+  }
+  if (transitionKey === SLIDE_TO_TOP_TRANSITION_KEY) {
+    return isReverseBackTransition ? 'translate3d(0%, 100%, 0%)' : 'translate3d(0%, -100%, 0%)'
+  }
+  if (transitionKey === SLIDE_TO_BOTTOM_TRANSITION_KEY) {
+    return isReverseBackTransition ? 'translate3d(0%, -100%, 0%)' : 'translate3d(0%, 100%, 0%)'
+  }
+  return DEFAULT_TRANSFORM
+}
+
+function isDirectionalSlideTransition(transitionKey: string): boolean {
+  return transitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
+    || transitionKey === SLIDE_TO_RIGHT_TRANSITION_KEY
+    || transitionKey === SLIDE_TO_TOP_TRANSITION_KEY
+    || transitionKey === SLIDE_TO_BOTTOM_TRANSITION_KEY
 }
 
 function SlideThumbnail({
@@ -169,12 +202,12 @@ export function SlideViewer({
     const activeTransitionFromSlide = isNonThumbnailBack ? leavingSlide : nextSlide
     const resolvedTransitionKey = activeTransitionFromSlide?.transition?.key || 'None'
     const shouldAnimateTransition =
-      resolvedTransitionKey === FADE_TRANSITION_KEY || resolvedTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
+      resolvedTransitionKey === FADE_TRANSITION_KEY || isDirectionalSlideTransition(resolvedTransitionKey)
     const rawDuration = activeTransitionFromSlide?.transition?.durationMs ?? DEFAULT_FADE_DURATION_MS
     const transitionDurationMs = Math.max(0, Math.min(rawDuration, MAX_FADE_DURATION_MS))
     const shouldUseReverseBackTransition =
       isNonThumbnailBack
-      && resolvedTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
+      && isDirectionalSlideTransition(resolvedTransitionKey)
 
     const clearTransitionTimer = () => {
       if (leaveAnimationTimerRef.current !== null) {
@@ -207,7 +240,7 @@ export function SlideViewer({
           const computedStyle = window.getComputedStyle(layer)
           nextSnapshots[index] = {
             opacity: parseFloat(computedStyle.opacity) || 0,
-            transform: computedStyle.transform === 'none' ? 'translateX(0%)' : computedStyle.transform
+            transform: computedStyle.transform === 'none' ? DEFAULT_TRANSFORM : computedStyle.transform
           }
         })
       }
@@ -327,13 +360,13 @@ export function SlideViewer({
                 : 1
             const layerTransform = isEntering
               ? isTransitionRunning
-                ? 'translateX(0%)'
+                ? DEFAULT_TRANSFORM
                 : snapshot?.transform ?? enteringStartTransform
               : isLeaving
                 ? isTransitionRunning
                   ? leavingTargetTransform
-                  : snapshot?.transform ?? 'translateX(0%)'
-                : 'translateX(0%)'
+                  : snapshot?.transform ?? DEFAULT_TRANSFORM
+                : DEFAULT_TRANSFORM
             const layerTransition = isAnimating && isTransitionRunning
               ? `transform ${transitionState?.durationMs || 0}ms ease, opacity ${transitionState?.durationMs || 0}ms ease`
               : 'none'
