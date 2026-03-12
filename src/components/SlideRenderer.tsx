@@ -19,6 +19,8 @@ import { convertSeewoLineSpacingToMultiplier } from '../line-spacing';
 
 // 四线三格文本垂直微调比例（相对单行格高）
 const RULED_PAPER_TEXT_VERTICAL_OFFSET_RATIO = -0.12
+// 四线三格内容区内边距比例（相对元素高度）
+const RULED_PAPER_CONTENT_PADDING_RATIO = 0.08
 
 interface SlideRendererProps {
   slide: SlideData;
@@ -212,10 +214,12 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
   const markerCounters: Record<string, number> = {};
   const textOuterPadding = 10 * scale
   const ruledPaper = element.ruledPaper
-  const ruledRowCount = ruledPaper ? Math.max(1, textLines.length || 1) : 0
   const mainHeight = height * scale
-  const ruledRowHeight = ruledPaper ? mainHeight / ruledRowCount : 0
-  const containerPadding = ruledPaper ? 0 : textOuterPadding
+  const ruledContentPadding = ruledPaper ? mainHeight * RULED_PAPER_CONTENT_PADDING_RATIO : 0
+  const ruledRowCount = ruledPaper ? Math.max(1, textLines.length || 1) : 0
+  const ruledUsableHeight = ruledPaper ? Math.max(1, mainHeight - ruledContentPadding * 2) : 0
+  const ruledRowHeight = ruledPaper ? ruledUsableHeight / ruledRowCount : 0
+  const containerPadding = ruledPaper ? ruledContentPadding : textOuterPadding
   const ruledTextVerticalOffset = ruledPaper ? ruledRowHeight * RULED_PAPER_TEXT_VERTICAL_OFFSET_RATIO : 0
 
   const toLatin = (value: number, lower = false): string => {
@@ -446,10 +450,10 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
     for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
       const rowStart = rowIndex * rowHeight
       lineY.push(
-        rowStart,
-        rowStart + segment,
-        rowStart + segment * 2,
-        rowStart + rowHeight
+        ruledContentPadding + rowStart,
+        ruledContentPadding + rowStart + segment,
+        ruledContentPadding + rowStart + segment * 2,
+        ruledContentPadding + rowStart + rowHeight
       )
     }
 
@@ -457,9 +461,9 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
       <div
         style={{
           position: 'absolute',
-          left: 0,
+          left: ruledContentPadding,
           top: 0,
-          width: width * scale,
+          width: Math.max(0, width * scale - ruledContentPadding * 2),
           height: mainHeight,
           pointerEvents: 'none'
         }}
