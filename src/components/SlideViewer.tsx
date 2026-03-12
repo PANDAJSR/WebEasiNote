@@ -38,12 +38,6 @@ const MAX_FADE_DURATION_MS = 8000
 const DEFAULT_TRANSFORM = 'translate3d(0%, 0%, 0px)'
 const CIRCLE_IN_START_CLIP_PATH = 'circle(150% at 50% 50%)'
 const CIRCLE_IN_END_CLIP_PATH = 'circle(0% at 50% 50%)'
-const LINE_REVEAL_MASK_IMAGE = 'linear-gradient(135deg, #000 38%, transparent 62%)'
-const LINE_REVEAL_MASK_SIZE = '280% 280%'
-const LINE_REVEAL_START_MASK_POSITION = '-180% -180%'
-const LINE_REVEAL_END_MASK_POSITION = '180% 180%'
-const LINE_REVEAL_START_CLIP_PATH = 'inset(0% 0% 0% 0%)'
-const LINE_REVEAL_END_CLIP_PATH = 'inset(0% 0% 0% 100%)'
 const ENABLE_TRANSITION_DEBUG_LOG = false
 type LayerSnapshot = {
   opacity: number
@@ -114,10 +108,75 @@ function isLineRevealTransition(transitionKey: string): boolean {
   return normalizeTransitionKey(transitionKey) === LINE_REVEAL_TRANSITION_KEY
 }
 
-function isMaskImageSupported(): boolean {
-  if (typeof CSS === 'undefined' || typeof CSS.supports !== 'function') return false
-  return CSS.supports('mask-image', 'linear-gradient(#000, #000)')
-    || CSS.supports('-webkit-mask-image', 'linear-gradient(#000, #000)')
+function formatPercent(value: number): string {
+  return `${Math.round(value * 1000) / 1000}%`
+}
+
+function buildPolygonClipPath(points: Array<{ x: number; y: number }>): string {
+  if (points.length < 3) return 'polygon(0% 0%, 0% 0%, 0% 0%)'
+  const pointString = points
+    .map(point => `${formatPercent(point.x)} ${formatPercent(point.y)}`)
+    .join(', ')
+  return `polygon(${pointString})`
+}
+
+function buildLineRevealClipPath(progress: number, isReverseDirection: boolean): string {
+  const clampedProgress = Math.max(0, Math.min(progress, 1))
+  if (isReverseDirection) {
+    const threshold = 200 * (1 - clampedProgress)
+    if (threshold >= 200) {
+      return buildPolygonClipPath([
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+        { x: 100, y: 100 },
+        { x: 0, y: 100 }
+      ])
+    }
+    if (threshold <= 0) {
+      return buildPolygonClipPath([{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }])
+    }
+    if (threshold > 100) {
+      return buildPolygonClipPath([
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+        { x: 100, y: threshold - 100 },
+        { x: threshold - 100, y: 100 },
+        { x: 0, y: 100 }
+      ])
+    }
+    return buildPolygonClipPath([
+      { x: 0, y: 0 },
+      { x: threshold, y: 0 },
+      { x: 0, y: threshold }
+    ])
+  }
+
+  const threshold = 200 * clampedProgress
+  if (threshold <= 0) {
+    return buildPolygonClipPath([
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 100, y: 100 },
+      { x: 0, y: 100 }
+    ])
+  }
+  if (threshold >= 200) {
+    return buildPolygonClipPath([{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }])
+  }
+  if (threshold < 100) {
+    return buildPolygonClipPath([
+      { x: threshold, y: 0 },
+      { x: 100, y: 0 },
+      { x: 100, y: 100 },
+      { x: 0, y: 100 },
+      { x: 0, y: threshold }
+    ])
+  }
+  return buildPolygonClipPath([
+    { x: 100, y: threshold - 100 },
+    { x: 100, y: 100 },
+    { x: threshold - 100, y: 100 }
+  ])
 }
 
 function SlideThumbnail({
@@ -164,7 +223,6 @@ export function SlideViewer({
   const containerRef = useRef<HTMLDivElement>(null)
   const [slideScaleMap, setSlideScaleMap] = useState<Record<string, number>>({})
   const [isSlidePanelOpen, setSlidePanelOpen] = useState(false)
-  const [canUseMaskImage, setCanUseMaskImage] = useState(false)
   const previousIndexRef = useRef(currentIndex)
   const [transitionState, setTransitionState] = useState<TransitionState | null>(null)
   const [layerSnapshots, setLayerSnapshots] = useState<Record<number, LayerSnapshot>>({})
@@ -177,10 +235,6 @@ export function SlideViewer({
   const currentScale = slideScaleMap[slide.id] || 1
   const currentViewportWidth = Math.max(0, slide.width * currentScale)
   const currentViewportHeight = Math.max(0, slide.height * currentScale)
-
-  useEffect(() => {
-    setCanUseMaskImage(isMaskImageSupported())
-  }, [])
 
   const logTransitionDebug = useCallback((message: string, payload?: Record<string, unknown>) => {
     if (!ENABLE_TRANSITION_DEBUG_LOG) return
@@ -486,18 +540,8 @@ export function SlideViewer({
             const isCircleIn = transitionKey === CIRCLE_IN_TRANSITION_KEY
             const isLineReveal = transitionKey === LINE_REVEAL_TRANSITION_KEY
             const isCircleInReverse = isCircleIn && isReverseBackTransition
-            const lineRevealRunningMaskPosition = isReverseBackTransition
-              ? LINE_REVEAL_START_MASK_POSITION
-              : LINE_REVEAL_END_MASK_POSITION
-            const lineRevealPrepareMaskPosition = isReverseBackTransition
-              ? LINE_REVEAL_END_MASK_POSITION
-              : LINE_REVEAL_START_MASK_POSITION
-            const lineRevealRunningClipPath = isReverseBackTransition
-              ? LINE_REVEAL_START_CLIP_PATH
-              : LINE_REVEAL_END_CLIP_PATH
-            const lineRevealPrepareClipPath = isReverseBackTransition
-              ? LINE_REVEAL_END_CLIP_PATH
-              : LINE_REVEAL_START_CLIP_PATH
+            const lineRevealPrepareClipPath = buildLineRevealClipPath(0, isReverseBackTransition)
+            const lineRevealRunningClipPath = buildLineRevealClipPath(1, isReverseBackTransition)
             const enteringStartTransform = resolveEnteringStartTransform(
               transitionKey,
               isReverseBackTransition
@@ -537,26 +581,15 @@ export function SlideViewer({
                   ? isTransitionRunning ? CIRCLE_IN_END_CLIP_PATH : CIRCLE_IN_START_CLIP_PATH
                   : undefined
               : isLineReveal
-                ? !canUseMaskImage
-                  ? isLeaving
-                    ? isTransitionRunning ? lineRevealRunningClipPath : lineRevealPrepareClipPath
-                    : undefined
-                  : undefined
-                : undefined
-            const layerMaskPosition = isLineReveal
-              ? canUseMaskImage
                 ? isLeaving
-                  ? isTransitionRunning ? lineRevealRunningMaskPosition : lineRevealPrepareMaskPosition
+                  ? isTransitionRunning ? lineRevealRunningClipPath : lineRevealPrepareClipPath
                   : undefined
-                : undefined
               : undefined
             const layerTransition = isAnimating && isTransitionRunning
               ? isCircleIn
                 ? `clip-path ${transitionState?.durationMs || 0}ms ease`
                 : isLineReveal
-                  ? canUseMaskImage
-                    ? `mask-position ${transitionState?.durationMs || 0}ms ease, -webkit-mask-position ${transitionState?.durationMs || 0}ms ease`
-                    : `clip-path ${transitionState?.durationMs || 0}ms ease`
+                  ? `clip-path ${transitionState?.durationMs || 0}ms linear`
                 : `transform ${transitionState?.durationMs || 0}ms ease, opacity ${transitionState?.durationMs || 0}ms ease`
               : 'none'
             if (ENABLE_TRANSITION_DEBUG_LOG && (isEntering || isLeaving)) {
@@ -568,7 +601,6 @@ export function SlideViewer({
                 layerOpacity,
                 layerTransform,
                 layerClipPath,
-                layerMaskPosition,
                 layerTransition
               })
             }
@@ -608,20 +640,12 @@ export function SlideViewer({
                     transform: layerTransform,
                     opacity: layerOpacity,
                     clipPath: layerClipPath,
-                    maskImage: isLineReveal && canUseMaskImage ? LINE_REVEAL_MASK_IMAGE : undefined,
-                    WebkitMaskImage: isLineReveal && canUseMaskImage ? LINE_REVEAL_MASK_IMAGE : undefined,
-                    maskSize: isLineReveal && canUseMaskImage ? LINE_REVEAL_MASK_SIZE : undefined,
-                    WebkitMaskSize: isLineReveal && canUseMaskImage ? LINE_REVEAL_MASK_SIZE : undefined,
-                    maskRepeat: isLineReveal && canUseMaskImage ? 'no-repeat' : undefined,
-                    WebkitMaskRepeat: isLineReveal && canUseMaskImage ? 'no-repeat' : undefined,
-                    maskPosition: layerMaskPosition,
-                    WebkitMaskPosition: layerMaskPosition,
                     transition: layerTransition,
                     willChange: isAnimating
                       ? isCircleIn
                         ? 'clip-path'
                         : isLineReveal
-                          ? canUseMaskImage ? 'mask-position' : 'clip-path'
+                          ? 'clip-path'
                           : 'transform, opacity'
                       : undefined,
                   }}
