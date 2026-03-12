@@ -208,6 +208,8 @@ export function SlideViewer({
         style={{
           ...styles.slideContainer,
           position: 'relative',
+          alignItems: 'stretch',
+          justifyContent: 'stretch',
         }}
       >
         <div
