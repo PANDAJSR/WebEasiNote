@@ -34,6 +34,7 @@ const SLIDE_TO_BOTTOM_TRANSITION_KEY = 'SlideToBottom'
 const DEFAULT_FADE_DURATION_MS = 300
 const MAX_FADE_DURATION_MS = 8000
 const DEFAULT_TRANSFORM = 'translate3d(0%, 0%, 0%)'
+const ENABLE_TRANSITION_DEBUG_LOG = true
 type LayerSnapshot = {
   opacity: number
   transform: string
@@ -152,6 +153,15 @@ export function SlideViewer({
   const currentViewportWidth = Math.max(0, slide.width * currentScale)
   const currentViewportHeight = Math.max(0, slide.height * currentScale)
 
+  const logTransitionDebug = useCallback((message: string, payload?: Record<string, unknown>) => {
+    if (!ENABLE_TRANSITION_DEBUG_LOG) return
+    if (payload) {
+      console.log(`[SlideViewer] ${message}`, payload)
+      return
+    }
+    console.log(`[SlideViewer] ${message}`)
+  }, [])
+
   const handlePrevSlide = () => {
     if (isFirstSlide) return
     onSlideChange(currentIndex - 1, 'pager')
@@ -218,6 +228,18 @@ export function SlideViewer({
       isNonThumbnailBack
       && isDirectionalSlideTransition(resolvedTransitionKey)
 
+    logTransitionDebug('检测翻页', {
+      previousIndex,
+      currentIndex,
+      slideChangeSource,
+      resolvedTransitionKey,
+      transitionDurationMs,
+      isBackward,
+      isNonThumbnailBack,
+      shouldAnimateTransition,
+      shouldUseReverseBackTransition
+    })
+
     const clearTransitionTimer = () => {
       if (leaveAnimationTimerRef.current !== null) {
         window.clearTimeout(leaveAnimationTimerRef.current)
@@ -266,16 +288,35 @@ export function SlideViewer({
         isReverseBackTransition: shouldUseReverseBackTransition,
         phase: 'prepare'
       })
+      logTransitionDebug('进入 prepare 阶段', {
+        transitionId,
+        enteringIndex: currentIndex,
+        leavingIndex: previousIndex,
+        key: resolvedTransitionKey,
+        durationMs: transitionDurationMs
+      })
       transitionRafRef.current = window.requestAnimationFrame(() => {
         transitionRafRef.current = window.requestAnimationFrame(() => {
           setTransitionState(state => {
             if (!state || state.id !== transitionId) return state
+            logTransitionDebug('切换到 running 阶段', {
+              transitionId,
+              enteringIndex: state.enteringIndex,
+              leavingIndex: state.leavingIndex,
+              key: state.key,
+              durationMs: state.durationMs
+            })
             return { ...state, phase: 'running' }
           })
           transitionRafRef.current = null
         })
       })
     } else {
+      logTransitionDebug('不执行转场动画，直接切换', {
+        previousIndex,
+        currentIndex,
+        resolvedTransitionKey
+      })
       setTransitionState(null)
       setLayerSnapshots({})
     }
@@ -285,7 +326,14 @@ export function SlideViewer({
 
   useEffect(() => {
     if (!transitionState || transitionState.phase !== 'running') return
+    logTransitionDebug('running 阶段开始计时', {
+      transitionId: transitionState.id,
+      durationMs: transitionState.durationMs
+    })
     leaveAnimationTimerRef.current = window.setTimeout(() => {
+      logTransitionDebug('转场计时结束，清理状态', {
+        transitionId: transitionState.id
+      })
       setTransitionState(null)
       setLayerSnapshots({})
       leaveAnimationTimerRef.current = null
@@ -293,6 +341,7 @@ export function SlideViewer({
 
     return () => {
       if (leaveAnimationTimerRef.current !== null) {
+        logTransitionDebug('清理 running 计时器')
         window.clearTimeout(leaveAnimationTimerRef.current)
         leaveAnimationTimerRef.current = null
       }
