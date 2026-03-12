@@ -175,8 +175,12 @@ export function SlideViewer({
     const isBackward = currentIndex < previousIndex
     const shouldUseReverseBackTransition =
       isBackward
-      && (slideChangeSource === 'keyboard' || slideChangeSource === 'pager')
+      && slideChangeSource !== 'thumbnail'
       && nextTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
+
+    console.log(
+      `[SlideViewer] 切页: ${previousIndex + 1} -> ${currentIndex + 1}, 来源=${slideChangeSource}, 反向动画=${shouldUseReverseBackTransition}`
+    )
 
     if (leaveAnimationTimerRef.current !== null) {
       window.clearTimeout(leaveAnimationTimerRef.current)
