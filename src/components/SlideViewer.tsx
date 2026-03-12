@@ -32,11 +32,14 @@ const SLIDE_TO_RIGHT_TRANSITION_KEY = 'SlideToRight'
 const SLIDE_TO_TOP_TRANSITION_KEY = 'SlideToTop'
 const SLIDE_TO_BOTTOM_TRANSITION_KEY = 'SlideToBottom'
 const CIRCLE_IN_TRANSITION_KEY = 'CircleIn'
+const LINE_REVEAL_TRANSITION_KEY = 'LineReveal'
 const DEFAULT_FADE_DURATION_MS = 300
 const MAX_FADE_DURATION_MS = 8000
 const DEFAULT_TRANSFORM = 'translate3d(0%, 0%, 0px)'
 const CIRCLE_IN_START_CLIP_PATH = 'circle(150% at 50% 50%)'
 const CIRCLE_IN_END_CLIP_PATH = 'circle(0% at 50% 50%)'
+const LINE_REVEAL_START_MASK = 'linear-gradient(135deg, transparent 0%, #000 0%)'
+const LINE_REVEAL_END_MASK = 'linear-gradient(135deg, transparent 100%, #000 100%)'
 const ENABLE_TRANSITION_DEBUG_LOG = false
 type LayerSnapshot = {
   opacity: number
@@ -101,6 +104,10 @@ function isDirectionalSlideTransition(transitionKey: string): boolean {
 
 function isCircleInTransition(transitionKey: string): boolean {
   return normalizeTransitionKey(transitionKey) === CIRCLE_IN_TRANSITION_KEY
+}
+
+function isLineRevealTransition(transitionKey: string): boolean {
+  return normalizeTransitionKey(transitionKey) === LINE_REVEAL_TRANSITION_KEY
 }
 
 function SlideThumbnail({
@@ -247,11 +254,16 @@ export function SlideViewer({
       resolvedTransitionKey === FADE_TRANSITION_KEY
       || isDirectionalSlideTransition(resolvedTransitionKey)
       || isCircleInTransition(resolvedTransitionKey)
+      || isLineRevealTransition(resolvedTransitionKey)
     const rawDuration = activeTransitionFromSlide?.transition?.durationMs ?? DEFAULT_FADE_DURATION_MS
     const transitionDurationMs = Math.max(0, Math.min(rawDuration, MAX_FADE_DURATION_MS))
     const shouldUseReverseBackTransition =
       isNonThumbnailBack
-      && (isDirectionalSlideTransition(resolvedTransitionKey) || isCircleInTransition(resolvedTransitionKey))
+      && (
+        isDirectionalSlideTransition(resolvedTransitionKey)
+        || isCircleInTransition(resolvedTransitionKey)
+        || isLineRevealTransition(resolvedTransitionKey)
+      )
 
     logTransitionDebug('检测翻页', {
       previousIndex,
@@ -446,14 +458,18 @@ export function SlideViewer({
             const snapshot = layerSnapshots[index]
             const transitionKey = transitionState?.key || 'None'
             const isReverseBackTransition = Boolean(transitionState?.isReverseBackTransition)
-            const zIndex = transitionKey === CIRCLE_IN_TRANSITION_KEY
+            const shouldUseMaskTopLayer =
+              transitionKey === CIRCLE_IN_TRANSITION_KEY || transitionKey === LINE_REVEAL_TRANSITION_KEY
+            const zIndex = shouldUseMaskTopLayer
               ? isReverseBackTransition
                 ? isEntering ? 2 : isCurrent ? 1 : 0
                 : isLeaving ? 2 : isCurrent ? 1 : 0
               : isCurrent ? 2 : isLeaving ? 1 : 0
             const isFadeTransition = transitionKey === FADE_TRANSITION_KEY
             const isCircleIn = transitionKey === CIRCLE_IN_TRANSITION_KEY
+            const isLineReveal = transitionKey === LINE_REVEAL_TRANSITION_KEY
             const isCircleInReverse = isCircleIn && isReverseBackTransition
+            const isLineRevealReverse = isLineReveal && isReverseBackTransition
             const enteringStartTransform = resolveEnteringStartTransform(
               transitionKey,
               isReverseBackTransition
@@ -493,9 +509,20 @@ export function SlideViewer({
                   ? isTransitionRunning ? CIRCLE_IN_END_CLIP_PATH : CIRCLE_IN_START_CLIP_PATH
                   : undefined
               : undefined
+            const layerMaskImage = isLineReveal
+              ? isLineRevealReverse
+                ? isEntering
+                  ? isTransitionRunning ? LINE_REVEAL_START_MASK : LINE_REVEAL_END_MASK
+                  : undefined
+                : isLeaving
+                  ? isTransitionRunning ? LINE_REVEAL_END_MASK : LINE_REVEAL_START_MASK
+                  : undefined
+              : undefined
             const layerTransition = isAnimating && isTransitionRunning
               ? isCircleIn
                 ? `clip-path ${transitionState?.durationMs || 0}ms ease`
+                : isLineReveal
+                  ? `mask-image ${transitionState?.durationMs || 0}ms ease, -webkit-mask-image ${transitionState?.durationMs || 0}ms ease`
                 : `transform ${transitionState?.durationMs || 0}ms ease, opacity ${transitionState?.durationMs || 0}ms ease`
               : 'none'
             if (ENABLE_TRANSITION_DEBUG_LOG && (isEntering || isLeaving)) {
@@ -507,6 +534,7 @@ export function SlideViewer({
                 layerOpacity,
                 layerTransform,
                 layerClipPath,
+                layerMaskImage,
                 layerTransition
               })
             }
@@ -546,9 +574,15 @@ export function SlideViewer({
                     transform: layerTransform,
                     opacity: layerOpacity,
                     clipPath: layerClipPath,
+                    maskImage: layerMaskImage,
+                    WebkitMaskImage: layerMaskImage,
                     transition: layerTransition,
                     willChange: isAnimating
-                      ? isCircleIn ? 'clip-path' : 'transform, opacity'
+                      ? isCircleIn
+                        ? 'clip-path'
+                        : isLineReveal
+                          ? 'mask-image'
+                          : 'transform, opacity'
                       : undefined,
                   }}
                 >
