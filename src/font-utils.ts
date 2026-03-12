@@ -69,12 +69,10 @@ const fontAliasMap: Record<string, string[]> = {
   '圆体-简': ['Yuanti SC', 'STYuanti-SC'],
   '仿宋_GB2312': ['FangSong_GB2312'],
   'SeewoEnglishHandwriting': [
-    'Segoe Print',
     'Chalkboard SE',
     'Chalkboard',
-    'Comic Neue',
+    'Segoe Print',
     'Comic Sans MS',
-    'Bradley Hand',
     'Arial'
   ]
 }
