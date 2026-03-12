@@ -36,6 +36,10 @@ if (typeof document !== 'undefined' && !document.getElementById(slideFadeKeyfram
       from { opacity: 0; }
       to { opacity: 1; }
     }
+    @keyframes slideFadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
   `
   document.head.appendChild(styleSheet)
 }
@@ -85,6 +89,9 @@ export function SlideViewer({
   const [isSlidePanelOpen, setSlidePanelOpen] = useState(false)
   const previousIndexRef = useRef(currentIndex)
   const [animatedSlideIndex, setAnimatedSlideIndex] = useState<number | null>(null)
+  const [leavingSlideIndex, setLeavingSlideIndex] = useState<number | null>(null)
+  const [activeFadeDurationMs, setActiveFadeDurationMs] = useState(DEFAULT_FADE_DURATION_MS)
+  const leaveAnimationTimerRef = useRef<number | null>(null)
   const isFirstSlide = currentIndex <= 0
   const isLastSlide = currentIndex >= slides.length - 1
   const currentScale = slideScaleMap[slide.id] || 1
@@ -131,9 +138,40 @@ export function SlideViewer({
 
   useEffect(() => {
     if (previousIndexRef.current === currentIndex) return
-    setAnimatedSlideIndex(currentIndex)
+    const previousIndex = previousIndexRef.current
+    const nextSlide = slides[currentIndex]
+    const isFadeTransition = nextSlide?.transition?.key === FADE_TRANSITION_KEY
+    const rawDuration = nextSlide?.transition?.durationMs ?? DEFAULT_FADE_DURATION_MS
+    const fadeDurationMs = Math.max(0, Math.min(rawDuration, MAX_FADE_DURATION_MS))
+
+    if (leaveAnimationTimerRef.current !== null) {
+      window.clearTimeout(leaveAnimationTimerRef.current)
+      leaveAnimationTimerRef.current = null
+    }
+
+    if (isFadeTransition && previousIndex >= 0 && previousIndex !== currentIndex) {
+      setActiveFadeDurationMs(fadeDurationMs)
+      setAnimatedSlideIndex(currentIndex)
+      setLeavingSlideIndex(previousIndex)
+      leaveAnimationTimerRef.current = window.setTimeout(() => {
+        setLeavingSlideIndex(null)
+        leaveAnimationTimerRef.current = null
+      }, fadeDurationMs)
+    } else {
+      setAnimatedSlideIndex(null)
+      setLeavingSlideIndex(null)
+    }
+
     previousIndexRef.current = currentIndex
-  }, [currentIndex])
+  }, [currentIndex, slides])
+
+  useEffect(() => {
+    return () => {
+      if (leaveAnimationTimerRef.current !== null) {
+        window.clearTimeout(leaveAnimationTimerRef.current)
+      }
+    }
+  }, [])
 
   return (
     <div style={styles.slideViewerContainer}>
@@ -157,10 +195,12 @@ export function SlideViewer({
               key={`${slideItem.id}-${index}`}
               style={(() => {
                 const isCurrent = index === currentIndex
+                const isLeaving = index === leavingSlideIndex
                 const isFadeTransition = slideItem.transition?.key === FADE_TRANSITION_KEY
                 const rawDuration = slideItem.transition?.durationMs ?? DEFAULT_FADE_DURATION_MS
                 const fadeDurationMs = Math.max(0, Math.min(rawDuration, MAX_FADE_DURATION_MS))
                 const shouldFadeIn = isCurrent && animatedSlideIndex === index && isFadeTransition
+                const shouldFadeOut = isLeaving
                 const currentSlideNumber = currentIndex + 1
                 const sourceSlideNumber = index + 1
                 const shouldKeepAliveForCrossPlay = slideItem.elements.some(
@@ -179,10 +219,14 @@ export function SlideViewer({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  visibility: isCurrent || shouldKeepAliveForCrossPlay ? 'visible' : 'hidden',
-                  opacity: isCurrent ? 1 : 0,
+                  visibility: isCurrent || isLeaving || shouldKeepAliveForCrossPlay ? 'visible' : 'hidden',
+                  opacity: isCurrent || isLeaving ? 1 : 0,
                   pointerEvents: isCurrent ? 'auto' : 'none',
-                  animation: shouldFadeIn ? `slideFadeIn ${fadeDurationMs}ms ease forwards` : undefined,
+                  animation: shouldFadeIn
+                    ? `slideFadeIn ${fadeDurationMs}ms ease forwards`
+                    : shouldFadeOut
+                      ? `slideFadeOut ${activeFadeDurationMs}ms ease forwards`
+                      : undefined,
                 }
               })()}
             >
