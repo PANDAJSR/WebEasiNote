@@ -476,7 +476,9 @@ export function SlideViewer({
             const shouldUseMaskTopLayer =
               transitionKey === CIRCLE_IN_TRANSITION_KEY || transitionKey === LINE_REVEAL_TRANSITION_KEY
             const zIndex = shouldUseMaskTopLayer
-              ? isReverseBackTransition
+              ? transitionKey === LINE_REVEAL_TRANSITION_KEY
+                ? isLeaving ? 2 : isCurrent ? 1 : 0
+                : isReverseBackTransition
                 ? isEntering ? 2 : isCurrent ? 1 : 0
                 : isLeaving ? 2 : isCurrent ? 1 : 0
               : isCurrent ? 2 : isLeaving ? 1 : 0
@@ -484,7 +486,18 @@ export function SlideViewer({
             const isCircleIn = transitionKey === CIRCLE_IN_TRANSITION_KEY
             const isLineReveal = transitionKey === LINE_REVEAL_TRANSITION_KEY
             const isCircleInReverse = isCircleIn && isReverseBackTransition
-            const isLineRevealReverse = isLineReveal && isReverseBackTransition
+            const lineRevealRunningMaskPosition = isReverseBackTransition
+              ? LINE_REVEAL_START_MASK_POSITION
+              : LINE_REVEAL_END_MASK_POSITION
+            const lineRevealPrepareMaskPosition = isReverseBackTransition
+              ? LINE_REVEAL_END_MASK_POSITION
+              : LINE_REVEAL_START_MASK_POSITION
+            const lineRevealRunningClipPath = isReverseBackTransition
+              ? LINE_REVEAL_START_CLIP_PATH
+              : LINE_REVEAL_END_CLIP_PATH
+            const lineRevealPrepareClipPath = isReverseBackTransition
+              ? LINE_REVEAL_END_CLIP_PATH
+              : LINE_REVEAL_START_CLIP_PATH
             const enteringStartTransform = resolveEnteringStartTransform(
               transitionKey,
               isReverseBackTransition
@@ -525,24 +538,16 @@ export function SlideViewer({
                   : undefined
               : isLineReveal
                 ? !canUseMaskImage
-                  ? isLineRevealReverse
-                    ? isEntering
-                      ? isTransitionRunning ? LINE_REVEAL_START_CLIP_PATH : LINE_REVEAL_END_CLIP_PATH
-                      : undefined
-                    : isLeaving
-                      ? isTransitionRunning ? LINE_REVEAL_END_CLIP_PATH : LINE_REVEAL_START_CLIP_PATH
-                      : undefined
+                  ? isLeaving
+                    ? isTransitionRunning ? lineRevealRunningClipPath : lineRevealPrepareClipPath
+                    : undefined
                   : undefined
                 : undefined
             const layerMaskPosition = isLineReveal
               ? canUseMaskImage
-                ? isLineRevealReverse
-                  ? isEntering
-                    ? isTransitionRunning ? LINE_REVEAL_START_MASK_POSITION : LINE_REVEAL_END_MASK_POSITION
-                    : undefined
-                  : isLeaving
-                    ? isTransitionRunning ? LINE_REVEAL_END_MASK_POSITION : LINE_REVEAL_START_MASK_POSITION
-                    : undefined
+                ? isLeaving
+                  ? isTransitionRunning ? lineRevealRunningMaskPosition : lineRevealPrepareMaskPosition
+                  : undefined
                 : undefined
               : undefined
             const layerTransition = isAnimating && isTransitionRunning
