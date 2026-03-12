@@ -30,38 +30,29 @@ const FADE_TRANSITION_KEY = 'Fade'
 const SLIDE_TO_LEFT_TRANSITION_KEY = 'SlideToLeft'
 const DEFAULT_FADE_DURATION_MS = 300
 const MAX_FADE_DURATION_MS = 8000
-const slideFadeKeyframesId = 'slide-fade-keyframes'
+type LayerSnapshot = {
+  opacity: number
+  transform: string
+}
 
-if (typeof document !== 'undefined' && !document.getElementById(slideFadeKeyframesId)) {
-  const styleSheet = document.createElement('style')
-  styleSheet.id = slideFadeKeyframesId
-  styleSheet.textContent = `
-    @keyframes slideFadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    @keyframes slideFadeOut {
-      from { opacity: 1; }
-      to { opacity: 0; }
-    }
-    @keyframes slideInFromRight {
-      from { transform: translateX(100%); }
-      to { transform: translateX(0%); }
-    }
-    @keyframes slideInFromLeft {
-      from { transform: translateX(-100%); }
-      to { transform: translateX(0%); }
-    }
-    @keyframes slideOutToLeft {
-      from { transform: translateX(0%); }
-      to { transform: translateX(-100%); }
-    }
-    @keyframes slideOutToRight {
-      from { transform: translateX(0%); }
-      to { transform: translateX(100%); }
-    }
-  `
-  document.head.appendChild(styleSheet)
+interface TransitionState {
+  id: number
+  enteringIndex: number
+  leavingIndex: number
+  key: string
+  durationMs: number
+  isReverseBackTransition: boolean
+  phase: 'prepare' | 'running'
+}
+
+function resolveEnteringStartTransform(transitionKey: string, isReverseBackTransition: boolean): string {
+  if (transitionKey !== SLIDE_TO_LEFT_TRANSITION_KEY) return 'translateX(0%)'
+  return isReverseBackTransition ? 'translateX(-100%)' : 'translateX(100%)'
+}
+
+function resolveLeavingTargetTransform(transitionKey: string, isReverseBackTransition: boolean): string {
+  if (transitionKey !== SLIDE_TO_LEFT_TRANSITION_KEY) return 'translateX(0%)'
+  return isReverseBackTransition ? 'translateX(100%)' : 'translateX(-100%)'
 }
 
 function SlideThumbnail({
@@ -109,12 +100,12 @@ export function SlideViewer({
   const [slideScaleMap, setSlideScaleMap] = useState<Record<string, number>>({})
   const [isSlidePanelOpen, setSlidePanelOpen] = useState(false)
   const previousIndexRef = useRef(currentIndex)
-  const [animatedSlideIndex, setAnimatedSlideIndex] = useState<number | null>(null)
-  const [leavingSlideIndex, setLeavingSlideIndex] = useState<number | null>(null)
-  const [activeTransitionKey, setActiveTransitionKey] = useState<string>('None')
-  const [activeTransitionDurationMs, setActiveTransitionDurationMs] = useState(DEFAULT_FADE_DURATION_MS)
-  const [isReverseBackTransition, setIsReverseBackTransition] = useState(false)
+  const [transitionState, setTransitionState] = useState<TransitionState | null>(null)
+  const [layerSnapshots, setLayerSnapshots] = useState<Record<number, LayerSnapshot>>({})
   const leaveAnimationTimerRef = useRef<number | null>(null)
+  const transitionRafRef = useRef<number | null>(null)
+  const transitionIdRef = useRef(0)
+  const layerRefs = useRef<Record<number, HTMLDivElement | null>>({})
   const isFirstSlide = currentIndex <= 0
   const isLastSlide = currentIndex >= slides.length - 1
   const currentScale = slideScaleMap[slide.id] || 1
@@ -185,38 +176,92 @@ export function SlideViewer({
       isNonThumbnailBack
       && resolvedTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
 
+    const clearTransitionTimer = () => {
+      if (leaveAnimationTimerRef.current !== null) {
+        window.clearTimeout(leaveAnimationTimerRef.current)
+        leaveAnimationTimerRef.current = null
+      }
+    }
+
+    const clearTransitionRaf = () => {
+      if (transitionRafRef.current !== null) {
+        window.cancelAnimationFrame(transitionRafRef.current)
+        transitionRafRef.current = null
+      }
+    }
+
     if (leaveAnimationTimerRef.current !== null) {
-      window.clearTimeout(leaveAnimationTimerRef.current)
-      leaveAnimationTimerRef.current = null
+      clearTransitionTimer()
+    }
+
+    if (transitionRafRef.current !== null) {
+      clearTransitionRaf()
     }
 
     if (shouldAnimateTransition && previousIndex >= 0 && previousIndex !== currentIndex) {
-      setActiveTransitionKey(resolvedTransitionKey)
-      setActiveTransitionDurationMs(transitionDurationMs)
-      setAnimatedSlideIndex(currentIndex)
-      setLeavingSlideIndex(previousIndex)
-      setIsReverseBackTransition(shouldUseReverseBackTransition)
-      leaveAnimationTimerRef.current = window.setTimeout(() => {
-        setAnimatedSlideIndex(null)
-        setLeavingSlideIndex(null)
-        setActiveTransitionKey('None')
-        setIsReverseBackTransition(false)
-        leaveAnimationTimerRef.current = null
-      }, transitionDurationMs)
+      const nextSnapshots: Record<number, LayerSnapshot> = {}
+      if (transitionState) {
+        ;[transitionState.enteringIndex, transitionState.leavingIndex].forEach(index => {
+          const layer = layerRefs.current[index]
+          if (!layer) return
+          const computedStyle = window.getComputedStyle(layer)
+          nextSnapshots[index] = {
+            opacity: parseFloat(computedStyle.opacity) || 0,
+            transform: computedStyle.transform === 'none' ? 'translateX(0%)' : computedStyle.transform
+          }
+        })
+      }
+
+      const transitionId = transitionIdRef.current + 1
+      transitionIdRef.current = transitionId
+      setLayerSnapshots(nextSnapshots)
+      setTransitionState({
+        id: transitionId,
+        enteringIndex: currentIndex,
+        leavingIndex: previousIndex,
+        key: resolvedTransitionKey,
+        durationMs: transitionDurationMs,
+        isReverseBackTransition: shouldUseReverseBackTransition,
+        phase: 'prepare'
+      })
+      transitionRafRef.current = window.requestAnimationFrame(() => {
+        setTransitionState(state => {
+          if (!state || state.id !== transitionId) return state
+          return { ...state, phase: 'running' }
+        })
+        transitionRafRef.current = null
+      })
     } else {
-      setActiveTransitionKey('None')
-      setAnimatedSlideIndex(null)
-      setLeavingSlideIndex(null)
-      setIsReverseBackTransition(false)
+      setTransitionState(null)
+      setLayerSnapshots({})
     }
 
     previousIndexRef.current = currentIndex
-  }, [currentIndex, slides, slideChangeSource])
+  }, [currentIndex, slides, slideChangeSource, transitionState])
+
+  useEffect(() => {
+    if (!transitionState || transitionState.phase !== 'running') return
+    leaveAnimationTimerRef.current = window.setTimeout(() => {
+      setTransitionState(null)
+      setLayerSnapshots({})
+      leaveAnimationTimerRef.current = null
+    }, transitionState.durationMs)
+
+    return () => {
+      if (leaveAnimationTimerRef.current !== null) {
+        window.clearTimeout(leaveAnimationTimerRef.current)
+        leaveAnimationTimerRef.current = null
+      }
+    }
+  }, [transitionState])
 
   useEffect(() => {
     return () => {
       if (leaveAnimationTimerRef.current !== null) {
         window.clearTimeout(leaveAnimationTimerRef.current)
+      }
+      if (transitionRafRef.current !== null) {
+        window.cancelAnimationFrame(transitionRafRef.current)
       }
     }
   }, [])
@@ -255,30 +300,43 @@ export function SlideViewer({
             <div style={styles.slideWhiteBackdrop} />
             {slides.map((slideItem, index) => {
             const isCurrent = index === currentIndex
-            const isLeaving = index === leavingSlideIndex
-            const rawDuration = slideItem.transition?.durationMs ?? DEFAULT_FADE_DURATION_MS
-            const transitionDurationMs = Math.max(0, Math.min(rawDuration, MAX_FADE_DURATION_MS))
-            const shouldAnimateIn = isCurrent && animatedSlideIndex === index
-            const shouldAnimateOut = isLeaving
+            const isEntering = transitionState?.enteringIndex === index
+            const isLeaving = transitionState?.leavingIndex === index
+            const isAnimating = Boolean(isEntering || isLeaving)
+            const isTransitionRunning = transitionState?.phase === 'running'
+            const snapshot = layerSnapshots[index]
             const zIndex = isCurrent ? 2 : isLeaving ? 1 : 0
-            const enterDurationMs = shouldAnimateIn ? activeTransitionDurationMs : transitionDurationMs
-            const slideAnimation = shouldAnimateIn
-              ? activeTransitionKey === FADE_TRANSITION_KEY
-                ? `slideFadeIn ${enterDurationMs}ms ease forwards`
-                : activeTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
-                  ? isReverseBackTransition
-                    ? `slideInFromLeft ${enterDurationMs}ms ease forwards`
-                    : `slideInFromRight ${enterDurationMs}ms ease forwards`
-                  : undefined
-              : shouldAnimateOut
-                ? activeTransitionKey === FADE_TRANSITION_KEY
-                  ? `slideFadeOut ${activeTransitionDurationMs}ms ease forwards`
-                  : activeTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
-                    ? isReverseBackTransition
-                      ? `slideOutToRight ${activeTransitionDurationMs}ms ease forwards`
-                      : `slideOutToLeft ${activeTransitionDurationMs}ms ease forwards`
-                    : undefined
-                : undefined
+            const transitionKey = transitionState?.key || 'None'
+            const isFadeTransition = transitionKey === FADE_TRANSITION_KEY
+            const enteringStartTransform = resolveEnteringStartTransform(
+              transitionKey,
+              Boolean(transitionState?.isReverseBackTransition)
+            )
+            const leavingTargetTransform = resolveLeavingTargetTransform(
+              transitionKey,
+              Boolean(transitionState?.isReverseBackTransition)
+            )
+            const layerOpacity = isEntering
+              ? isFadeTransition
+                ? isTransitionRunning ? 1 : snapshot?.opacity ?? 0
+                : snapshot?.opacity ?? 1
+              : isLeaving
+                ? isFadeTransition
+                  ? isTransitionRunning ? 0 : snapshot?.opacity ?? 1
+                  : snapshot?.opacity ?? 1
+                : 1
+            const layerTransform = isEntering
+              ? isTransitionRunning
+                ? 'translateX(0%)'
+                : snapshot?.transform ?? enteringStartTransform
+              : isLeaving
+                ? isTransitionRunning
+                  ? leavingTargetTransform
+                  : snapshot?.transform ?? 'translateX(0%)'
+                : 'translateX(0%)'
+            const layerTransition = isAnimating && isTransitionRunning
+              ? `transform ${transitionState?.durationMs || 0}ms ease, opacity ${transitionState?.durationMs || 0}ms ease`
+              : 'none'
             const currentSlideNumber = currentIndex + 1
             const sourceSlideNumber = index + 1
             const shouldKeepAliveForCrossPlay = slideItem.elements.some(
@@ -307,10 +365,15 @@ export function SlideViewer({
                 }}
               >
                 <div
+                  ref={node => {
+                    layerRefs.current[index] = node
+                  }}
                   style={{
                     ...styles.slideLayerContainer,
-                    animation: slideAnimation,
-                    willChange: slideAnimation ? 'transform, opacity' : undefined,
+                    transform: layerTransform,
+                    opacity: layerOpacity,
+                    transition: layerTransition,
+                    willChange: isAnimating ? 'transform, opacity' : undefined,
                   }}
                 >
                   <SlideRenderer
