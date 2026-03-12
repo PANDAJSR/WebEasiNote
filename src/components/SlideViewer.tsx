@@ -238,8 +238,10 @@ export function SlideViewer({
   const previousIndexRef = useRef(currentIndex)
   const [transitionState, setTransitionState] = useState<TransitionState | null>(null)
   const [layerSnapshots, setLayerSnapshots] = useState<Record<number, LayerSnapshot>>({})
+  const [lineRevealProgress, setLineRevealProgress] = useState(0)
   const leaveAnimationTimerRef = useRef<number | null>(null)
   const transitionRafRef = useRef<number | null>(null)
+  const lineRevealRafRef = useRef<number | null>(null)
   const transitionIdRef = useRef(0)
   const layerRefs = useRef<Record<number, HTMLDivElement | null>>({})
   const isFirstSlide = currentIndex <= 0
@@ -380,6 +382,12 @@ export function SlideViewer({
       clearTransitionRaf()
     }
 
+    if (lineRevealRafRef.current !== null) {
+      window.cancelAnimationFrame(lineRevealRafRef.current)
+      lineRevealRafRef.current = null
+    }
+    setLineRevealProgress(0)
+
     if (shouldAnimateTransition && previousIndex >= 0 && previousIndex !== currentIndex) {
       const nextSnapshots: Record<number, LayerSnapshot> = {}
       if (transitionState) {
@@ -488,12 +496,53 @@ export function SlideViewer({
   }, [transitionState])
 
   useEffect(() => {
+    if (!transitionState || transitionState.key !== LINE_REVEAL_TRANSITION_KEY) {
+      setLineRevealProgress(0)
+      if (lineRevealRafRef.current !== null) {
+        window.cancelAnimationFrame(lineRevealRafRef.current)
+        lineRevealRafRef.current = null
+      }
+      return
+    }
+
+    if (transitionState.phase !== 'running') {
+      setLineRevealProgress(0)
+      return
+    }
+
+    const startTime = performance.now()
+    const duration = Math.max(1, transitionState.durationMs)
+    const animate = (now: number) => {
+      const elapsed = now - startTime
+      const progress = Math.min(1, elapsed / duration)
+      setLineRevealProgress(progress)
+      if (progress < 1) {
+        lineRevealRafRef.current = window.requestAnimationFrame(animate)
+      } else {
+        lineRevealRafRef.current = null
+      }
+    }
+
+    lineRevealRafRef.current = window.requestAnimationFrame(animate)
+
+    return () => {
+      if (lineRevealRafRef.current !== null) {
+        window.cancelAnimationFrame(lineRevealRafRef.current)
+        lineRevealRafRef.current = null
+      }
+    }
+  }, [transitionState])
+
+  useEffect(() => {
     return () => {
       if (leaveAnimationTimerRef.current !== null) {
         window.clearTimeout(leaveAnimationTimerRef.current)
       }
       if (transitionRafRef.current !== null) {
         window.cancelAnimationFrame(transitionRafRef.current)
+      }
+      if (lineRevealRafRef.current !== null) {
+        window.cancelAnimationFrame(lineRevealRafRef.current)
       }
     }
   }, [])
@@ -552,8 +601,11 @@ export function SlideViewer({
             const isCircleIn = transitionKey === CIRCLE_IN_TRANSITION_KEY
             const isLineReveal = transitionKey === LINE_REVEAL_TRANSITION_KEY
             const isCircleInReverse = isCircleIn && isReverseBackTransition
-            const lineRevealProgress = isTransitionRunning ? 1 : 0
-            const lineRevealClipPath = buildLineRevealClipPath(lineRevealProgress, isReverseBackTransition)
+            const currentLineRevealProgress = isTransitionRunning ? lineRevealProgress : 0
+            const lineRevealClipPath = buildLineRevealClipPath(
+              currentLineRevealProgress,
+              isReverseBackTransition
+            )
             const enteringStartTransform = resolveEnteringStartTransform(
               transitionKey,
               isReverseBackTransition
@@ -601,7 +653,7 @@ export function SlideViewer({
               ? isCircleIn
                 ? `clip-path ${transitionState?.durationMs || 0}ms ease`
                 : isLineReveal
-                  ? `clip-path ${transitionState?.durationMs || 0}ms linear`
+                  ? 'none'
                 : `transform ${transitionState?.durationMs || 0}ms ease, opacity ${transitionState?.durationMs || 0}ms ease`
               : 'none'
             if (ENABLE_TRANSITION_DEBUG_LOG && (isEntering || isLeaving)) {
@@ -613,6 +665,7 @@ export function SlideViewer({
                 layerOpacity,
                 layerTransform,
                 layerClipPath,
+                currentLineRevealProgress,
                 layerTransition
               })
             }
