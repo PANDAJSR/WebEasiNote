@@ -38,6 +38,7 @@ const MAX_FADE_DURATION_MS = 8000
 const DEFAULT_TRANSFORM = 'translate3d(0%, 0%, 0px)'
 const CIRCLE_IN_START_CLIP_PATH = 'circle(150% at 50% 50%)'
 const CIRCLE_IN_END_CLIP_PATH = 'circle(0% at 50% 50%)'
+const LINE_REVEAL_BAND_WIDTH = 18
 const ENABLE_TRANSITION_DEBUG_LOG = false
 type LayerSnapshot = {
   opacity: number
@@ -128,63 +129,91 @@ function buildPolygonClipPath(points: Array<{ x: number; y: number }>): string {
   return `polygon(${pointString})`
 }
 
+function clipPolygonByDiagonalHalfPlane(
+  points: Array<{ x: number; y: number }>,
+  threshold: number,
+  keepGreaterThanOrEqual: boolean
+): Array<{ x: number; y: number }> {
+  if (points.length === 0) return []
+  const result: Array<{ x: number; y: number }> = []
+  const inside = (point: { x: number; y: number }) => {
+    const value = point.x + point.y - threshold
+    return keepGreaterThanOrEqual ? value >= 0 : value <= 0
+  }
+  const intersection = (start: { x: number; y: number }, end: { x: number; y: number }) => {
+    const startSum = start.x + start.y
+    const endSum = end.x + end.y
+    const denominator = endSum - startSum
+    if (Math.abs(denominator) < 1e-6) return { x: start.x, y: start.y }
+    const ratio = (threshold - startSum) / denominator
+    return {
+      x: start.x + (end.x - start.x) * ratio,
+      y: start.y + (end.y - start.y) * ratio
+    }
+  }
+
+  for (let i = 0; i < points.length; i++) {
+    const current = points[i]
+    const next = points[(i + 1) % points.length]
+    const currentInside = inside(current)
+    const nextInside = inside(next)
+
+    if (currentInside && nextInside) {
+      result.push(next)
+      continue
+    }
+    if (currentInside && !nextInside) {
+      result.push(intersection(current, next))
+      continue
+    }
+    if (!currentInside && nextInside) {
+      result.push(intersection(current, next))
+      result.push(next)
+    }
+  }
+
+  return result
+}
+
 function buildLineRevealClipPath(progress: number, isReverseDirection: boolean): string {
   const clampedProgress = Math.max(0, Math.min(progress, 1))
+  const viewportPolygon = [
+    { x: 0, y: 0 },
+    { x: 100, y: 0 },
+    { x: 100, y: 100 },
+    { x: 0, y: 100 }
+  ]
   if (isReverseDirection) {
     const threshold = 200 * (1 - clampedProgress)
-    if (threshold >= 200) {
-      return buildPolygonClipPath([
-        { x: 0, y: 0 },
-        { x: 100, y: 0 },
-        { x: 100, y: 100 },
-        { x: 0, y: 100 }
-      ])
-    }
-    if (threshold <= 0) {
-      return buildPolygonClipPath([{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }])
-    }
-    if (threshold > 100) {
-      return buildPolygonClipPath([
-        { x: 0, y: 0 },
-        { x: 100, y: 0 },
-        { x: 100, y: threshold - 100 },
-        { x: threshold - 100, y: 100 },
-        { x: 0, y: 100 }
-      ])
-    }
-    return buildPolygonClipPath([
-      { x: 0, y: 0 },
-      { x: threshold, y: 0 },
-      { x: 0, y: threshold }
-    ])
+    const clipped = clipPolygonByDiagonalHalfPlane(viewportPolygon, threshold, false)
+    return buildPolygonClipPath(clipped)
   }
 
   const threshold = 200 * clampedProgress
-  if (threshold <= 0) {
-    return buildPolygonClipPath([
-      { x: 0, y: 0 },
-      { x: 100, y: 0 },
-      { x: 100, y: 100 },
-      { x: 0, y: 100 }
-    ])
-  }
-  if (threshold >= 200) {
-    return buildPolygonClipPath([{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }])
-  }
-  if (threshold < 100) {
-    return buildPolygonClipPath([
-      { x: threshold, y: 0 },
-      { x: 100, y: 0 },
-      { x: 100, y: 100 },
-      { x: 0, y: 100 },
-      { x: 0, y: threshold }
-    ])
-  }
-  return buildPolygonClipPath([
-    { x: 100, y: threshold - 100 },
+  const clipped = clipPolygonByDiagonalHalfPlane(viewportPolygon, threshold, true)
+  return buildPolygonClipPath(clipped)
+}
+
+function buildLineRevealBandClipPath(progress: number, isReverseDirection: boolean): string {
+  const clampedProgress = Math.max(0, Math.min(progress, 1))
+  const viewportPolygon = [
+    { x: 0, y: 0 },
+    { x: 100, y: 0 },
     { x: 100, y: 100 },
-    { x: threshold - 100, y: 100 }
-  ])
+    { x: 0, y: 100 }
+  ]
+
+  if (isReverseDirection) {
+    const threshold = 200 * (1 - clampedProgress)
+    const upper = clipPolygonByDiagonalHalfPlane(viewportPolygon, threshold, false)
+    const band = clipPolygonByDiagonalHalfPlane(upper, threshold - LINE_REVEAL_BAND_WIDTH, true)
+    return buildPolygonClipPath(band)
+  }
+
+  const threshold = 200 * clampedProgress
+  const lower = clipPolygonByDiagonalHalfPlane(viewportPolygon, threshold, true)
+  const band = clipPolygonByDiagonalHalfPlane(lower, threshold + LINE_REVEAL_BAND_WIDTH, false)
+  return buildPolygonClipPath(band)
 }
 
 function SlideThumbnail({
@@ -548,8 +577,9 @@ export function SlideViewer({
             const isCircleIn = transitionKey === CIRCLE_IN_TRANSITION_KEY
             const isLineReveal = transitionKey === LINE_REVEAL_TRANSITION_KEY
             const isCircleInReverse = isCircleIn && isReverseBackTransition
-            const lineRevealPrepareClipPath = buildLineRevealClipPath(0, isReverseBackTransition)
-            const lineRevealRunningClipPath = buildLineRevealClipPath(1, isReverseBackTransition)
+            const lineRevealProgress = isTransitionRunning ? 1 : 0
+            const lineRevealClipPath = buildLineRevealClipPath(lineRevealProgress, isReverseBackTransition)
+            const lineRevealBandClipPath = buildLineRevealBandClipPath(lineRevealProgress, isReverseBackTransition)
             const enteringStartTransform = resolveEnteringStartTransform(
               transitionKey,
               isReverseBackTransition
@@ -590,9 +620,9 @@ export function SlideViewer({
                   : undefined
               : isLineReveal
                 ? isLeaving
-                  ? isTransitionRunning ? lineRevealRunningClipPath : lineRevealPrepareClipPath
+                  ? lineRevealClipPath
                   : undefined
-              : undefined
+                : undefined
             const layerTransition = isAnimating && isTransitionRunning
               ? isCircleIn
                 ? `clip-path ${transitionState?.durationMs || 0}ms ease`
@@ -609,6 +639,7 @@ export function SlideViewer({
                 layerOpacity,
                 layerTransform,
                 layerClipPath,
+                lineRevealBandClipPath,
                 layerTransition
               })
             }
@@ -666,6 +697,28 @@ export function SlideViewer({
                     currentIndex={currentIndex}
                   />
                 </div>
+                {isLeaving && isLineReveal && (
+                  <div
+                    style={{
+                      ...styles.slideLayerContainer,
+                      position: 'absolute',
+                      inset: 0,
+                      clipPath: lineRevealBandClipPath,
+                      opacity: 0.75,
+                      transition: layerTransition,
+                      pointerEvents: 'none',
+                      willChange: 'clip-path',
+                    }}
+                  >
+                    <SlideRenderer
+                      slide={slideItem}
+                      scale={slideScaleMap[slideItem.id] || 1}
+                      resourceMap={resourceMap}
+                      slideIndex={index}
+                      currentIndex={currentIndex}
+                    />
+                  </div>
+                )}
               </div>
             )
             })}
