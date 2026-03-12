@@ -201,6 +201,7 @@ export function SlideViewer({
                 const fadeDurationMs = Math.max(0, Math.min(rawDuration, MAX_FADE_DURATION_MS))
                 const shouldFadeIn = isCurrent && animatedSlideIndex === index && isFadeTransition
                 const shouldFadeOut = isLeaving
+                const zIndex = isCurrent ? 2 : isLeaving ? 1 : 0
                 const currentSlideNumber = currentIndex + 1
                 const sourceSlideNumber = index + 1
                 const shouldKeepAliveForCrossPlay = slideItem.elements.some(
@@ -219,6 +220,7 @@ export function SlideViewer({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  zIndex,
                   visibility: isCurrent || isLeaving || shouldKeepAliveForCrossPlay ? 'visible' : 'hidden',
                   opacity: isCurrent || isLeaving ? 1 : 0,
                   pointerEvents: isCurrent ? 'auto' : 'none',
