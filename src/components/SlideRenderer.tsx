@@ -422,15 +422,9 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
     if (!ruledPaper) return null
 
     const usableHeight = Math.max(mainHeight - textOuterPadding * 2, 1)
-    const maxFontSize = Math.max(
-      ...textLines.flatMap(line => line.textRuns.map(run => run.fontSize * scale)),
-      48 * scale
-    )
-    const estimatedGroupHeight = Math.max(maxFontSize, 60 * scale)
-    const rowCount = Math.max(1, Math.round(usableHeight / estimatedGroupHeight))
+    const rowCount = Math.max(1, textLines.length || 1)
     const rowHeight = usableHeight / rowCount
-    const topBottomGap = rowHeight * 0.4
-    const middleGap = rowHeight * 0.2
+    const segment = rowHeight / 3
     const strokeColor = mergeOpacityToColor(ruledPaper.lineColor, ruledPaper.opacity)
     const strokeWidth = Math.max(1, scale)
     const lineY: number[] = []
@@ -439,8 +433,8 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
       const rowStart = textOuterPadding + rowIndex * rowHeight
       lineY.push(
         rowStart,
-        rowStart + topBottomGap,
-        rowStart + topBottomGap + middleGap,
+        rowStart + segment,
+        rowStart + segment * 2,
         rowStart + rowHeight
       )
     }

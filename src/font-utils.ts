@@ -67,7 +67,16 @@ const fontAliasMap: Record<string, string[]> = {
   '俪黑 Pro': ['LiHei Pro'],
   '翩翩体-简': ['HanziPen SC', 'HanziPenSC-W3'],
   '圆体-简': ['Yuanti SC', 'STYuanti-SC'],
-  '仿宋_GB2312': ['FangSong_GB2312']
+  '仿宋_GB2312': ['FangSong_GB2312'],
+  'SeewoEnglishHandwriting': [
+    'Segoe Script',
+    'Bradley Hand',
+    'Lucida Handwriting',
+    'Comic Sans MS',
+    'Snell Roundhand',
+    'Apple Chancery',
+    'cursive'
+  ]
 }
 
 function quoteFontFamily(name: string): string {
@@ -85,7 +94,16 @@ export function resolveFontCandidates(fontFamily?: string): string[] {
   const primary = fontFamily.trim()
   if (!primary) return []
 
-  const aliasList = fontAliasMap[primary] || []
+  const packName = (() => {
+    const hashIndex = primary.lastIndexOf('#')
+    if (hashIndex === -1 || hashIndex === primary.length - 1) return null
+    return primary.slice(hashIndex + 1).trim()
+  })()
+
+  const aliasList = [
+    ...(fontAliasMap[primary] || []),
+    ...(packName ? [packName, ...(fontAliasMap[packName] || [])] : [])
+  ]
   return Array.from(new Set([primary, ...aliasList]))
 }
 
