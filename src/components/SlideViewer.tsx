@@ -113,8 +113,16 @@ function formatPercent(value: number): string {
 }
 
 function buildPolygonClipPath(points: Array<{ x: number; y: number }>): string {
-  if (points.length < 3) return 'polygon(0% 0%, 0% 0%, 0% 0%)'
-  const pointString = points
+  if (points.length < 3) return 'polygon(0% 0%, 0% 0%, 0% 0%, 0% 0%, 0% 0%, 0% 0%)'
+
+  // clip-path 动画要求前后顶点数量一致，否则会退化成离散切换
+  const normalizedPoints = [...points]
+  const lastPoint = normalizedPoints[normalizedPoints.length - 1]
+  while (normalizedPoints.length < 6) {
+    normalizedPoints.push(lastPoint)
+  }
+
+  const pointString = normalizedPoints
     .map(point => `${formatPercent(point.x)} ${formatPercent(point.y)}`)
     .join(', ')
   return `polygon(${pointString})`
