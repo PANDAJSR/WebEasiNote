@@ -366,6 +366,10 @@ export interface SlideData {
   height: number;
   backgroundColor: string;
   backgroundImage?: string; // sourceId for ImageBrush background
+  transition?: {
+    key: string;
+    durationMs: number;
+  };
   issues: SlideIssue[];
   elements: (TextElement | ShapeElement | PictureElement | VideoElement | TableElement | TopicElement | CylinderElement | ConeElement | CubeElement | GeometryElement | MathFormulaElement | UnknownElement)[];
 }

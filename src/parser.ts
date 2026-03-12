@@ -253,6 +253,11 @@ function parseSlideXML(xmlString: string): SlideData {
   const id = getElementText(slideElement, 'Id') || 'unknown';
   const width = parseInt(getElementText(slideElement, 'Width') || '1280', 10);
   const height = parseInt(getElementText(slideElement, 'Height') || '720', 10);
+  const transitionKey = getElementText(slideElement, 'TransitionKey') || 'None'
+  const durationTicks = parseInt(getElementText(slideElement, 'Duration') || '0', 10)
+  const transitionDurationMs = Number.isFinite(durationTicks) && durationTicks > 0
+    ? Math.max(0, Math.round(durationTicks / 10000))
+    : 0
   
   // 解析背景色或背景图片
   const backgroundElement = slideElement.querySelector('Background');
@@ -305,6 +310,10 @@ function parseSlideXML(xmlString: string): SlideData {
     height,
     backgroundColor,
     backgroundImage,
+    transition: {
+      key: transitionKey,
+      durationMs: transitionDurationMs
+    },
     issues,
     elements
   };

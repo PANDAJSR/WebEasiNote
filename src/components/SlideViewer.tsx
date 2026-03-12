@@ -23,6 +23,22 @@ interface SlideThumbnailProps {
 
 const thumbnailWidth = 96
 const thumbnailHeight = 56
+const FADE_TRANSITION_KEY = 'Fade'
+const DEFAULT_FADE_DURATION_MS = 300
+const MAX_FADE_DURATION_MS = 8000
+const slideFadeKeyframesId = 'slide-fade-keyframes'
+
+if (typeof document !== 'undefined' && !document.getElementById(slideFadeKeyframesId)) {
+  const styleSheet = document.createElement('style')
+  styleSheet.id = slideFadeKeyframesId
+  styleSheet.textContent = `
+    @keyframes slideFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  `
+  document.head.appendChild(styleSheet)
+}
 
 function SlideThumbnail({
   slide,
@@ -67,6 +83,8 @@ export function SlideViewer({
   const containerRef = useRef<HTMLDivElement>(null)
   const [slideScaleMap, setSlideScaleMap] = useState<Record<string, number>>({})
   const [isSlidePanelOpen, setSlidePanelOpen] = useState(false)
+  const previousIndexRef = useRef(currentIndex)
+  const [animatedSlideIndex, setAnimatedSlideIndex] = useState<number | null>(null)
   const isFirstSlide = currentIndex <= 0
   const isLastSlide = currentIndex >= slides.length - 1
   const currentScale = slideScaleMap[slide.id] || 1
@@ -111,6 +129,12 @@ export function SlideViewer({
     return () => window.removeEventListener('resize', handleResize)
   }, [calculateSlideScaleMap])
 
+  useEffect(() => {
+    if (previousIndexRef.current === currentIndex) return
+    setAnimatedSlideIndex(currentIndex)
+    previousIndexRef.current = currentIndex
+  }, [currentIndex])
+
   return (
     <div style={styles.slideViewerContainer}>
       {isSlidePanelOpen && (
@@ -133,6 +157,10 @@ export function SlideViewer({
               key={`${slideItem.id}-${index}`}
               style={(() => {
                 const isCurrent = index === currentIndex
+                const isFadeTransition = slideItem.transition?.key === FADE_TRANSITION_KEY
+                const rawDuration = slideItem.transition?.durationMs ?? DEFAULT_FADE_DURATION_MS
+                const fadeDurationMs = Math.max(0, Math.min(rawDuration, MAX_FADE_DURATION_MS))
+                const shouldFadeIn = isCurrent && animatedSlideIndex === index && isFadeTransition
                 const currentSlideNumber = currentIndex + 1
                 const sourceSlideNumber = index + 1
                 const shouldKeepAliveForCrossPlay = slideItem.elements.some(
@@ -154,6 +182,7 @@ export function SlideViewer({
                   visibility: isCurrent || shouldKeepAliveForCrossPlay ? 'visible' : 'hidden',
                   opacity: isCurrent ? 1 : 0,
                   pointerEvents: isCurrent ? 'auto' : 'none',
+                  animation: shouldFadeIn ? `slideFadeIn ${fadeDurationMs}ms ease forwards` : undefined,
                 }
               })()}
             >
