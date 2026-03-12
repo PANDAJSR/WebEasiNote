@@ -48,6 +48,10 @@ if (typeof document !== 'undefined' && !document.getElementById(slideFadeKeyfram
       from { transform: translateX(100%); }
       to { transform: translateX(0%); }
     }
+    @keyframes slideInFromLeft {
+      from { transform: translateX(-100%); }
+      to { transform: translateX(0%); }
+    }
     @keyframes slideOutToLeft {
       from { transform: translateX(0%); }
       to { transform: translateX(-100%); }
@@ -171,8 +175,6 @@ export function SlideViewer({
     const leavingSlide = previousIndex >= 0 ? slides[previousIndex] : undefined
     const isBackward = currentIndex < previousIndex
     const isNonThumbnailBack = isBackward && slideChangeSource !== 'thumbnail'
-    const nextTransitionKey = nextSlide?.transition?.key || 'None'
-    const leavingTransitionKey = leavingSlide?.transition?.key || 'None'
     const activeTransitionFromSlide = isNonThumbnailBack ? leavingSlide : nextSlide
     const resolvedTransitionKey = activeTransitionFromSlide?.transition?.key || 'None'
     const shouldAnimateTransition =
@@ -183,10 +185,6 @@ export function SlideViewer({
       isNonThumbnailBack
       && resolvedTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
 
-    console.log(
-      `[SlideViewer] 切页: ${previousIndex + 1} -> ${currentIndex + 1}, 来源=${slideChangeSource}, 目标页过渡=${nextTransitionKey}, 离开页过渡=${leavingTransitionKey}, 生效过渡=${resolvedTransitionKey}, 反向动画=${shouldUseReverseBackTransition}`
-    )
-
     if (leaveAnimationTimerRef.current !== null) {
       window.clearTimeout(leaveAnimationTimerRef.current)
       leaveAnimationTimerRef.current = null
@@ -195,7 +193,7 @@ export function SlideViewer({
     if (shouldAnimateTransition && previousIndex >= 0 && previousIndex !== currentIndex) {
       setActiveTransitionKey(resolvedTransitionKey)
       setActiveTransitionDurationMs(transitionDurationMs)
-      setAnimatedSlideIndex(shouldUseReverseBackTransition ? null : currentIndex)
+      setAnimatedSlideIndex(currentIndex)
       setLeavingSlideIndex(previousIndex)
       setIsReverseBackTransition(shouldUseReverseBackTransition)
       leaveAnimationTimerRef.current = window.setTimeout(() => {
@@ -275,7 +273,9 @@ export function SlideViewer({
               ? activeTransitionKey === FADE_TRANSITION_KEY
                 ? `slideFadeIn ${transitionDurationMs}ms ease forwards`
                 : activeTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
-                  ? `slideInFromRight ${transitionDurationMs}ms ease forwards`
+                  ? isReverseBackTransition
+                    ? `slideInFromLeft ${transitionDurationMs}ms ease forwards`
+                    : `slideInFromRight ${transitionDurationMs}ms ease forwards`
                   : undefined
               : shouldAnimateOut
                 ? activeTransitionKey === FADE_TRANSITION_KEY
