@@ -381,7 +381,7 @@ export const styles: Record<string, CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#e2e8f0',
+    backgroundColor: '#000000',
     overflow: 'auto',
     padding: '24px',
   },

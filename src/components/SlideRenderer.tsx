@@ -68,8 +68,6 @@ export function SlideRenderer({
         width: scaledWidth,
         height: scaledHeight,
         overflow: 'hidden',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-        borderRadius: '4px',
         transformOrigin: 'top left',
       }}
     >
