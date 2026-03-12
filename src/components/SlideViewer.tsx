@@ -197,7 +197,9 @@ export function SlideViewer({
       setLeavingSlideIndex(previousIndex)
       setIsReverseBackTransition(shouldUseReverseBackTransition)
       leaveAnimationTimerRef.current = window.setTimeout(() => {
+        setAnimatedSlideIndex(null)
         setLeavingSlideIndex(null)
+        setActiveTransitionKey('None')
         setIsReverseBackTransition(false)
         leaveAnimationTimerRef.current = null
       }, transitionDurationMs)
