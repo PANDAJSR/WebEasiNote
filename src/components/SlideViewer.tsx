@@ -23,6 +23,7 @@ interface SlideThumbnailProps {
 
 const thumbnailWidth = 96
 const thumbnailHeight = 56
+const slideInfoBarHeight = 40
 const FADE_TRANSITION_KEY = 'Fade'
 const SLIDE_TO_LEFT_TRANSITION_KEY = 'SlideToLeft'
 const DEFAULT_FADE_DURATION_MS = 300
@@ -121,15 +122,22 @@ export function SlideViewer({
     if (!containerRef.current) return
 
     const container = containerRef.current
-    const infoBarHeight = 40 // 底部信息栏高度
-    const containerWidth = container.clientWidth - 48 // 减去 padding
-    const containerHeight = container.clientHeight - 48 - infoBarHeight
+    const computedStyle = window.getComputedStyle(container)
+    const paddingLeft = parseFloat(computedStyle.paddingLeft) || 0
+    const paddingRight = parseFloat(computedStyle.paddingRight) || 0
+    const paddingTop = parseFloat(computedStyle.paddingTop) || 0
+    const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0
+    const containerWidth = Math.max(0, container.clientWidth - paddingLeft - paddingRight)
+    const containerHeight = Math.max(
+      0,
+      container.clientHeight - paddingTop - paddingBottom - slideInfoBarHeight
+    )
 
     const nextScaleMap: Record<string, number> = {}
     slides.forEach(slideItem => {
       const scaleX = containerWidth / slideItem.width
       const scaleY = containerHeight / slideItem.height
-      nextScaleMap[slideItem.id] = Math.min(scaleX, scaleY, 1)
+      nextScaleMap[slideItem.id] = Math.max(0, Math.min(scaleX, scaleY))
     })
     setSlideScaleMap(nextScaleMap)
   }, [slides])
@@ -197,10 +205,9 @@ export function SlideViewer({
         <div
           style={{
             ...styles.slideWrapper,
-            paddingBottom: '40px',
             position: 'relative',
             width: '100%',
-            height: '100%',
+            height: `calc(100% - ${slideInfoBarHeight}px)`,
           }}
         >
           {slides.map((slideItem, index) => {
