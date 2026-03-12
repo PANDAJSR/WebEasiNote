@@ -114,6 +114,12 @@ function isLineRevealTransition(transitionKey: string): boolean {
   return normalizeTransitionKey(transitionKey) === LINE_REVEAL_TRANSITION_KEY
 }
 
+function isMaskImageSupported(): boolean {
+  if (typeof CSS === 'undefined' || typeof CSS.supports !== 'function') return false
+  return CSS.supports('mask-image', 'linear-gradient(#000, #000)')
+    || CSS.supports('-webkit-mask-image', 'linear-gradient(#000, #000)')
+}
+
 function SlideThumbnail({
   slide,
   index,
@@ -158,6 +164,7 @@ export function SlideViewer({
   const containerRef = useRef<HTMLDivElement>(null)
   const [slideScaleMap, setSlideScaleMap] = useState<Record<string, number>>({})
   const [isSlidePanelOpen, setSlidePanelOpen] = useState(false)
+  const [canUseMaskImage, setCanUseMaskImage] = useState(false)
   const previousIndexRef = useRef(currentIndex)
   const [transitionState, setTransitionState] = useState<TransitionState | null>(null)
   const [layerSnapshots, setLayerSnapshots] = useState<Record<number, LayerSnapshot>>({})
@@ -170,6 +177,10 @@ export function SlideViewer({
   const currentScale = slideScaleMap[slide.id] || 1
   const currentViewportWidth = Math.max(0, slide.width * currentScale)
   const currentViewportHeight = Math.max(0, slide.height * currentScale)
+
+  useEffect(() => {
+    setCanUseMaskImage(isMaskImageSupported())
+  }, [])
 
   const logTransitionDebug = useCallback((message: string, payload?: Record<string, unknown>) => {
     if (!ENABLE_TRANSITION_DEBUG_LOG) return
@@ -513,28 +524,34 @@ export function SlideViewer({
                   ? isTransitionRunning ? CIRCLE_IN_END_CLIP_PATH : CIRCLE_IN_START_CLIP_PATH
                   : undefined
               : isLineReveal
-                ? isLineRevealReverse
-                  ? isEntering
-                    ? isTransitionRunning ? LINE_REVEAL_START_CLIP_PATH : LINE_REVEAL_END_CLIP_PATH
-                    : undefined
-                  : isLeaving
-                    ? isTransitionRunning ? LINE_REVEAL_END_CLIP_PATH : LINE_REVEAL_START_CLIP_PATH
-                    : undefined
+                ? !canUseMaskImage
+                  ? isLineRevealReverse
+                    ? isEntering
+                      ? isTransitionRunning ? LINE_REVEAL_START_CLIP_PATH : LINE_REVEAL_END_CLIP_PATH
+                      : undefined
+                    : isLeaving
+                      ? isTransitionRunning ? LINE_REVEAL_END_CLIP_PATH : LINE_REVEAL_START_CLIP_PATH
+                      : undefined
+                  : undefined
                 : undefined
             const layerMaskPosition = isLineReveal
-              ? isLineRevealReverse
-                ? isEntering
-                  ? isTransitionRunning ? LINE_REVEAL_START_MASK_POSITION : LINE_REVEAL_END_MASK_POSITION
-                  : undefined
-                : isLeaving
-                  ? isTransitionRunning ? LINE_REVEAL_END_MASK_POSITION : LINE_REVEAL_START_MASK_POSITION
-                  : undefined
+              ? canUseMaskImage
+                ? isLineRevealReverse
+                  ? isEntering
+                    ? isTransitionRunning ? LINE_REVEAL_START_MASK_POSITION : LINE_REVEAL_END_MASK_POSITION
+                    : undefined
+                  : isLeaving
+                    ? isTransitionRunning ? LINE_REVEAL_END_MASK_POSITION : LINE_REVEAL_START_MASK_POSITION
+                    : undefined
+                : undefined
               : undefined
             const layerTransition = isAnimating && isTransitionRunning
               ? isCircleIn
                 ? `clip-path ${transitionState?.durationMs || 0}ms ease`
                 : isLineReveal
-                  ? `clip-path ${transitionState?.durationMs || 0}ms ease, mask-position ${transitionState?.durationMs || 0}ms ease, -webkit-mask-position ${transitionState?.durationMs || 0}ms ease`
+                  ? canUseMaskImage
+                    ? `mask-position ${transitionState?.durationMs || 0}ms ease, -webkit-mask-position ${transitionState?.durationMs || 0}ms ease`
+                    : `clip-path ${transitionState?.durationMs || 0}ms ease`
                 : `transform ${transitionState?.durationMs || 0}ms ease, opacity ${transitionState?.durationMs || 0}ms ease`
               : 'none'
             if (ENABLE_TRANSITION_DEBUG_LOG && (isEntering || isLeaving)) {
@@ -586,12 +603,12 @@ export function SlideViewer({
                     transform: layerTransform,
                     opacity: layerOpacity,
                     clipPath: layerClipPath,
-                    maskImage: isLineReveal ? LINE_REVEAL_MASK_IMAGE : undefined,
-                    WebkitMaskImage: isLineReveal ? LINE_REVEAL_MASK_IMAGE : undefined,
-                    maskSize: isLineReveal ? LINE_REVEAL_MASK_SIZE : undefined,
-                    WebkitMaskSize: isLineReveal ? LINE_REVEAL_MASK_SIZE : undefined,
-                    maskRepeat: isLineReveal ? 'no-repeat' : undefined,
-                    WebkitMaskRepeat: isLineReveal ? 'no-repeat' : undefined,
+                    maskImage: isLineReveal && canUseMaskImage ? LINE_REVEAL_MASK_IMAGE : undefined,
+                    WebkitMaskImage: isLineReveal && canUseMaskImage ? LINE_REVEAL_MASK_IMAGE : undefined,
+                    maskSize: isLineReveal && canUseMaskImage ? LINE_REVEAL_MASK_SIZE : undefined,
+                    WebkitMaskSize: isLineReveal && canUseMaskImage ? LINE_REVEAL_MASK_SIZE : undefined,
+                    maskRepeat: isLineReveal && canUseMaskImage ? 'no-repeat' : undefined,
+                    WebkitMaskRepeat: isLineReveal && canUseMaskImage ? 'no-repeat' : undefined,
                     maskPosition: layerMaskPosition,
                     WebkitMaskPosition: layerMaskPosition,
                     transition: layerTransition,
@@ -599,7 +616,7 @@ export function SlideViewer({
                       ? isCircleIn
                         ? 'clip-path'
                         : isLineReveal
-                          ? 'clip-path, mask-position'
+                          ? canUseMaskImage ? 'mask-position' : 'clip-path'
                           : 'transform, opacity'
                       : undefined,
                   }}
