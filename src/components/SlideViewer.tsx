@@ -251,7 +251,7 @@ export function SlideViewer({
     const transitionDurationMs = Math.max(0, Math.min(rawDuration, MAX_FADE_DURATION_MS))
     const shouldUseReverseBackTransition =
       isNonThumbnailBack
-      && isDirectionalSlideTransition(resolvedTransitionKey)
+      && (isDirectionalSlideTransition(resolvedTransitionKey) || isCircleInTransition(resolvedTransitionKey))
 
     logTransitionDebug('检测翻页', {
       previousIndex,
@@ -445,18 +445,22 @@ export function SlideViewer({
             const isTransitionRunning = transitionState?.phase === 'running'
             const snapshot = layerSnapshots[index]
             const transitionKey = transitionState?.key || 'None'
+            const isReverseBackTransition = Boolean(transitionState?.isReverseBackTransition)
             const zIndex = transitionKey === CIRCLE_IN_TRANSITION_KEY
-              ? isLeaving ? 2 : isCurrent ? 1 : 0
+              ? isReverseBackTransition
+                ? isEntering ? 2 : isCurrent ? 1 : 0
+                : isLeaving ? 2 : isCurrent ? 1 : 0
               : isCurrent ? 2 : isLeaving ? 1 : 0
             const isFadeTransition = transitionKey === FADE_TRANSITION_KEY
             const isCircleIn = transitionKey === CIRCLE_IN_TRANSITION_KEY
+            const isCircleInReverse = isCircleIn && isReverseBackTransition
             const enteringStartTransform = resolveEnteringStartTransform(
               transitionKey,
-              Boolean(transitionState?.isReverseBackTransition)
+              isReverseBackTransition
             )
             const leavingTargetTransform = resolveLeavingTargetTransform(
               transitionKey,
-              Boolean(transitionState?.isReverseBackTransition)
+              isReverseBackTransition
             )
             const layerOpacity = isEntering
               ? isFadeTransition
@@ -480,8 +484,14 @@ export function SlideViewer({
                     ? snapshot?.transform ?? DEFAULT_TRANSFORM
                     : DEFAULT_TRANSFORM
                 : DEFAULT_TRANSFORM
-            const layerClipPath = isLeaving && isCircleIn
-              ? isTransitionRunning ? CIRCLE_IN_END_CLIP_PATH : CIRCLE_IN_START_CLIP_PATH
+            const layerClipPath = isCircleIn
+              ? isCircleInReverse
+                ? isEntering
+                  ? isTransitionRunning ? CIRCLE_IN_START_CLIP_PATH : CIRCLE_IN_END_CLIP_PATH
+                  : undefined
+                : isLeaving
+                  ? isTransitionRunning ? CIRCLE_IN_END_CLIP_PATH : CIRCLE_IN_START_CLIP_PATH
+                  : undefined
               : undefined
             const layerTransition = isAnimating && isTransitionRunning
               ? isCircleIn
