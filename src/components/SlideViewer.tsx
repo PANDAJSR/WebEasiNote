@@ -24,6 +24,7 @@ interface SlideThumbnailProps {
 const thumbnailWidth = 96
 const thumbnailHeight = 56
 const FADE_TRANSITION_KEY = 'Fade'
+const SLIDE_TO_LEFT_TRANSITION_KEY = 'SlideToLeft'
 const DEFAULT_FADE_DURATION_MS = 300
 const MAX_FADE_DURATION_MS = 8000
 const slideFadeKeyframesId = 'slide-fade-keyframes'
@@ -39,6 +40,14 @@ if (typeof document !== 'undefined' && !document.getElementById(slideFadeKeyfram
     @keyframes slideFadeOut {
       from { opacity: 1; }
       to { opacity: 0; }
+    }
+    @keyframes slideInFromRight {
+      from { transform: translateX(100%); }
+      to { transform: translateX(0%); }
+    }
+    @keyframes slideOutToLeft {
+      from { transform: translateX(0%); }
+      to { transform: translateX(-100%); }
     }
   `
   document.head.appendChild(styleSheet)
@@ -90,7 +99,8 @@ export function SlideViewer({
   const previousIndexRef = useRef(currentIndex)
   const [animatedSlideIndex, setAnimatedSlideIndex] = useState<number | null>(null)
   const [leavingSlideIndex, setLeavingSlideIndex] = useState<number | null>(null)
-  const [activeFadeDurationMs, setActiveFadeDurationMs] = useState(DEFAULT_FADE_DURATION_MS)
+  const [activeTransitionKey, setActiveTransitionKey] = useState<string>('None')
+  const [activeTransitionDurationMs, setActiveTransitionDurationMs] = useState(DEFAULT_FADE_DURATION_MS)
   const leaveAnimationTimerRef = useRef<number | null>(null)
   const isFirstSlide = currentIndex <= 0
   const isLastSlide = currentIndex >= slides.length - 1
@@ -140,24 +150,27 @@ export function SlideViewer({
     if (previousIndexRef.current === currentIndex) return
     const previousIndex = previousIndexRef.current
     const nextSlide = slides[currentIndex]
-    const isFadeTransition = nextSlide?.transition?.key === FADE_TRANSITION_KEY
+    const nextTransitionKey = nextSlide?.transition?.key || 'None'
+    const shouldAnimateTransition = nextTransitionKey === FADE_TRANSITION_KEY || nextTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
     const rawDuration = nextSlide?.transition?.durationMs ?? DEFAULT_FADE_DURATION_MS
-    const fadeDurationMs = Math.max(0, Math.min(rawDuration, MAX_FADE_DURATION_MS))
+    const transitionDurationMs = Math.max(0, Math.min(rawDuration, MAX_FADE_DURATION_MS))
 
     if (leaveAnimationTimerRef.current !== null) {
       window.clearTimeout(leaveAnimationTimerRef.current)
       leaveAnimationTimerRef.current = null
     }
 
-    if (isFadeTransition && previousIndex >= 0 && previousIndex !== currentIndex) {
-      setActiveFadeDurationMs(fadeDurationMs)
+    if (shouldAnimateTransition && previousIndex >= 0 && previousIndex !== currentIndex) {
+      setActiveTransitionKey(nextTransitionKey)
+      setActiveTransitionDurationMs(transitionDurationMs)
       setAnimatedSlideIndex(currentIndex)
       setLeavingSlideIndex(previousIndex)
       leaveAnimationTimerRef.current = window.setTimeout(() => {
         setLeavingSlideIndex(null)
         leaveAnimationTimerRef.current = null
-      }, fadeDurationMs)
+      }, transitionDurationMs)
     } else {
+      setActiveTransitionKey('None')
       setAnimatedSlideIndex(null)
       setLeavingSlideIndex(null)
     }
@@ -196,11 +209,10 @@ export function SlideViewer({
               style={(() => {
                 const isCurrent = index === currentIndex
                 const isLeaving = index === leavingSlideIndex
-                const isFadeTransition = slideItem.transition?.key === FADE_TRANSITION_KEY
                 const rawDuration = slideItem.transition?.durationMs ?? DEFAULT_FADE_DURATION_MS
-                const fadeDurationMs = Math.max(0, Math.min(rawDuration, MAX_FADE_DURATION_MS))
-                const shouldFadeIn = isCurrent && animatedSlideIndex === index && isFadeTransition
-                const shouldFadeOut = isLeaving
+                const transitionDurationMs = Math.max(0, Math.min(rawDuration, MAX_FADE_DURATION_MS))
+                const shouldAnimateIn = isCurrent && animatedSlideIndex === index
+                const shouldAnimateOut = isLeaving
                 const zIndex = isCurrent ? 2 : isLeaving ? 1 : 0
                 const currentSlideNumber = currentIndex + 1
                 const sourceSlideNumber = index + 1
@@ -224,10 +236,18 @@ export function SlideViewer({
                   visibility: isCurrent || isLeaving || shouldKeepAliveForCrossPlay ? 'visible' : 'hidden',
                   opacity: isCurrent || isLeaving ? 1 : 0,
                   pointerEvents: isCurrent ? 'auto' : 'none',
-                  animation: shouldFadeIn
-                    ? `slideFadeIn ${fadeDurationMs}ms ease forwards`
-                    : shouldFadeOut
-                      ? `slideFadeOut ${activeFadeDurationMs}ms ease forwards`
+                  animation: shouldAnimateIn
+                    ? activeTransitionKey === FADE_TRANSITION_KEY
+                      ? `slideFadeIn ${transitionDurationMs}ms ease forwards`
+                      : activeTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
+                        ? `slideInFromRight ${transitionDurationMs}ms ease forwards`
+                        : undefined
+                    : shouldAnimateOut
+                      ? activeTransitionKey === FADE_TRANSITION_KEY
+                        ? `slideFadeOut ${activeTransitionDurationMs}ms ease forwards`
+                        : activeTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
+                          ? `slideOutToLeft ${activeTransitionDurationMs}ms ease forwards`
+                          : undefined
                       : undefined,
                 }
               })()}
