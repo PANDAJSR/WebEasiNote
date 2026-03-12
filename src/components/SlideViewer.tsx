@@ -421,11 +421,15 @@ export function SlideViewer({
             const layerTransform = isEntering
               ? isTransitionRunning
                 ? DEFAULT_TRANSFORM
-                : snapshot?.transform ?? enteringStartTransform
+                : isFadeTransition
+                  ? snapshot?.transform ?? DEFAULT_TRANSFORM
+                  : enteringStartTransform
               : isLeaving
                 ? isTransitionRunning
                   ? leavingTargetTransform
-                  : snapshot?.transform ?? DEFAULT_TRANSFORM
+                  : isFadeTransition
+                    ? snapshot?.transform ?? DEFAULT_TRANSFORM
+                    : DEFAULT_TRANSFORM
                 : DEFAULT_TRANSFORM
             const layerTransition = isAnimating && isTransitionRunning
               ? `transform ${transitionState?.durationMs || 0}ms ease, opacity ${transitionState?.durationMs || 0}ms ease`
