@@ -222,14 +222,12 @@ export function SlideViewer({
         >
           <div
             style={{
-              position: 'relative',
+              ...styles.slideViewport,
               width: `${currentViewportWidth}px`,
               height: `${currentViewportHeight}px`,
-              overflow: 'hidden',
-              flexShrink: 0,
-              backgroundColor: '#000000',
             }}
           >
+            <div style={styles.slideWhiteBackdrop} />
             {slides.map((slideItem, index) => {
             const isCurrent = index === currentIndex
             const isLeaving = index === leavingSlideIndex
@@ -280,6 +278,7 @@ export function SlideViewer({
               >
                 <div
                   style={{
+                    ...styles.slideLayerContainer,
                     animation: slideAnimation,
                     willChange: slideAnimation ? 'transform, opacity' : undefined,
                   }}

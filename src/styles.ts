@@ -390,6 +390,23 @@ export const styles: Record<string, CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
   },
+  slideViewport: {
+    position: 'relative',
+    overflow: 'hidden',
+    flexShrink: 0,
+    backgroundColor: '#000000',
+  },
+  slideWhiteBackdrop: {
+    position: 'absolute',
+    inset: 0,
+    backgroundColor: '#ffffff',
+    pointerEvents: 'none',
+  },
+  slideLayerContainer: {
+    position: 'relative',
+    width: '100%',
+    height: '100%',
+  },
 
   // 问题弹窗
   modalOverlay: {
