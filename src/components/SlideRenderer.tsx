@@ -464,17 +464,23 @@ function TextElementRenderer({ element, scale }: { element: TextElement; scale: 
         }}
       >
         {lineY.map((yPos, index) => (
+          (() => {
+            const lineIndexInGroup = index % 4
+            const lineThickness = lineIndexInGroup === 2 ? strokeWidth * 1.6 : strokeWidth
+            return (
           <div
             key={index}
             style={{
               position: 'absolute',
               left: 0,
-              top: yPos - strokeWidth / 2,
+              top: yPos - lineThickness / 2,
               width: '100%',
-              height: strokeWidth,
+              height: lineThickness,
               backgroundColor: strokeColor
             }}
           />
+            )
+          })()
         ))}
       </div>
     )
