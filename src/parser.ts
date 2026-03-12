@@ -253,7 +253,7 @@ function parseSlideXML(xmlString: string): SlideData {
   const id = getElementText(slideElement, 'Id') || 'unknown';
   const width = parseInt(getElementText(slideElement, 'Width') || '1280', 10);
   const height = parseInt(getElementText(slideElement, 'Height') || '720', 10);
-  const transitionKey = getElementText(slideElement, 'TransitionKey') || 'None'
+  const transitionKey = (getElementText(slideElement, 'TransitionKey') || 'None').trim()
   const durationTicks = parseInt(getElementText(slideElement, 'Duration') || '0', 10)
   const transitionDurationMs = Number.isFinite(durationTicks) && durationTicks > 0
     ? Math.max(0, Math.round(durationTicks / 10000))

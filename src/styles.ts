@@ -610,7 +610,7 @@ export const styles: Record<string, CSSProperties> = {
   },
   slidePagerButtonDisabled: {
     color: '#94a3b8',
-    borderColor: '#e2e8f0',
+    border: '1px solid #e2e8f0',
     backgroundColor: '#f1f5f9',
     cursor: 'not-allowed',
   },

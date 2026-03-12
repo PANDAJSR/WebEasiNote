@@ -49,43 +49,50 @@ interface TransitionState {
   phase: 'prepare' | 'running'
 }
 
+function normalizeTransitionKey(transitionKey: string): string {
+  return transitionKey.trim()
+}
+
 function resolveEnteringStartTransform(transitionKey: string, isReverseBackTransition: boolean): string {
-  if (transitionKey === SLIDE_TO_LEFT_TRANSITION_KEY) {
+  const normalizedTransitionKey = normalizeTransitionKey(transitionKey)
+  if (normalizedTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY) {
     return isReverseBackTransition ? 'translate3d(-100%, 0%, 0%)' : 'translate3d(100%, 0%, 0%)'
   }
-  if (transitionKey === SLIDE_TO_RIGHT_TRANSITION_KEY) {
+  if (normalizedTransitionKey === SLIDE_TO_RIGHT_TRANSITION_KEY) {
     return isReverseBackTransition ? 'translate3d(100%, 0%, 0%)' : 'translate3d(-100%, 0%, 0%)'
   }
-  if (transitionKey === SLIDE_TO_TOP_TRANSITION_KEY) {
+  if (normalizedTransitionKey === SLIDE_TO_TOP_TRANSITION_KEY) {
     return isReverseBackTransition ? 'translate3d(0%, -100%, 0%)' : 'translate3d(0%, 100%, 0%)'
   }
-  if (transitionKey === SLIDE_TO_BOTTOM_TRANSITION_KEY) {
+  if (normalizedTransitionKey === SLIDE_TO_BOTTOM_TRANSITION_KEY) {
     return isReverseBackTransition ? 'translate3d(0%, 100%, 0%)' : 'translate3d(0%, -100%, 0%)'
   }
   return DEFAULT_TRANSFORM
 }
 
 function resolveLeavingTargetTransform(transitionKey: string, isReverseBackTransition: boolean): string {
-  if (transitionKey === SLIDE_TO_LEFT_TRANSITION_KEY) {
+  const normalizedTransitionKey = normalizeTransitionKey(transitionKey)
+  if (normalizedTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY) {
     return isReverseBackTransition ? 'translate3d(100%, 0%, 0%)' : 'translate3d(-100%, 0%, 0%)'
   }
-  if (transitionKey === SLIDE_TO_RIGHT_TRANSITION_KEY) {
+  if (normalizedTransitionKey === SLIDE_TO_RIGHT_TRANSITION_KEY) {
     return isReverseBackTransition ? 'translate3d(-100%, 0%, 0%)' : 'translate3d(100%, 0%, 0%)'
   }
-  if (transitionKey === SLIDE_TO_TOP_TRANSITION_KEY) {
+  if (normalizedTransitionKey === SLIDE_TO_TOP_TRANSITION_KEY) {
     return isReverseBackTransition ? 'translate3d(0%, 100%, 0%)' : 'translate3d(0%, -100%, 0%)'
   }
-  if (transitionKey === SLIDE_TO_BOTTOM_TRANSITION_KEY) {
+  if (normalizedTransitionKey === SLIDE_TO_BOTTOM_TRANSITION_KEY) {
     return isReverseBackTransition ? 'translate3d(0%, -100%, 0%)' : 'translate3d(0%, 100%, 0%)'
   }
   return DEFAULT_TRANSFORM
 }
 
 function isDirectionalSlideTransition(transitionKey: string): boolean {
-  return transitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
-    || transitionKey === SLIDE_TO_RIGHT_TRANSITION_KEY
-    || transitionKey === SLIDE_TO_TOP_TRANSITION_KEY
-    || transitionKey === SLIDE_TO_BOTTOM_TRANSITION_KEY
+  const normalizedTransitionKey = normalizeTransitionKey(transitionKey)
+  return normalizedTransitionKey === SLIDE_TO_LEFT_TRANSITION_KEY
+    || normalizedTransitionKey === SLIDE_TO_RIGHT_TRANSITION_KEY
+    || normalizedTransitionKey === SLIDE_TO_TOP_TRANSITION_KEY
+    || normalizedTransitionKey === SLIDE_TO_BOTTOM_TRANSITION_KEY
 }
 
 function SlideThumbnail({
@@ -200,7 +207,9 @@ export function SlideViewer({
     const isBackward = currentIndex < previousIndex
     const isNonThumbnailBack = isBackward && slideChangeSource !== 'thumbnail'
     const activeTransitionFromSlide = isNonThumbnailBack ? leavingSlide : nextSlide
-    const resolvedTransitionKey = activeTransitionFromSlide?.transition?.key || 'None'
+    const resolvedTransitionKey = normalizeTransitionKey(
+      activeTransitionFromSlide?.transition?.key || 'None'
+    )
     const shouldAnimateTransition =
       resolvedTransitionKey === FADE_TRANSITION_KEY || isDirectionalSlideTransition(resolvedTransitionKey)
     const rawDuration = activeTransitionFromSlide?.transition?.durationMs ?? DEFAULT_FADE_DURATION_MS
