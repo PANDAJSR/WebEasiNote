@@ -193,7 +193,7 @@ export function SlideViewer({
     if (shouldAnimateTransition && previousIndex >= 0 && previousIndex !== currentIndex) {
       setActiveTransitionKey(resolvedTransitionKey)
       setActiveTransitionDurationMs(transitionDurationMs)
-      setAnimatedSlideIndex(currentIndex)
+      setAnimatedSlideIndex(shouldUseReverseBackTransition ? null : currentIndex)
       setLeavingSlideIndex(previousIndex)
       setIsReverseBackTransition(shouldUseReverseBackTransition)
       leaveAnimationTimerRef.current = window.setTimeout(() => {
@@ -258,7 +258,17 @@ export function SlideViewer({
             const transitionDurationMs = Math.max(0, Math.min(rawDuration, MAX_FADE_DURATION_MS))
             const shouldAnimateIn = isCurrent && animatedSlideIndex === index
             const shouldAnimateOut = isLeaving
-            const zIndex = isCurrent ? 2 : isLeaving ? 1 : 0
+            const zIndex = isReverseBackTransition
+              ? isLeaving
+                ? 2
+                : isCurrent
+                  ? 1
+                  : 0
+              : isCurrent
+                ? 2
+                : isLeaving
+                  ? 1
+                  : 0
             const enterDurationMs = shouldAnimateIn ? activeTransitionDurationMs : transitionDurationMs
             const slideAnimation = shouldAnimateIn
               ? activeTransitionKey === FADE_TRANSITION_KEY
