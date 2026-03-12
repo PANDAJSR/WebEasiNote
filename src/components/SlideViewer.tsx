@@ -267,11 +267,13 @@ export function SlideViewer({
         phase: 'prepare'
       })
       transitionRafRef.current = window.requestAnimationFrame(() => {
-        setTransitionState(state => {
-          if (!state || state.id !== transitionId) return state
-          return { ...state, phase: 'running' }
+        transitionRafRef.current = window.requestAnimationFrame(() => {
+          setTransitionState(state => {
+            if (!state || state.id !== transitionId) return state
+            return { ...state, phase: 'running' }
+          })
+          transitionRafRef.current = null
         })
-        transitionRafRef.current = null
       })
     } else {
       setTransitionState(null)
