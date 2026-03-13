@@ -6,6 +6,7 @@ import { styles } from '../styles'
 import { SlideRenderer } from './SlideRenderer'
 import type { SlideData } from '../parser'
 import type { SlideChangeSource } from './Viewer'
+import type { PagerPosition } from '../viewer-settings'
 
 interface SlideViewerProps {
   slide: SlideData
@@ -15,6 +16,7 @@ interface SlideViewerProps {
   slideChangeSource: SlideChangeSource
   resourceMap?: Record<string, string>
   clickToNextEnabled: boolean
+  pagerPosition: PagerPosition
 }
 
 interface SlideThumbnailProps {
@@ -263,7 +265,8 @@ export function SlideViewer({
   onSlideChange,
   slideChangeSource,
   resourceMap = {},
-  clickToNextEnabled
+  clickToNextEnabled,
+  pagerPosition
 }: SlideViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [slideScaleMap, setSlideScaleMap] = useState<Record<string, number>>({})
@@ -432,6 +435,48 @@ export function SlideViewer({
     `
     document.head.appendChild(styleElement)
   }, [])
+
+  const pagerSides: Array<'left' | 'right'> = pagerPosition === 'both'
+    ? ['left', 'right']
+    : [pagerPosition]
+
+  const renderFloatingPager = (side: 'left' | 'right') => (
+    <div
+      key={`pager-${side}`}
+      style={{
+        ...styles.floatingPagerContainer,
+        ...(side === 'left'
+          ? styles.floatingPagerContainerLeft
+          : styles.floatingPagerContainerRight)
+      }}
+    >
+      <button
+        style={{
+          ...styles.floatingPagerActionButton,
+          ...(isFirstSlide ? styles.floatingPagerActionButtonDisabled : {})
+        }}
+        onClick={() => handlePrevSlide('pager')}
+        disabled={isFirstSlide}
+        aria-label='上一页'
+      >
+        <FontAwesomeIcon icon={faChevronLeft} style={styles.floatingPagerActionIcon} />
+      </button>
+      <button style={styles.floatingPagerPageButton} onClick={() => setSlidePanelOpen(open => !open)}>
+        <span style={styles.floatingPagerValue}>{currentIndex + 1}/{slides.length}</span>
+      </button>
+      <button
+        style={{
+          ...styles.floatingPagerActionButton,
+          ...(isLastSlide ? styles.floatingPagerActionButtonDisabled : {})
+        }}
+        onClick={() => handleNextSlide('pager')}
+        disabled={isLastSlide}
+        aria-label='下一页'
+      >
+        <FontAwesomeIcon icon={faChevronRight} style={styles.floatingPagerActionIcon} />
+      </button>
+    </div>
+  )
 
   const stepForwardElementAnimation = useCallback((): boolean => {
     if (!hasRemainingClickAnimations) return false
@@ -1066,34 +1111,7 @@ export function SlideViewer({
         </div>
       )}
 
-      {/* 右下角悬浮翻页控件 */}
-      <div style={styles.floatingPagerContainer}>
-        <button
-          style={{
-            ...styles.floatingPagerActionButton,
-            ...(isFirstSlide ? styles.floatingPagerActionButtonDisabled : {})
-          }}
-          onClick={() => handlePrevSlide('pager')}
-          disabled={isFirstSlide}
-          aria-label="上一页"
-        >
-          <FontAwesomeIcon icon={faChevronLeft} style={styles.floatingPagerActionIcon} />
-        </button>
-        <button style={styles.floatingPagerPageButton} onClick={() => setSlidePanelOpen(open => !open)}>
-          <span style={styles.floatingPagerValue}>{currentIndex + 1}/{slides.length}</span>
-        </button>
-        <button
-          style={{
-            ...styles.floatingPagerActionButton,
-            ...(isLastSlide ? styles.floatingPagerActionButtonDisabled : {})
-          }}
-          onClick={() => handleNextSlide('pager')}
-          disabled={isLastSlide}
-          aria-label="下一页"
-        >
-          <FontAwesomeIcon icon={faChevronRight} style={styles.floatingPagerActionIcon} />
-        </button>
-      </div>
+      {pagerSides.map(renderFloatingPager)}
     </div>
   )
 }

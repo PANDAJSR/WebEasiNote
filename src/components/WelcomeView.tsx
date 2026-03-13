@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { styles } from '../styles'
+import type { PagerPosition } from '../viewer-settings'
 
 interface WelcomeViewProps {
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void
@@ -11,6 +12,8 @@ interface WelcomeViewProps {
   onAutoReloadChange: (enabled: boolean) => void
   clickToNextEnabled: boolean
   onClickToNextChange: (enabled: boolean) => void
+  pagerPosition: PagerPosition
+  onPagerPositionChange: (position: PagerPosition) => void
 }
 
 export function WelcomeView({
@@ -22,7 +25,9 @@ export function WelcomeView({
   autoReloadEnabled,
   onAutoReloadChange,
   clickToNextEnabled,
-  onClickToNextChange
+  onClickToNextChange,
+  pagerPosition,
+  onPagerPositionChange
 }: WelcomeViewProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
@@ -103,6 +108,46 @@ export function WelcomeView({
                   style={styles.settingsToggle}
                 />
               </label>
+              <div style={styles.settingsRow}>
+                <div style={styles.settingsLabelGroup}>
+                  <div style={styles.settingsLabel}>翻页键和页码位置</div>
+                  <div style={styles.settingsDescription}>
+                    选择左下角、右下角或两边同时显示
+                  </div>
+                </div>
+                <div style={styles.settingsChoiceGroup}>
+                  <button
+                    type='button'
+                    style={{
+                      ...styles.settingsChoiceButton,
+                      ...(pagerPosition === 'left' ? styles.settingsChoiceButtonActive : {})
+                    }}
+                    onClick={() => onPagerPositionChange('left')}
+                  >
+                    左下角
+                  </button>
+                  <button
+                    type='button'
+                    style={{
+                      ...styles.settingsChoiceButton,
+                      ...(pagerPosition === 'right' ? styles.settingsChoiceButtonActive : {})
+                    }}
+                    onClick={() => onPagerPositionChange('right')}
+                  >
+                    右下角
+                  </button>
+                  <button
+                    type='button'
+                    style={{
+                      ...styles.settingsChoiceButton,
+                      ...(pagerPosition === 'both' ? styles.settingsChoiceButtonActive : {})
+                    }}
+                    onClick={() => onPagerPositionChange('both')}
+                  >
+                    两边都有
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

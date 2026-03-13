@@ -160,6 +160,29 @@ export const styles: Record<string, CSSProperties> = {
     height: '18px',
     cursor: 'pointer',
   },
+  settingsChoiceGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+  },
+  settingsChoiceButton: {
+    height: '30px',
+    padding: '0 10px',
+    border: '1px solid #cbd5e1',
+    borderRadius: '6px',
+    backgroundColor: '#ffffff',
+    color: '#334155',
+    fontSize: '0.8125rem',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  },
+  settingsChoiceButtonActive: {
+    borderColor: '#667eea',
+    backgroundColor: '#eef2ff',
+    color: '#3730a3',
+  },
 
   // 加载界面
   loadingContainer: {
@@ -540,12 +563,17 @@ export const styles: Record<string, CSSProperties> = {
   // 右下角悬浮翻页控件
   floatingPagerContainer: {
     position: 'absolute',
-    right: '16px',
     bottom: '16px',
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
     zIndex: 25,
+  },
+  floatingPagerContainerLeft: {
+    left: '16px',
+  },
+  floatingPagerContainerRight: {
+    right: '16px',
   },
   floatingPagerActionButton: {
     width: '44px',

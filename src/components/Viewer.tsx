@@ -3,6 +3,7 @@ import { styles } from '../styles';
 import { SlideViewer } from './SlideViewer';
 import type { CoursewareMetadata, SlideData, SlideIssue } from '../parser';
 import { isFontFamilyMissing } from '../font-utils';
+import type { PagerPosition } from '../viewer-settings'
 
 export type SlideChangeSource = 'keyboard' | 'pager' | 'thumbnail' | 'programmatic' | 'click'
 
@@ -15,6 +16,7 @@ interface ViewerProps {
   onClear: () => void;
   resourceMap?: Record<string, string>;
   clickToNextEnabled: boolean;
+  pagerPosition: PagerPosition
 }
 
 type IssueFilter = 'all' | SlideIssue['kind']
@@ -81,7 +83,8 @@ export function Viewer({
   slideChangeSource,
   onClear,
   resourceMap = {},
-  clickToNextEnabled
+  clickToNextEnabled,
+  pagerPosition
 }: ViewerProps) {
   const [isIssueModalOpen, setIssueModalOpen] = useState(false);
   const [issueFilter, setIssueFilter] = useState<IssueFilter>('all');
@@ -169,6 +172,7 @@ export function Viewer({
           slideChangeSource={slideChangeSource}
           resourceMap={resourceMap}
           clickToNextEnabled={clickToNextEnabled}
+          pagerPosition={pagerPosition}
         />
       </div>
 

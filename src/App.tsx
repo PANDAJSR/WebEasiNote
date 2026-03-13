@@ -14,6 +14,12 @@ import { LoadingView } from './components/LoadingView'
 import { ErrorView } from './components/ErrorView'
 import { Viewer } from './components/Viewer'
 import type { SlideChangeSource } from './components/Viewer'
+import {
+  DEFAULT_PAGER_POSITION,
+  isPagerPosition,
+  PAGER_POSITION_STORAGE_KEY
+} from './viewer-settings'
+import type { PagerPosition } from './viewer-settings'
 import { styles } from './styles'
 
 type ViewMode = 'welcome' | 'loading' | 'error' | 'viewer'
@@ -59,6 +65,7 @@ function App() {
   const [watchedENBX, setWatchedENBX] = useState<ENBXWatchState | null>(null)
   const [autoReloadEnabled, setAutoReloadEnabled] = useState(false)
   const [clickToNextEnabled, setClickToNextEnabled] = useState(true)
+  const [pagerPosition, setPagerPosition] = useState<PagerPosition>(DEFAULT_PAGER_POSITION)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const autoReloadingRef = useRef(false)
 
@@ -74,6 +81,10 @@ function App() {
       const savedClickToNext = localStorage.getItem(CLICK_TO_NEXT_STORAGE_KEY)
       if (savedClickToNext === '0') {
         setClickToNextEnabled(false)
+      }
+      const savedPagerPosition = localStorage.getItem(PAGER_POSITION_STORAGE_KEY)
+      if (isPagerPosition(savedPagerPosition)) {
+        setPagerPosition(savedPagerPosition)
       }
     } catch (error) {
       console.warn('[App] 读取本地配置失败', error)
@@ -99,6 +110,14 @@ function App() {
       console.warn('[App] 保存单击翻页配置失败', error)
     }
   }, [clickToNextEnabled])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PAGER_POSITION_STORAGE_KEY, pagerPosition)
+    } catch (error) {
+      console.warn('[App] 保存翻页控件位置配置失败', error)
+    }
+  }, [pagerPosition])
 
   const revokeObjectUrls = (map: Record<string, string>) => {
     Object.values(map).forEach(url => {
@@ -383,6 +402,8 @@ function App() {
           onAutoReloadChange={setAutoReloadEnabled}
           clickToNextEnabled={clickToNextEnabled}
           onClickToNextChange={setClickToNextEnabled}
+          pagerPosition={pagerPosition}
+          onPagerPositionChange={setPagerPosition}
           fileInputRef={fileInputRef}
           supportsAutoReload={supportsOpenFilePicker}
         />
@@ -399,6 +420,7 @@ function App() {
           onClear={handleClear}
           resourceMap={resourceMap}
           clickToNextEnabled={clickToNextEnabled}
+          pagerPosition={pagerPosition}
         />
       )}
     </div>
