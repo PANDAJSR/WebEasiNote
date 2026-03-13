@@ -81,6 +81,7 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     if (allAnimatedElementIds.size === 0) return {}
 
     const firstAppearanceAnimationByElement = new Map<string, SlideData['animations'][number]>()
+    const firstFadeAnimationByElement = new Map<string, SlideData['animations'][number]>()
     const executedAnimations = currentClickAnimations.slice(0, currentAnimationStep)
     const latestAnimationByElement = new Map<string, SlideData['animations'][number]>()
     const shouldInstantApply = lastStepChangeDirectionRef.current === 'backward'
@@ -91,6 +92,12 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
         && isAppearanceAnimation(animation.type, animation.category)
       ) {
         firstAppearanceAnimationByElement.set(animation.targetId, animation)
+      }
+      if (
+        !firstFadeAnimationByElement.has(animation.targetId)
+        && isFadeAnimation(animation.type)
+      ) {
+        firstFadeAnimationByElement.set(animation.targetId, animation)
       }
     })
     executedAnimations.forEach(animation => {
@@ -117,6 +124,11 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
         } else if (isFlickerAnimation(latestAnimation.type, latestAnimation.category)) {
           opacity = 1
           durationMs = 0
+        }
+      } else {
+        const initialFadeAnimation = firstFadeAnimationByElement.get(elementId)
+        if (initialFadeAnimation) {
+          durationMs = Math.max(0, initialFadeAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS)
         }
       }
       if (shouldInstantApply) {
