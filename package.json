@@ -16,7 +16,7 @@
     "build:desktop:mac": "pnpm build && pnpm build:electron && electron-builder --mac",
     "build:desktop:linux": "pnpm build && pnpm build:electron && electron-builder --linux",
     "dist:desktop": "pnpm build && pnpm build:electron && electron-builder --dir",
-    "dev:desktop": "pnpm build:electron && concurrently -k \"vite --strictPort\" \"tsc -p tsconfig.electron.json --watch --preserveWatchOutput\" \"wait-on http://localhost:5173 && node scripts/start-electron.cjs\"",
+    "dev:desktop": "pnpm build:electron && concurrently -k \"vite --strictPort --mode desktop\" \"tsc -p tsconfig.electron.json --watch --preserveWatchOutput\" \"wait-on http://localhost:5173 && node scripts/start-electron.cjs\"",
     "preview": "vite preview",
     "watch:enbx": "node scripts/watch-enbx.mjs"
   },

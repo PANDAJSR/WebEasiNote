@@ -6,6 +6,6 @@ export default defineConfig(({ mode }) => ({
   base: mode === 'production' ? '/WebEasiNote/' : '/',
   server: {
     port: 5173,
-    open: true
+    open: mode !== 'desktop'
   }
 }))
