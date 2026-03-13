@@ -9,6 +9,7 @@ interface SlideRendererProps {
   slideIndex?: number
   currentIndex?: number
   elementDisplayStyles?: Record<string, CSSProperties>
+  elementRenderStates?: Record<string, boolean>
 }
 
 /**
@@ -20,7 +21,8 @@ export function SlideRenderer({
   resourceMap = {},
   slideIndex = 0,
   currentIndex = 0,
-  elementDisplayStyles = {}
+  elementDisplayStyles = {},
+  elementRenderStates = {}
 }: SlideRendererProps) {
   const backgroundImageUrl = slide.backgroundImage ? resourceMap[slide.backgroundImage] : null
   const scaledWidth = slide.width * scale
@@ -52,21 +54,24 @@ export function SlideRenderer({
           transformOrigin: 'top left'
         }}
       >
-        {slide.elements.map(element => (
-          <div
-            key={element.id}
-            data-slide-element='true'
-            style={elementDisplayStyles[element.id]}
-          >
-            <ElementRenderer
-              element={element}
-              scale={1}
-              resourceMap={resourceMap}
-              slideIndex={slideIndex}
-              currentIndex={currentIndex}
-            />
-          </div>
-        ))}
+        {slide.elements.map(element => {
+          if (elementRenderStates[element.id] === false) return null
+          return (
+            <div
+              key={element.id}
+              data-slide-element='true'
+              style={elementDisplayStyles[element.id]}
+            >
+              <ElementRenderer
+                element={element}
+                scale={1}
+                resourceMap={resourceMap}
+                slideIndex={slideIndex}
+                currentIndex={currentIndex}
+              />
+            </div>
+          )
+        })}
       </div>
     </div>
   )

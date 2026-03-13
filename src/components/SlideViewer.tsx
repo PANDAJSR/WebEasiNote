@@ -52,6 +52,7 @@ export function SlideViewer({
   } = useSlideScaleMap(slides)
   const {
     elementDisplayStyles,
+    elementRenderStates,
     currentAnimationStep,
     totalClickAnimations,
     stepForwardElementAnimation,
@@ -304,6 +305,7 @@ export function SlideViewer({
                       slideIndex={index}
                       currentIndex={currentIndex}
                       elementDisplayStyles={isCurrent ? elementDisplayStyles : undefined}
+                      elementRenderStates={isCurrent ? elementRenderStates : undefined}
                     />
                   </div>
                 </div>

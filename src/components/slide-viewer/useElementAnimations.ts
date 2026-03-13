@@ -73,6 +73,37 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
   const currentAnimationStep = slideAnimationSteps[slide.id] || 0
   const hasRemainingClickAnimations = currentAnimationStep < currentClickAnimations.length
 
+  const elementRenderStates = useMemo(() => {
+    const result: Record<string, boolean> = {}
+    if (resolvedClickAnimations.length === 0) return result
+
+    const firstAppearanceAnimationByElement = new Map<string, SlideData['animations'][number]>()
+    const appearedElementIds = new Set<string>()
+    const executedAnimations = currentClickAnimations.slice(0, currentAnimationStep)
+
+    currentClickAnimations.forEach(animation => {
+      if (
+        !firstAppearanceAnimationByElement.has(animation.targetId)
+        && isAppearanceAnimation(animation.type, animation.category)
+      ) {
+        firstAppearanceAnimationByElement.set(animation.targetId, animation)
+      }
+    })
+
+    executedAnimations.forEach(animation => {
+      if (isAppearanceAnimation(animation.type, animation.category)) {
+        appearedElementIds.add(animation.targetId)
+      }
+    })
+
+    firstAppearanceAnimationByElement.forEach((animation, elementId) => {
+      if (animation.trigger.toLowerCase() !== 'click') return
+      result[elementId] = appearedElementIds.has(elementId)
+    })
+
+    return result
+  }, [resolvedClickAnimations, currentClickAnimations, currentAnimationStep])
+
   const elementDisplayStyles = useMemo(() => {
     const allAnimatedElementIds = new Set(
       resolvedClickAnimations
@@ -81,7 +112,7 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     if (allAnimatedElementIds.size === 0) return {}
 
     const firstAppearanceAnimationByElement = new Map<string, SlideData['animations'][number]>()
-    const firstFadeAnimationByElement = new Map<string, SlideData['animations'][number]>()
+    const firstDisappearanceAnimationByElement = new Map<string, SlideData['animations'][number]>()
     const executedAnimations = currentClickAnimations.slice(0, currentAnimationStep)
     const latestAnimationByElement = new Map<string, SlideData['animations'][number]>()
     const shouldInstantApply = lastStepChangeDirectionRef.current === 'backward'
@@ -94,10 +125,10 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
         firstAppearanceAnimationByElement.set(animation.targetId, animation)
       }
       if (
-        !firstFadeAnimationByElement.has(animation.targetId)
-        && isFadeAnimation(animation.type)
+        !firstDisappearanceAnimationByElement.has(animation.targetId)
+        && isDisappearanceAnimation(animation.type, animation.category)
       ) {
-        firstFadeAnimationByElement.set(animation.targetId, animation)
+        firstDisappearanceAnimationByElement.set(animation.targetId, animation)
       }
     })
     executedAnimations.forEach(animation => {
@@ -126,9 +157,12 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
           durationMs = 0
         }
       } else {
-        const initialFadeAnimation = firstFadeAnimationByElement.get(elementId)
-        if (initialFadeAnimation) {
-          durationMs = Math.max(0, initialFadeAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS)
+        const initialDisappearanceAnimation = firstDisappearanceAnimationByElement.get(elementId)
+        if (initialDisappearanceAnimation && !startHidden) {
+          durationMs = Math.max(
+            0,
+            initialDisappearanceAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS
+          )
         }
       }
       if (shouldInstantApply) {
@@ -269,6 +303,7 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
 
   return {
     elementDisplayStyles,
+    elementRenderStates,
     hasRemainingClickAnimations,
     currentAnimationStep,
     totalClickAnimations: currentClickAnimations.length,
