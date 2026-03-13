@@ -26,7 +26,7 @@ function buildTextGradient(run: NonNullable<ShapeElement['inlineText']>[number][
 
 export function ShapeRenderer({ element, scale }: ShapeRendererProps) {
   const { x, y, width, height, rotation = 0, opacity = 1, backgroundColor, path, fillRule, inlineText, borderWidth, borderColor, shadow, reflection } = element
-  const extraHorizontalPadding = 14 * scale
+  const extraHorizontalPadding = 10 * scale
   const markerCounters: Record<string, number> = {}
   const pathBounds = estimatePathBounds(path)
   const resolvedFillRule = fillRule || inferFillRule(path) || 'nonzero'
