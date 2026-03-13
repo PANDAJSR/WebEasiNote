@@ -44,6 +44,7 @@ pnpm dev:desktop
 ```
 
 Electron 主进程与 preload 使用 TypeScript，开发时会自动监听编译到 `dist-electron/`。
+`dev:desktop` 固定使用 `5173` 端口（`--strictPort`），若端口被占用会直接报错，请先释放端口后重试。
 
 打包静态桌面版本：
 

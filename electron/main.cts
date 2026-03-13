@@ -3,6 +3,7 @@ const path = require('node:path')
 
 function createWindow() {
   const win = new BrowserWindow({
+    show: false,
     width: 1280,
     height: 800,
     minWidth: 1024,
@@ -16,9 +17,17 @@ function createWindow() {
 
   const devServerUrl = process.env.VITE_DEV_SERVER_URL
 
+  win.once('ready-to-show', () => {
+    win.show()
+    win.focus()
+  })
+
+  win.webContents.on('did-fail-load', (_event: unknown, code: number, description: string, url: string) => {
+    console.error('[Electron] 页面加载失败', { code, description, url })
+  })
+
   if (devServerUrl) {
     win.loadURL(devServerUrl)
-    win.webContents.openDevTools({ mode: 'detach' })
     return
   }
 
