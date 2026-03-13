@@ -630,7 +630,6 @@ export const styles: Record<string, CSSProperties> = {
   slideFloatingPanel: {
     position: 'absolute',
     top: '16px',
-    right: '16px',
     bottom: '68px',
     width: '200px',
     backgroundColor: '#ffffff',
@@ -641,5 +640,11 @@ export const styles: Record<string, CSSProperties> = {
     flexDirection: 'column',
     overflow: 'hidden',
     zIndex: 20,
+  },
+  slideFloatingPanelLeft: {
+    left: '16px',
+  },
+  slideFloatingPanelRight: {
+    right: '16px',
   },
 };

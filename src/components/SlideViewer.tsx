@@ -27,6 +27,8 @@ interface SlideThumbnailProps {
   onSlideChange: (index: number, source?: SlideChangeSource) => void
 }
 
+type SlidePanelAnchorSide = 'left' | 'right'
+
 const thumbnailWidth = 96
 const thumbnailHeight = 56
 const slideInfoBarHeight = 40
@@ -271,6 +273,7 @@ export function SlideViewer({
   const containerRef = useRef<HTMLDivElement>(null)
   const [slideScaleMap, setSlideScaleMap] = useState<Record<string, number>>({})
   const [isSlidePanelOpen, setSlidePanelOpen] = useState(false)
+  const [slidePanelAnchorSide, setSlidePanelAnchorSide] = useState<SlidePanelAnchorSide>('right')
   const previousIndexRef = useRef(currentIndex)
   const [transitionState, setTransitionState] = useState<TransitionState | null>(null)
   const [layerSnapshots, setLayerSnapshots] = useState<Record<number, LayerSnapshot>>({})
@@ -461,7 +464,7 @@ export function SlideViewer({
       >
         <FontAwesomeIcon icon={faChevronLeft} style={styles.floatingPagerActionIcon} />
       </button>
-      <button style={styles.floatingPagerPageButton} onClick={() => setSlidePanelOpen(open => !open)}>
+      <button style={styles.floatingPagerPageButton} onClick={() => handleToggleSlidePanel(side)}>
         <span style={styles.floatingPagerValue}>{currentIndex + 1}/{slides.length}</span>
       </button>
       <button
@@ -583,6 +586,15 @@ export function SlideViewer({
     if (target.closest('[data-slide-element="true"]')) return
     handleNextSlide('click')
   }
+
+  const handleToggleSlidePanel = useCallback((side: SlidePanelAnchorSide) => {
+    if (isSlidePanelOpen && slidePanelAnchorSide === side) {
+      setSlidePanelOpen(false)
+      return
+    }
+    setSlidePanelAnchorSide(side)
+    setSlidePanelOpen(true)
+  }, [isSlidePanelOpen, slidePanelAnchorSide])
 
   // 预计算每一页缩放比例，切页时直接展示已渲染内容
   const calculateSlideScaleMap = useCallback(() => {
@@ -1092,7 +1104,14 @@ export function SlideViewer({
       </div>
 
       {isSlidePanelOpen && (
-        <div style={styles.slideFloatingPanel}>
+        <div
+          style={{
+            ...styles.slideFloatingPanel,
+            ...(slidePanelAnchorSide === 'left'
+              ? styles.slideFloatingPanelLeft
+              : styles.slideFloatingPanelRight),
+          }}
+        >
           <div style={styles.sidebarHeader}>
             <span>幻灯片</span>
           </div>
