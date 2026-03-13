@@ -16,6 +16,9 @@ interface UseElementAnimationsParams {
   slide: SlideData
 }
 
+const FADE_IN_KEYFRAME_NAME = 'seewo-element-fade-in'
+const FADE_OUT_KEYFRAME_NAME = 'seewo-element-fade-out'
+
 export function useElementAnimations({ slide }: UseElementAnimationsParams) {
   const [slideAnimationSteps, setSlideAnimationSteps] = useState<Record<string, number>>({})
   const lastStepChangeDirectionRef = useRef<'forward' | 'backward' | 'none'>('none')
@@ -44,6 +47,14 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
         60% { opacity: 1; }
         75% { opacity: 0.2; }
         100% { opacity: 1; }
+      }
+      @keyframes ${FADE_IN_KEYFRAME_NAME} {
+        0% { opacity: 0; }
+        100% { opacity: 1; }
+      }
+      @keyframes ${FADE_OUT_KEYFRAME_NAME} {
+        0% { opacity: 1; }
+        100% { opacity: 0; }
       }
     `
     document.head.appendChild(styleElement)
@@ -112,10 +123,14 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     if (allAnimatedElementIds.size === 0) return {}
 
     const firstAppearanceAnimationByElement = new Map<string, SlideData['animations'][number]>()
-    const firstDisappearanceAnimationByElement = new Map<string, SlideData['animations'][number]>()
     const executedAnimations = currentClickAnimations.slice(0, currentAnimationStep)
     const latestAnimationByElement = new Map<string, SlideData['animations'][number]>()
     const shouldInstantApply = lastStepChangeDirectionRef.current === 'backward'
+    const triggeredAnimation =
+      lastStepChangeDirectionRef.current === 'forward'
+      && currentAnimationStep > 0
+        ? currentClickAnimations[currentAnimationStep - 1]
+        : null
 
     currentClickAnimations.forEach(animation => {
       if (
@@ -123,12 +138,6 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
         && isAppearanceAnimation(animation.type, animation.category)
       ) {
         firstAppearanceAnimationByElement.set(animation.targetId, animation)
-      }
-      if (
-        !firstDisappearanceAnimationByElement.has(animation.targetId)
-        && isDisappearanceAnimation(animation.type, animation.category)
-      ) {
-        firstDisappearanceAnimationByElement.set(animation.targetId, animation)
       }
     })
     executedAnimations.forEach(animation => {
@@ -156,14 +165,6 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
           opacity = 1
           durationMs = 0
         }
-      } else {
-        const initialDisappearanceAnimation = firstDisappearanceAnimationByElement.get(elementId)
-        if (initialDisappearanceAnimation && !startHidden) {
-          durationMs = Math.max(
-            0,
-            initialDisappearanceAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS
-          )
-        }
       }
       if (shouldInstantApply) {
         durationMs = 0
@@ -181,6 +182,25 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
       ) {
         const flickerDurationMs = Math.max(1, activeFlickerAnimation.durationMs || 1000)
         style.animation = `${FLICKER_KEYFRAME_NAME} ${flickerDurationMs}ms ease-in-out 1`
+        style.animationFillMode = 'forwards'
+      } else if (
+        triggeredAnimation
+        && triggeredAnimation.targetId === elementId
+        && isAppearanceAnimation(triggeredAnimation.type, triggeredAnimation.category)
+      ) {
+        const fadeInDurationMs = Math.max(1, triggeredAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS)
+        style.animation = `${FADE_IN_KEYFRAME_NAME} ${fadeInDurationMs}ms ease 1`
+        style.animationFillMode = 'forwards'
+      } else if (
+        triggeredAnimation
+        && triggeredAnimation.targetId === elementId
+        && isDisappearanceAnimation(triggeredAnimation.type, triggeredAnimation.category)
+      ) {
+        const fadeOutDurationMs = Math.max(
+          1,
+          triggeredAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS
+        )
+        style.animation = `${FADE_OUT_KEYFRAME_NAME} ${fadeOutDurationMs}ms ease 1`
         style.animationFillMode = 'forwards'
       }
       result[elementId] = style
