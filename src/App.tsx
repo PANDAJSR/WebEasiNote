@@ -358,41 +358,6 @@ function App() {
     }
   }, [autoReloadEnabled, watchedENBX, viewMode])
 
-  useEffect(() => {
-    if (viewMode !== 'viewer') return
-    if (slides.length === 0) return
-
-    const isEditableTarget = (target: EventTarget | null) => {
-      if (!(target instanceof HTMLElement)) return false
-      const tagName = target.tagName
-      return (
-        tagName === 'INPUT' ||
-        tagName === 'TEXTAREA' ||
-        tagName === 'SELECT' ||
-        target.isContentEditable
-      )
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (isEditableTarget(event.target)) return
-
-      if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
-        event.preventDefault()
-        setSlideChangeSource('keyboard')
-        setCurrentSlideIndex(prev => Math.max(prev - 1, 0))
-      }
-
-      if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
-        event.preventDefault()
-        setSlideChangeSource('keyboard')
-        setCurrentSlideIndex(prev => Math.min(prev + 1, slides.length - 1))
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [viewMode, slides.length])
-
   return (
     <div style={styles.container}>
       {viewMode === 'welcome' && (

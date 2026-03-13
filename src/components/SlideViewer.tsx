@@ -40,8 +40,6 @@ const DEFAULT_TRANSFORM = 'translate3d(0%, 0%, 0px)'
 const CIRCLE_IN_START_CLIP_PATH = 'circle(150% at 50% 50%)'
 const CIRCLE_IN_END_CLIP_PATH = 'circle(0% at 50% 50%)'
 const ENABLE_TRANSITION_DEBUG_LOG = false
-const FLICKER_KEYFRAME_ID = 'seewo-element-flicker-keyframes'
-const FLICKER_KEYFRAME_NAME = 'seewo-element-flicker'
 const DEFAULT_ELEMENT_ANIMATION_DURATION_MS = 300
 
 type LayerSnapshot = {
@@ -73,8 +71,9 @@ function isDisappearanceAnimation(type: string, category: string): boolean {
     || normalizedType === 'fadeout'
 }
 
-function isFlickerAnimation(type: string): boolean {
-  return type.trim().toLowerCase() === 'flicker'
+function isFadeAnimation(type: string): boolean {
+  const normalizedType = type.trim().toLowerCase()
+  return normalizedType === 'fadein' || normalizedType === 'fadeout'
 }
 
 function normalizeTransitionKey(transitionKey: string): string {
@@ -274,37 +273,44 @@ export function SlideViewer({
   const currentViewportWidth = Math.max(0, slide.width * currentScale)
   const currentViewportHeight = Math.max(0, slide.height * currentScale)
   const currentClickAnimations = useMemo(() => {
-    return slide.animations.filter(animation => animation.trigger.toLowerCase() === 'click')
+    return slide.animations.filter(
+      animation => animation.trigger.toLowerCase() === 'click' && isFadeAnimation(animation.type)
+    )
   }, [slide.animations])
   const currentAnimationStep = slideAnimationSteps[slide.id] || 0
   const hasRemainingClickAnimations = currentAnimationStep < currentClickAnimations.length
 
   const elementDisplayStyles = useMemo(() => {
-    const allAnimatedElementIds = new Set(slide.animations.map(animation => animation.targetId))
+    const allAnimatedElementIds = new Set(
+      slide.animations
+        .filter(animation => isFadeAnimation(animation.type))
+        .map(animation => animation.targetId)
+    )
     if (allAnimatedElementIds.size === 0) return {}
 
-    const firstAnimationByElement = new Map<string, SlideData['animations'][number]>()
+    const firstAppearanceAnimationByElement = new Map<string, SlideData['animations'][number]>()
     const executedAnimations = currentClickAnimations.slice(0, currentAnimationStep)
     const latestAnimationByElement = new Map<string, SlideData['animations'][number]>()
 
-    slide.animations.forEach(animation => {
-      if (!firstAnimationByElement.has(animation.targetId)) {
-        firstAnimationByElement.set(animation.targetId, animation)
+    currentClickAnimations.forEach(animation => {
+      if (
+        !firstAppearanceAnimationByElement.has(animation.targetId)
+        && isAppearanceAnimation(animation.type, animation.category)
+      ) {
+        firstAppearanceAnimationByElement.set(animation.targetId, animation)
       }
     })
     executedAnimations.forEach(animation => {
       latestAnimationByElement.set(animation.targetId, animation)
     })
 
-    const activeFlickerAnimation = executedAnimations[executedAnimations.length - 1]
     const result: Record<string, CSSProperties> = {}
     allAnimatedElementIds.forEach(elementId => {
-      const firstAnimation = firstAnimationByElement.get(elementId)
+      const firstAppearanceAnimation = firstAppearanceAnimationByElement.get(elementId)
       const latestAnimation = latestAnimationByElement.get(elementId)
       const startHidden = Boolean(
-        firstAnimation
-        && firstAnimation.trigger.toLowerCase() === 'click'
-        && isAppearanceAnimation(firstAnimation.type, firstAnimation.category)
+        firstAppearanceAnimation
+        && firstAppearanceAnimation.trigger.toLowerCase() === 'click'
       )
       let opacity = startHidden ? 0 : 1
       let durationMs = DEFAULT_ELEMENT_ANIMATION_DURATION_MS
@@ -321,14 +327,6 @@ export function SlideViewer({
         opacity,
         transition: `opacity ${durationMs}ms ease`,
         willChange: 'opacity'
-      }
-      if (
-        activeFlickerAnimation
-        && activeFlickerAnimation.targetId === elementId
-        && isFlickerAnimation(activeFlickerAnimation.type)
-      ) {
-        const flickerDurationMs = Math.max(1, activeFlickerAnimation.durationMs || 1000)
-        style.animation = `${FLICKER_KEYFRAME_NAME} ${flickerDurationMs}ms ease-in-out`
       }
       result[elementId] = style
     })
@@ -361,32 +359,49 @@ export function SlideViewer({
     })
   }, [])
 
-  useEffect(() => {
-    if (typeof document === 'undefined') return
-    if (document.getElementById(FLICKER_KEYFRAME_ID)) return
-    const styleElement = document.createElement('style')
-    styleElement.id = FLICKER_KEYFRAME_ID
-    styleElement.textContent = `
-      @keyframes ${FLICKER_KEYFRAME_NAME} {
-        0% { opacity: 1; }
-        20% { opacity: 0.15; }
-        40% { opacity: 1; }
-        60% { opacity: 0.15; }
-        80% { opacity: 1; }
-        100% { opacity: 1; }
-      }
-    `
-    document.head.appendChild(styleElement)
-  }, [])
-
   const stepForwardElementAnimation = useCallback((): boolean => {
     if (!hasRemainingClickAnimations) return false
+
+    const baseOpacityByElement = new Map<string, number>()
+    currentClickAnimations.forEach(animation => {
+      if (!baseOpacityByElement.has(animation.targetId)) {
+        baseOpacityByElement.set(
+          animation.targetId,
+          isAppearanceAnimation(animation.type, animation.category) ? 0 : 1
+        )
+      }
+    })
+
+    const runAnimation = (animation: SlideData['animations'][number], opacityByElement: Map<string, number>) => {
+      const before = opacityByElement.get(animation.targetId) ?? 1
+      let after = before
+      if (isAppearanceAnimation(animation.type, animation.category)) {
+        after = 1
+      } else if (isDisappearanceAnimation(animation.type, animation.category)) {
+        after = 0
+      }
+      opacityByElement.set(animation.targetId, after)
+      return before !== after
+    }
+
+    const opacityByElement = new Map(baseOpacityByElement)
+    currentClickAnimations.slice(0, currentAnimationStep).forEach(animation => {
+      runAnimation(animation, opacityByElement)
+    })
+
+    let nextStep = currentAnimationStep
+    while (nextStep < currentClickAnimations.length) {
+      const hasVisualChange = runAnimation(currentClickAnimations[nextStep], opacityByElement)
+      nextStep += 1
+      if (hasVisualChange) break
+    }
+
     setSlideAnimationSteps(previous => ({
       ...previous,
-      [slide.id]: Math.min(currentClickAnimations.length, (previous[slide.id] || 0) + 1)
+      [slide.id]: Math.min(currentClickAnimations.length, nextStep)
     }))
     return true
-  }, [slide.id, currentClickAnimations.length, hasRemainingClickAnimations])
+  }, [slide.id, currentClickAnimations, currentAnimationStep, hasRemainingClickAnimations])
 
   const stepBackwardElementAnimation = useCallback((): boolean => {
     if (currentAnimationStep <= 0) return false
@@ -397,20 +412,20 @@ export function SlideViewer({
     return true
   }, [slide.id, currentAnimationStep])
 
-  const handlePrevSlide = () => {
+  const handlePrevSlide = (source: SlideChangeSource = 'pager') => {
     if (stepBackwardElementAnimation()) return
     if (isFirstSlide) return
-    onSlideChange(currentIndex - 1, 'pager')
+    onSlideChange(currentIndex - 1, source)
   }
 
-  const handleNextSlide = () => {
+  const handleNextSlide = (source: SlideChangeSource = 'pager') => {
     if (stepForwardElementAnimation()) return
     if (isLastSlide) return
-    onSlideChange(currentIndex + 1, 'pager')
+    onSlideChange(currentIndex + 1, source)
   }
 
   const handleSlideViewportClick = () => {
-    stepForwardElementAnimation()
+    handleNextSlide()
   }
 
   // 预计算每一页缩放比例，切页时直接展示已渲染内容
@@ -449,6 +464,35 @@ export function SlideViewer({
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [calculateSlideScaleMap])
+
+  useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false
+      const tagName = target.tagName
+      return (
+        tagName === 'INPUT'
+        || tagName === 'TEXTAREA'
+        || tagName === 'SELECT'
+        || target.isContentEditable
+      )
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return
+      if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+        event.preventDefault()
+        handlePrevSlide('keyboard')
+        return
+      }
+      if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+        event.preventDefault()
+        handleNextSlide('keyboard')
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleNextSlide, handlePrevSlide])
 
   useLayoutEffect(() => {
     if (previousIndexRef.current === currentIndex) return
@@ -930,7 +974,7 @@ export function SlideViewer({
               ...styles.slidePagerButton,
               ...(isFirstSlide ? styles.slidePagerButtonDisabled : {})
             }}
-            onClick={handlePrevSlide}
+            onClick={() => handlePrevSlide('pager')}
             disabled={isFirstSlide}
             aria-label="上一页"
           >
@@ -944,7 +988,7 @@ export function SlideViewer({
               ...styles.slidePagerButton,
               ...(isLastSlide ? styles.slidePagerButtonDisabled : {})
             }}
-            onClick={handleNextSlide}
+            onClick={() => handleNextSlide('pager')}
             disabled={isLastSlide}
             aria-label="下一页"
           >
