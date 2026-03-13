@@ -447,7 +447,8 @@ export function SlideViewer({
       } else if (isDisappearanceAnimation(animation.type, animation.category)) {
         after = 0
       } else if (isFlickerAnimation(animation.type, animation.category)) {
-        after = 1
+        opacityByElement.set(animation.targetId, 1)
+        return true
       }
       opacityByElement.set(animation.targetId, after)
       return before !== after
