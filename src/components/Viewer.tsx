@@ -17,6 +17,7 @@ interface ViewerProps {
   resourceMap?: Record<string, string>;
   clickToNextEnabled: boolean;
   pagerPosition: PagerPosition
+  showAnimationProgress: boolean
 }
 
 type IssueFilter = 'all' | SlideIssue['kind']
@@ -84,7 +85,8 @@ export function Viewer({
   onClear,
   resourceMap = {},
   clickToNextEnabled,
-  pagerPosition
+  pagerPosition,
+  showAnimationProgress
 }: ViewerProps) {
   const [isIssueModalOpen, setIssueModalOpen] = useState(false);
   const [issueFilter, setIssueFilter] = useState<IssueFilter>('all');
@@ -173,6 +175,7 @@ export function Viewer({
           resourceMap={resourceMap}
           clickToNextEnabled={clickToNextEnabled}
           pagerPosition={pagerPosition}
+          showAnimationProgress={showAnimationProgress}
         />
       </div>
 

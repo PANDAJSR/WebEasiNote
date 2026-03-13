@@ -258,6 +258,8 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
   return {
     elementDisplayStyles,
     hasRemainingClickAnimations,
+    currentAnimationStep,
+    totalClickAnimations: currentClickAnimations.length,
     stepForwardElementAnimation,
     stepBackwardElementAnimation,
     clearStepDirection

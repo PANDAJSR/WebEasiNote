@@ -14,6 +14,8 @@ interface WelcomeViewProps {
   onClickToNextChange: (enabled: boolean) => void
   pagerPosition: PagerPosition
   onPagerPositionChange: (position: PagerPosition) => void
+  showAnimationProgress: boolean
+  onShowAnimationProgressChange: (enabled: boolean) => void
 }
 
 export function WelcomeView({
@@ -27,7 +29,9 @@ export function WelcomeView({
   clickToNextEnabled,
   onClickToNextChange,
   pagerPosition,
-  onPagerPositionChange
+  onPagerPositionChange,
+  showAnimationProgress,
+  onShowAnimationProgressChange
 }: WelcomeViewProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
@@ -105,6 +109,20 @@ export function WelcomeView({
                   type='checkbox'
                   checked={clickToNextEnabled}
                   onChange={event => onClickToNextChange(event.target.checked)}
+                  style={styles.settingsToggle}
+                />
+              </label>
+              <label style={styles.settingsRow}>
+                <div style={styles.settingsLabelGroup}>
+                  <div style={styles.settingsLabel}>页码下方显示动画进度</div>
+                  <div style={styles.settingsDescription}>
+                    仅当前页存在点击动画时显示进度
+                  </div>
+                </div>
+                <input
+                  type='checkbox'
+                  checked={showAnimationProgress}
+                  onChange={event => onShowAnimationProgressChange(event.target.checked)}
                   style={styles.settingsToggle}
                 />
               </label>

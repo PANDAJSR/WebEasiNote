@@ -17,7 +17,8 @@ import type { SlideChangeSource } from './components/Viewer'
 import {
   DEFAULT_PAGER_POSITION,
   isPagerPosition,
-  PAGER_POSITION_STORAGE_KEY
+  PAGER_POSITION_STORAGE_KEY,
+  SHOW_ANIMATION_PROGRESS_STORAGE_KEY
 } from './viewer-settings'
 import type { PagerPosition } from './viewer-settings'
 import { styles } from './styles'
@@ -43,6 +44,7 @@ function App() {
   const [autoReloadEnabled, setAutoReloadEnabled] = useState(false)
   const [clickToNextEnabled, setClickToNextEnabled] = useState(true)
   const [pagerPosition, setPagerPosition] = useState<PagerPosition>(DEFAULT_PAGER_POSITION)
+  const [showAnimationProgress, setShowAnimationProgress] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const autoReloadingRef = useRef(false)
   const pickerWindow = window as PickerWindow
@@ -60,6 +62,10 @@ function App() {
       const savedPagerPosition = localStorage.getItem(PAGER_POSITION_STORAGE_KEY)
       if (isPagerPosition(savedPagerPosition)) {
         setPagerPosition(savedPagerPosition)
+      }
+      const savedShowAnimationProgress = localStorage.getItem(SHOW_ANIMATION_PROGRESS_STORAGE_KEY)
+      if (savedShowAnimationProgress === '1') {
+        setShowAnimationProgress(true)
       }
     } catch (error) {
       console.warn('[App] 读取本地配置失败', error)
@@ -89,6 +95,13 @@ function App() {
       console.warn('[App] 保存翻页控件位置配置失败', error)
     }
   }, [pagerPosition])
+  useEffect(() => {
+    try {
+      localStorage.setItem(SHOW_ANIMATION_PROGRESS_STORAGE_KEY, showAnimationProgress ? '1' : '0')
+    } catch (error) {
+      console.warn('[App] 保存动画进度显示配置失败', error)
+    }
+  }, [showAnimationProgress])
   const loadENBXFile = async (file: File, options?: { autoReload?: boolean }) => {
     const isAutoReload = options?.autoReload === true
     let loadedMap: Record<string, string> = {}
@@ -333,6 +346,8 @@ function App() {
           onClickToNextChange={setClickToNextEnabled}
           pagerPosition={pagerPosition}
           onPagerPositionChange={setPagerPosition}
+          showAnimationProgress={showAnimationProgress}
+          onShowAnimationProgressChange={setShowAnimationProgress}
           fileInputRef={fileInputRef}
           supportsAutoReload={supportsOpenFilePicker}
         />
@@ -350,6 +365,7 @@ function App() {
           resourceMap={resourceMap}
           clickToNextEnabled={clickToNextEnabled}
           pagerPosition={pagerPosition}
+          showAnimationProgress={showAnimationProgress}
         />
       )}
     </div>

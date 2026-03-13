@@ -178,12 +178,50 @@ export const overlayStyles: Record<string, CSSProperties> = {
     cursor: 'pointer',
     whiteSpace: 'nowrap'
   },
+  floatingPagerPageButtonWithProgress: {
+    minWidth: '118px',
+    height: '58px',
+    padding: '6px 10px'
+  },
+  floatingPagerPageContent: {
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '4px'
+  },
   floatingPagerValue: {
     fontSize: '1.25rem',
     lineHeight: 1,
     letterSpacing: '0.3px',
     fontWeight: 600,
     color: '#475569'
+  },
+  floatingPagerAnimationProgressWrap: {
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '3px'
+  },
+  floatingPagerAnimationProgressText: {
+    fontSize: '0.6875rem',
+    lineHeight: 1,
+    color: '#475569'
+  },
+  floatingPagerAnimationProgressTrack: {
+    width: '100%',
+    height: '4px',
+    borderRadius: '999px',
+    backgroundColor: 'rgba(148, 163, 184, 0.35)',
+    overflow: 'hidden'
+  },
+  floatingPagerAnimationProgressFill: {
+    display: 'block',
+    height: '100%',
+    borderRadius: '999px',
+    backgroundColor: '#3b82f6',
+    transition: 'width 180ms ease'
   },
   slidePanelOverlay: {
     position: 'absolute',

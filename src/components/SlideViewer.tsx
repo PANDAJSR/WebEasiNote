@@ -32,6 +32,7 @@ interface SlideViewerProps {
   resourceMap?: Record<string, string>
   clickToNextEnabled: boolean
   pagerPosition: PagerPosition
+  showAnimationProgress: boolean
 }
 
 export function SlideViewer({
@@ -42,7 +43,8 @@ export function SlideViewer({
   slideChangeSource,
   resourceMap = {},
   clickToNextEnabled,
-  pagerPosition
+  pagerPosition,
+  showAnimationProgress
 }: SlideViewerProps) {
   const {
     containerRef,
@@ -50,6 +52,8 @@ export function SlideViewer({
   } = useSlideScaleMap(slides)
   const {
     elementDisplayStyles,
+    currentAnimationStep,
+    totalClickAnimations,
     stepForwardElementAnimation,
     stepBackwardElementAnimation,
     clearStepDirection
@@ -356,6 +360,9 @@ export function SlideViewer({
           onPrev={() => handlePrevSlide('pager')}
           onNext={() => handleNextSlide('pager')}
           onOpenPanel={handleToggleSlidePanel}
+          showAnimationProgress={showAnimationProgress}
+          animationCurrentStep={currentAnimationStep}
+          animationTotalSteps={totalClickAnimations}
         />
       ))}
     </div>
