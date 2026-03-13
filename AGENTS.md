@@ -100,6 +100,10 @@ export function Viewer({ metadata }: ViewerProps) {
 - 事件处理函数以 `handle` 前缀命名
 - 条件渲染使用 && 运算符
 
+### 前后端解耦规范
+- 除非是文件系统访问、窗口控制、系统级能力调用等必须依赖 Electron 的场景，否则前端代码不得依赖 Electron 后端
+- 前端优先使用浏览器标准 API 与纯前端实现，避免将通用业务逻辑耦合到 Electron IPC
+
 ## 项目结构
 ```
 src/
