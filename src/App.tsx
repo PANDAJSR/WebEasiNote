@@ -21,39 +21,16 @@ import {
 } from './viewer-settings'
 import type { PagerPosition } from './viewer-settings'
 import { styles } from './styles'
-
-type ViewMode = 'welcome' | 'loading' | 'error' | 'viewer'
-type ENBXWatchState = {
-  handle: FileSystemFileHandle
-  lastModified: number
-  size: number
-}
-const AUTO_RELOAD_STORAGE_KEY = 'webeasinote:autoReloadEnabled'
-const CLICK_TO_NEXT_STORAGE_KEY = 'webeasinote:clickToNextEnabled'
-
-type PickerWindow = Window & {
-  showOpenFilePicker?: (options?: {
-    multiple?: boolean
-    excludeAcceptAllOption?: boolean
-    types?: Array<{
-      description: string
-      accept: Record<string, string[]>
-    }>
-  }) => Promise<FileSystemFileHandle[]>
-}
-
-if (typeof document !== 'undefined' && !document.getElementById('spin-keyframes')) {
-  const styleSheet = document.createElement('style')
-  styleSheet.id = 'spin-keyframes'
-  styleSheet.textContent = `
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-  `
-  document.head.appendChild(styleSheet)
-}
-
+import {
+  AUTO_RELOAD_STORAGE_KEY,
+  CLICK_TO_NEXT_STORAGE_KEY,
+  ensureSpinKeyframes,
+  revokeObjectUrls,
+  type ENBXWatchState,
+  type PickerWindow,
+  type ViewMode
+} from './app-utils'
+ensureSpinKeyframes()
 function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('welcome')
   const [metadata, setMetadata] = useState<CoursewareMetadata | null>(null)
@@ -68,10 +45,8 @@ function App() {
   const [pagerPosition, setPagerPosition] = useState<PagerPosition>(DEFAULT_PAGER_POSITION)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const autoReloadingRef = useRef(false)
-
   const pickerWindow = window as PickerWindow
   const supportsOpenFilePicker = typeof pickerWindow.showOpenFilePicker === 'function'
-
   useEffect(() => {
     try {
       const saved = localStorage.getItem(AUTO_RELOAD_STORAGE_KEY)
@@ -90,19 +65,16 @@ function App() {
       console.warn('[App] 读取本地配置失败', error)
     }
   }, [])
-
   useEffect(() => {
     try {
       localStorage.setItem(AUTO_RELOAD_STORAGE_KEY, autoReloadEnabled ? '1' : '0')
     } catch (error) {
       console.warn('[App] 保存自动重载配置失败', error)
     }
-
     if (!autoReloadEnabled) {
       setWatchedENBX(null)
     }
   }, [autoReloadEnabled])
-
   useEffect(() => {
     try {
       localStorage.setItem(CLICK_TO_NEXT_STORAGE_KEY, clickToNextEnabled ? '1' : '0')
@@ -110,7 +82,6 @@ function App() {
       console.warn('[App] 保存单击翻页配置失败', error)
     }
   }, [clickToNextEnabled])
-
   useEffect(() => {
     try {
       localStorage.setItem(PAGER_POSITION_STORAGE_KEY, pagerPosition)
@@ -118,30 +89,19 @@ function App() {
       console.warn('[App] 保存翻页控件位置配置失败', error)
     }
   }, [pagerPosition])
-
-  const revokeObjectUrls = (map: Record<string, string>) => {
-    Object.values(map).forEach(url => {
-      URL.revokeObjectURL(url)
-    })
-  }
-
   const loadENBXFile = async (file: File, options?: { autoReload?: boolean }) => {
     const isAutoReload = options?.autoReload === true
     let loadedMap: Record<string, string> = {}
-
     if (!isAutoReload) {
       setViewMode('loading')
       setError(null)
     }
-
     try {
       console.log('='.repeat(60))
       console.log(`[App] 开始解析 ENBX 文件: ${file.name}${isAutoReload ? '（自动重载）' : ''}`)
       console.log('='.repeat(60))
-
       const zip = await JSZip.loadAsync(file)
       console.log('[App] ZIP 文件加载成功')
-
       const referenceFile = zip.file('Reference.xml')
       let map: Record<string, string> = {}
       if (referenceFile) {
@@ -149,7 +109,6 @@ function App() {
         map = parseReferenceXML(refXml)
         console.log(`[App] Reference.xml 解析完成, 共 ${Object.keys(map).length} 个资源映射`)
       }
-
       let loadedCount = 0
       let failedCount = 0
       for (const [id, filePath] of Object.entries(map)) {
@@ -158,7 +117,6 @@ function App() {
           failedCount++
           continue
         }
-
         try {
           const blob = await imgFile.async('blob')
           loadedMap[id] = URL.createObjectURL(blob)
@@ -168,12 +126,10 @@ function App() {
         }
       }
       console.log(`[App] 图片资源加载完成: ${loadedCount} 成功, ${failedCount} 失败`)
-
       const meta = await parseENBXFile(file)
       const slideData = await loadSlidesFromENBX(file)
       const totalElements = slideData.reduce((sum, slide) => sum + slide.elements.length, 0)
       console.log(`[App] 幻灯片: ${slideData.length} 页, 元素总数: ${totalElements}`)
-
       setMetadata(meta)
       setSlides(slideData)
       setResourceMap(previousMap => {
@@ -199,27 +155,22 @@ function App() {
       return false
     }
   }
-
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
     if (!file.name.endsWith('.enbx')) {
       setError('请选择 .enbx 格式的文件')
       setViewMode('error')
       return
     }
-
     setWatchedENBX(null)
     await loadENBXFile(file)
   }
-
   const handleFilePickerSelect = async () => {
     if (!supportsOpenFilePicker) {
       fileInputRef.current?.click()
       return
     }
-
     try {
       const [fileHandle] = await pickerWindow.showOpenFilePicker!({
         multiple: false,
@@ -233,16 +184,13 @@ function App() {
           }
         ]
       })
-
       if (!fileHandle) return
-
       const file = await fileHandle.getFile()
       if (!file.name.endsWith('.enbx')) {
         setError('请选择 .enbx 格式的文件')
         setViewMode('error')
         return
       }
-
       const loaded = await loadENBXFile(file)
       if (loaded) {
         if (autoReloadEnabled) {
@@ -261,22 +209,18 @@ function App() {
       setViewMode('error')
     }
   }
-
   const handleFolderSelect = async () => {
     if (!('showDirectoryPicker' in window)) {
       setError('您的浏览器不支持文件夹选择功能，请使用 Chrome 或 Edge 浏览器')
       setViewMode('error')
       return
     }
-
     setViewMode('loading')
     setError(null)
     setWatchedENBX(null)
-
     let loadedMap: Record<string, string> = {}
     try {
       const dirHandle = await window.showDirectoryPicker()
-
       let map: Record<string, string> = {}
       try {
         const refFile = await dirHandle.getFileHandle('Reference.xml')
@@ -286,19 +230,16 @@ function App() {
       } catch {
         // Reference.xml 可能不存在
       }
-
       let resourcesHandle: FileSystemDirectoryHandle | null = null
       try {
         resourcesHandle = await dirHandle.getDirectoryHandle('Resources')
       } catch {
         // Resources 文件夹可能不存在
       }
-
       if (resourcesHandle) {
         for (const [id, filePath] of Object.entries(map)) {
           const fileName = filePath.split('/').pop()
           if (!fileName) continue
-
           try {
             const fileHandle = await resourcesHandle.getFileHandle(fileName)
             const file = await fileHandle.getFile()
@@ -308,10 +249,8 @@ function App() {
           }
         }
       }
-
       const meta = await parseExtractedFolder(dirHandle)
       const slideData = await loadSlidesFromFolder(dirHandle)
-
       setMetadata(meta)
       setSlides(slideData)
       setResourceMap(previousMap => {
@@ -331,10 +270,8 @@ function App() {
       setViewMode('error')
     }
   }
-
   const handleClear = () => {
     revokeObjectUrls(resourceMap)
-
     setMetadata(null)
     setSlides([])
     setResourceMap({})
@@ -347,28 +284,22 @@ function App() {
       fileInputRef.current.value = ''
     }
   }
-
   const handleSlideChange = (index: number, source: SlideChangeSource = 'programmatic') => {
     setSlideChangeSource(source)
     setCurrentSlideIndex(index)
   }
-
   useEffect(() => {
     if (!autoReloadEnabled || !watchedENBX || viewMode !== 'viewer') return
-
     let disposed = false
     const timerId = window.setInterval(async () => {
       if (autoReloadingRef.current) return
       autoReloadingRef.current = true
-
       try {
         const latestFile = await watchedENBX.handle.getFile()
         const hasChanged =
           latestFile.lastModified !== watchedENBX.lastModified ||
           latestFile.size !== watchedENBX.size
-
         if (!hasChanged) return
-
         console.log('[App] 检测到 ENBX 文件变化，开始自动重载...')
         const loaded = await loadENBXFile(latestFile, { autoReload: true })
         if (loaded && !disposed) {
@@ -384,13 +315,11 @@ function App() {
         autoReloadingRef.current = false
       }
     }, 2000)
-
     return () => {
       disposed = true
       window.clearInterval(timerId)
     }
   }, [autoReloadEnabled, watchedENBX, viewMode])
-
   return (
     <div style={styles.container}>
       {viewMode === 'welcome' && (
@@ -426,5 +355,4 @@ function App() {
     </div>
   )
 }
-
 export default App
