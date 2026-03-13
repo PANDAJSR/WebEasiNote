@@ -10,7 +10,7 @@ interface SlideRendererProps {
   currentIndex?: number
   elementDisplayStyles?: Record<string, CSSProperties>
   elementRenderStates?: Record<string, boolean>
-  onElementClick?: (elementId: string) => void
+  onElementClick?: (elementId: string) => boolean
 }
 
 /**
@@ -30,6 +30,39 @@ export function SlideRenderer({
   const scaledWidth = slide.width * scale
   const scaledHeight = slide.height * scale
 
+  const resolvePointElementId = (slideX: number, slideY: number): string | null => {
+    for (let index = slide.elements.length - 1; index >= 0; index -= 1) {
+      const element = slide.elements[index]
+      if (elementRenderStates[element.id] === false) continue
+      const styleOpacity = elementDisplayStyles[element.id]?.opacity
+      if (typeof styleOpacity === 'number' && styleOpacity <= 0) continue
+      if (!('x' in element) || !('y' in element) || !('width' in element) || !('height' in element)) continue
+      const x = typeof element.x === 'number' ? element.x : NaN
+      const y = typeof element.y === 'number' ? element.y : NaN
+      const width = typeof element.width === 'number' ? element.width : NaN
+      const height = typeof element.height === 'number' ? element.height : NaN
+      if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(width) || !Number.isFinite(height)) continue
+      if (slideX >= x && slideX <= x + width && slideY >= y && slideY <= y + height) {
+        return element.id
+      }
+    }
+    return null
+  }
+
+  const handleSlideClickCapture = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!onElementClick) return
+    const rect = event.currentTarget.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) return
+    const slideX = (event.clientX - rect.left) / scale
+    const slideY = (event.clientY - rect.top) / scale
+    const clickedElementId = resolvePointElementId(slideX, slideY)
+    if (!clickedElementId) return
+    const isConsumed = onElementClick(clickedElementId)
+    if (!isConsumed) return
+    event.stopPropagation()
+    event.preventDefault()
+  }
+
   return (
     <div
       style={{
@@ -39,6 +72,7 @@ export function SlideRenderer({
         overflow: 'hidden',
         transformOrigin: 'top left'
       }}
+      onClickCapture={handleSlideClickCapture}
     >
       <div
         style={{
