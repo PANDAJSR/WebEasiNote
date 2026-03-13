@@ -326,7 +326,7 @@ export function SlideViewer({
         && firstAppearanceAnimation.trigger.toLowerCase() === 'click'
       )
       let opacity = startHidden ? 0 : 1
-      let durationMs = DEFAULT_ELEMENT_ANIMATION_DURATION_MS
+      let durationMs = 0
       if (latestAnimation) {
         durationMs = Math.max(0, latestAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS)
         if (isAppearanceAnimation(latestAnimation.type, latestAnimation.category)) {
@@ -338,7 +338,7 @@ export function SlideViewer({
 
       const style: CSSProperties = {
         opacity,
-        transition: `opacity ${durationMs}ms ease`,
+        transition: durationMs > 0 ? `opacity ${durationMs}ms ease` : 'none',
         willChange: 'opacity'
       }
       result[elementId] = style
