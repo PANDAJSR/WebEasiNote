@@ -33,6 +33,7 @@ function isConsumableAnimation(animation: SlideData['animations'][number]): bool
 export function useElementAnimations({ slide }: UseElementAnimationsParams) {
   const [slideClickSteps, setSlideClickSteps] = useState<Record<string, number>>({})
   const [slideExecutedCounts, setSlideExecutedCounts] = useState<Record<string, number>>({})
+  const [slideStickyVisibleElementIds, setSlideStickyVisibleElementIds] = useState<Record<string, string[]>>({})
   const [recentlyTriggeredAnimationIds, setRecentlyTriggeredAnimationIds] = useState<Record<string, string[]>>({})
   const timerIdsRef = useRef<number[]>([])
   const lastStepChangeDirectionRef = useRef<'forward' | 'backward' | 'none'>('none')
@@ -93,6 +94,7 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
 
   const currentClickStep = slideClickSteps[slide.id] || 0
   const currentExecutedCount = slideExecutedCounts[slide.id] || 0
+  const stickyVisibleElementIdSet = new Set(slideStickyVisibleElementIds[slide.id] || [])
   const hasRemainingClickAnimations = currentClickStep < clickAnimationGroups.length
 
   const currentTriggeredAnimations = useMemo(() => {
@@ -135,11 +137,11 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     })
 
     firstAppearanceAnimationByElement.forEach((_, elementId) => {
-      result[elementId] = appearedElementIds.has(elementId)
+      result[elementId] = appearedElementIds.has(elementId) || stickyVisibleElementIdSet.has(elementId)
     })
 
     return result
-  }, [timelineAnimations, executedAnimations])
+  }, [timelineAnimations, executedAnimations, stickyVisibleElementIdSet])
 
   const elementDisplayStyles = useMemo(() => {
     const allAnimatedElementIds = new Set(timelineAnimations.map(animation => animation.targetId))
@@ -179,6 +181,12 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
           opacity = 1
           durationMs = 0
         }
+      }
+      if (
+        stickyVisibleElementIdSet.has(elementId)
+        && !(latestAnimation && isDisappearanceAnimation(latestAnimation.type, latestAnimation.category))
+      ) {
+        opacity = 1
       }
       if (shouldInstantApply) {
         durationMs = 0
@@ -223,7 +231,7 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     })
 
     return result
-  }, [timelineAnimations, executedAnimations, currentTriggeredAnimationByElementId])
+  }, [timelineAnimations, executedAnimations, currentTriggeredAnimationByElementId, stickyVisibleElementIdSet])
 
   const playClickAnimationGroup = useCallback((groupIndex: number) => {
     const group = clickAnimationGroups[groupIndex]
@@ -238,6 +246,18 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
         ...previous,
         [slide.id]: Math.max(previous[slide.id] || 0, batchIndexes[batchIndexes.length - 1] + 1)
       }))
+      if (group.triggerSource) {
+        const appearedElementIds = batchIndexes
+          .map(index => timelineAnimations[index])
+          .filter(animation => isAppearanceAnimation(animation.type, animation.category))
+          .map(animation => animation.targetId)
+        if (appearedElementIds.length > 0) {
+          setSlideStickyVisibleElementIds(previous => ({
+            ...previous,
+            [slide.id]: Array.from(new Set([...(previous[slide.id] || []), ...appearedElementIds]))
+          }))
+        }
+      }
       const animationIds = batchIndexes.map(index => timelineAnimations[index].id)
       setRecentlyTriggeredAnimationIds(previous => ({
         ...previous,
@@ -338,48 +358,6 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     })
     return true
   }, [slide.id, currentClickStep, clickAnimationGroups, timelineAnimations.length, clearPendingTimers, logElementAnimationDebug])
-
-  useEffect(() => {
-    const animationSequence = timelineAnimations.map((animation, index) => ({
-      index: index + 1,
-      id: animation.id,
-      type: animation.type,
-      category: animation.category,
-      trigger: animation.normalizedTrigger,
-      targetId: animation.targetId,
-      durationMs: animation.durationMs,
-      delayMs: animation.delayMs
-    }))
-    logElementAnimationDebug('当前页动画时间线', {
-      slideId: slide.id,
-      currentClickStep,
-      currentExecutedCount,
-      clickGroupCount: clickAnimationGroups.length,
-      animationSequence
-    })
-  }, [
-    slide.id,
-    timelineAnimations,
-    currentClickStep,
-    currentExecutedCount,
-    clickAnimationGroups,
-    logElementAnimationDebug
-  ])
-
-  useEffect(() => {
-    const styleSummary = Object.entries(elementDisplayStyles).map(([elementId, style]) => ({
-      elementId,
-      opacity: style.opacity,
-      transition: style.transition,
-      animation: style.animation
-    }))
-    logElementAnimationDebug('当前页元素动画样式状态', {
-      slideId: slide.id,
-      currentClickStep,
-      currentExecutedCount,
-      styleSummary
-    })
-  }, [slide.id, currentClickStep, currentExecutedCount, elementDisplayStyles, logElementAnimationDebug])
 
   const clearStepDirection = useCallback(() => {
     lastStepChangeDirectionRef.current = 'none'
