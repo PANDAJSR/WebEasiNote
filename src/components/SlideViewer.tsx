@@ -346,6 +346,9 @@ export function SlideViewer({
           opacity = 1
         } else if (isDisappearanceAnimation(latestAnimation.type, latestAnimation.category)) {
           opacity = 0
+        } else if (isFlickerAnimation(latestAnimation.type, latestAnimation.category)) {
+          opacity = 1
+          durationMs = 0
         }
       }
 
@@ -360,7 +363,8 @@ export function SlideViewer({
         && isFlickerAnimation(activeFlickerAnimation.type, activeFlickerAnimation.category)
       ) {
         const flickerDurationMs = Math.max(1, activeFlickerAnimation.durationMs || 1000)
-        style.animation = `${FLICKER_KEYFRAME_NAME} ${flickerDurationMs}ms ease-in-out`
+        style.animation = `${FLICKER_KEYFRAME_NAME} ${flickerDurationMs}ms ease-in-out 1`
+        style.animationFillMode = 'forwards'
       }
       result[elementId] = style
     })
@@ -433,7 +437,7 @@ export function SlideViewer({
       } else if (isDisappearanceAnimation(animation.type, animation.category)) {
         after = 0
       } else if (isFlickerAnimation(animation.type, animation.category)) {
-        return true
+        after = 1
       }
       opacityByElement.set(animation.targetId, after)
       return before !== after
@@ -773,16 +777,6 @@ export function SlideViewer({
       }
     }
   }, [])
-
-  useEffect(() => {
-    setSlideAnimationSteps(previous => {
-      if (!previous[slide.id]) return previous
-      return {
-        ...previous,
-        [slide.id]: 0
-      }
-    })
-  }, [slide.id])
 
   return (
     <div style={styles.slideViewerContainer}>
