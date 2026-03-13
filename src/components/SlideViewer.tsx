@@ -272,18 +272,31 @@ export function SlideViewer({
   const currentScale = slideScaleMap[slide.id] || 1
   const currentViewportWidth = Math.max(0, slide.width * currentScale)
   const currentViewportHeight = Math.max(0, slide.height * currentScale)
+  const elementIdSet = useMemo(() => new Set(slide.elements.map(element => element.id)), [slide.elements])
+  const resolvedFadeClickAnimations = useMemo(() => {
+    return slide.animations
+      .filter(animation => animation.trigger.toLowerCase() === 'click' && isFadeAnimation(animation.type))
+      .map(animation => {
+        const targetId = elementIdSet.has(animation.targetId)
+          ? animation.targetId
+          : elementIdSet.has(animation.sourceElementId)
+            ? animation.sourceElementId
+            : animation.targetId
+        return {
+          ...animation,
+          targetId
+        }
+      })
+  }, [slide.animations, elementIdSet])
   const currentClickAnimations = useMemo(() => {
-    return slide.animations.filter(
-      animation => animation.trigger.toLowerCase() === 'click' && isFadeAnimation(animation.type)
-    )
-  }, [slide.animations])
+    return resolvedFadeClickAnimations
+  }, [resolvedFadeClickAnimations])
   const currentAnimationStep = slideAnimationSteps[slide.id] || 0
   const hasRemainingClickAnimations = currentAnimationStep < currentClickAnimations.length
 
   const elementDisplayStyles = useMemo(() => {
     const allAnimatedElementIds = new Set(
-      slide.animations
-        .filter(animation => isFadeAnimation(animation.type))
+      resolvedFadeClickAnimations
         .map(animation => animation.targetId)
     )
     if (allAnimatedElementIds.size === 0) return {}
@@ -332,7 +345,7 @@ export function SlideViewer({
     })
 
     return result
-  }, [slide.animations, currentClickAnimations, currentAnimationStep])
+  }, [resolvedFadeClickAnimations, currentClickAnimations, currentAnimationStep])
 
   const logTransitionDebug = useCallback((message: string, payload?: Record<string, unknown>) => {
     if (!ENABLE_TRANSITION_DEBUG_LOG) return
