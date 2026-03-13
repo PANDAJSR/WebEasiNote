@@ -626,6 +626,15 @@ export const styles: Record<string, CSSProperties> = {
     inset: 0,
     backgroundColor: 'rgba(15, 23, 42, 0.08)',
     zIndex: 15,
+    transition: 'opacity 180ms ease',
+  },
+  slidePanelOverlayVisible: {
+    opacity: 1,
+    pointerEvents: 'auto',
+  },
+  slidePanelOverlayHidden: {
+    opacity: 0,
+    pointerEvents: 'none',
   },
   slideFloatingPanel: {
     position: 'absolute',
@@ -640,11 +649,30 @@ export const styles: Record<string, CSSProperties> = {
     flexDirection: 'column',
     overflow: 'hidden',
     zIndex: 20,
+    transition: 'opacity 180ms ease, transform 180ms ease',
+  },
+  slideFloatingPanelVisible: {
+    opacity: 1,
+    pointerEvents: 'auto',
+  },
+  slideFloatingPanelHidden: {
+    opacity: 0,
+    pointerEvents: 'none',
   },
   slideFloatingPanelLeft: {
     left: '16px',
+    transform: 'translateX(0)',
+  },
+  slideFloatingPanelLeftHidden: {
+    left: '16px',
+    transform: 'translateX(-12px)',
   },
   slideFloatingPanelRight: {
     right: '16px',
+    transform: 'translateX(0)',
+  },
+  slideFloatingPanelRightHidden: {
+    right: '16px',
+    transform: 'translateX(12px)',
   },
 };

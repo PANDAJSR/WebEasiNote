@@ -49,6 +49,7 @@ const ENABLE_ELEMENT_ANIMATION_DEBUG_LOG = true
 const DEFAULT_ELEMENT_ANIMATION_DURATION_MS = 300
 const FLICKER_KEYFRAME_ID = 'seewo-element-flicker-keyframes'
 const FLICKER_KEYFRAME_NAME = 'seewo-element-flicker'
+const SLIDE_PANEL_ANIMATION_MS = 180
 
 type LayerSnapshot = {
   opacity: number
@@ -273,6 +274,8 @@ export function SlideViewer({
   const containerRef = useRef<HTMLDivElement>(null)
   const [slideScaleMap, setSlideScaleMap] = useState<Record<string, number>>({})
   const [isSlidePanelOpen, setSlidePanelOpen] = useState(false)
+  const [isSlidePanelRendered, setSlidePanelRendered] = useState(false)
+  const [isSlidePanelActive, setSlidePanelActive] = useState(false)
   const [slidePanelAnchorSide, setSlidePanelAnchorSide] = useState<SlidePanelAnchorSide>('right')
   const previousIndexRef = useRef(currentIndex)
   const [transitionState, setTransitionState] = useState<TransitionState | null>(null)
@@ -282,6 +285,8 @@ export function SlideViewer({
   const leaveAnimationTimerRef = useRef<number | null>(null)
   const transitionRafRef = useRef<number | null>(null)
   const lineRevealRafRef = useRef<number | null>(null)
+  const slidePanelExitTimerRef = useRef<number | null>(null)
+  const slidePanelEnterRafRef = useRef<number | null>(null)
   const transitionIdRef = useRef(0)
   const layerRefs = useRef<Record<number, HTMLDivElement | null>>({})
   const lastStepChangeDirectionRef = useRef<'forward' | 'backward' | 'none'>('none')
@@ -595,6 +600,37 @@ export function SlideViewer({
     setSlidePanelAnchorSide(side)
     setSlidePanelOpen(true)
   }, [isSlidePanelOpen, slidePanelAnchorSide])
+
+  const handleCloseSlidePanel = useCallback(() => {
+    setSlidePanelOpen(false)
+  }, [])
+
+  useEffect(() => {
+    if (slidePanelExitTimerRef.current !== null) {
+      window.clearTimeout(slidePanelExitTimerRef.current)
+      slidePanelExitTimerRef.current = null
+    }
+    if (slidePanelEnterRafRef.current !== null) {
+      window.cancelAnimationFrame(slidePanelEnterRafRef.current)
+      slidePanelEnterRafRef.current = null
+    }
+
+    if (isSlidePanelOpen) {
+      setSlidePanelRendered(true)
+      slidePanelEnterRafRef.current = window.requestAnimationFrame(() => {
+        setSlidePanelActive(true)
+        slidePanelEnterRafRef.current = null
+      })
+      return
+    }
+
+    setSlidePanelActive(false)
+    if (!isSlidePanelRendered) return
+    slidePanelExitTimerRef.current = window.setTimeout(() => {
+      setSlidePanelRendered(false)
+      slidePanelExitTimerRef.current = null
+    }, SLIDE_PANEL_ANIMATION_MS)
+  }, [isSlidePanelOpen, isSlidePanelRendered])
 
   // 预计算每一页缩放比例，切页时直接展示已渲染内容
   const calculateSlideScaleMap = useCallback(() => {
@@ -915,13 +951,25 @@ export function SlideViewer({
       if (lineRevealRafRef.current !== null) {
         window.cancelAnimationFrame(lineRevealRafRef.current)
       }
+      if (slidePanelExitTimerRef.current !== null) {
+        window.clearTimeout(slidePanelExitTimerRef.current)
+      }
+      if (slidePanelEnterRafRef.current !== null) {
+        window.cancelAnimationFrame(slidePanelEnterRafRef.current)
+      }
     }
   }, [])
 
   return (
     <div style={styles.slideViewerContainer}>
-      {isSlidePanelOpen && (
-        <div style={styles.slidePanelOverlay} onClick={() => setSlidePanelOpen(false)} />
+      {isSlidePanelRendered && (
+        <div
+          style={{
+            ...styles.slidePanelOverlay,
+            ...(isSlidePanelActive ? styles.slidePanelOverlayVisible : styles.slidePanelOverlayHidden)
+          }}
+          onClick={handleCloseSlidePanel}
+        />
       )}
 
       {/* 幻灯片容器 */}
@@ -1103,13 +1151,22 @@ export function SlideViewer({
         </div>
       </div>
 
-      {isSlidePanelOpen && (
+      {isSlidePanelRendered && (
         <div
           style={{
             ...styles.slideFloatingPanel,
+            ...(isSlidePanelActive ? styles.slideFloatingPanelVisible : styles.slideFloatingPanelHidden),
             ...(slidePanelAnchorSide === 'left'
-              ? styles.slideFloatingPanelLeft
-              : styles.slideFloatingPanelRight),
+              ? (
+                isSlidePanelActive
+                  ? styles.slideFloatingPanelLeft
+                  : styles.slideFloatingPanelLeftHidden
+              )
+              : (
+                isSlidePanelActive
+                  ? styles.slideFloatingPanelRight
+                  : styles.slideFloatingPanelRightHidden
+              )),
           }}
         >
           <div style={styles.sidebarHeader}>
