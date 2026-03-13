@@ -1,6 +1,7 @@
 // 文本元素解析模块
 import type { TextElement, TextLine, TextRun } from './types';
 import { getElementText, parseColor } from './xml-utils';
+import { getDirectChildElement, getDirectChildText } from './xml-utils'
 import { convertSeewoFontSizeToCssPx } from './font-utils'
 
 export interface ParsedRichText {
@@ -96,21 +97,21 @@ export function parseRichTextNode(richTextNode: Element): ParsedRichText {
  */
 export function parseTextElement(textNode: Element): TextElement | null {
   try {
-    const id = getElementText(textNode, 'Id') || 'unknown';
+    const id = getDirectChildText(textNode, 'Id') || getElementText(textNode, 'Id') || 'unknown';
     console.log(`  [Text] 开始解析 ID: ${id.substring(0, 16)}...`);
     
-    const x = parseFloat(getElementText(textNode, 'X') || '0');
-    const y = parseFloat(getElementText(textNode, 'Y') || '0');
-    const width = parseFloat(getElementText(textNode, 'Width') || '100');
-    const height = parseFloat(getElementText(textNode, 'Height') || '50');
-    const rotation = parseFloat(getElementText(textNode, 'Rotation') || '0');
-    const borderThickness = parseFloat(getElementText(textNode, 'BorderThickness') || '0');
-    const borderType = getElementText(textNode, 'BorderType') || 'None';
+    const x = parseFloat(getDirectChildText(textNode, 'X') || getElementText(textNode, 'X') || '0');
+    const y = parseFloat(getDirectChildText(textNode, 'Y') || getElementText(textNode, 'Y') || '0');
+    const width = parseFloat(getDirectChildText(textNode, 'Width') || getElementText(textNode, 'Width') || '100');
+    const height = parseFloat(getDirectChildText(textNode, 'Height') || getElementText(textNode, 'Height') || '50');
+    const rotation = parseFloat(getDirectChildText(textNode, 'Rotation') || getElementText(textNode, 'Rotation') || '0');
+    const borderThickness = parseFloat(getDirectChildText(textNode, 'BorderThickness') || getElementText(textNode, 'BorderThickness') || '0');
+    const borderType = getDirectChildText(textNode, 'BorderType') || getElementText(textNode, 'BorderType') || 'None';
     
     console.log(`  [Text] 位置: (${x}, ${y}), 尺寸: ${width}x${height}`);
 
     // 解析 RichText
-    const richTextNode = textNode.querySelector('RichText');
+    const richTextNode = getDirectChildElement(textNode, 'RichText') || textNode.querySelector('RichText');
     if (!richTextNode) {
       console.warn(`  [Text] ✗ 未找到 RichText 节点`);
       return null;
