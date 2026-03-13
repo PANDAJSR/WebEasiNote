@@ -40,6 +40,7 @@ const DEFAULT_TRANSFORM = 'translate3d(0%, 0%, 0px)'
 const CIRCLE_IN_START_CLIP_PATH = 'circle(150% at 50% 50%)'
 const CIRCLE_IN_END_CLIP_PATH = 'circle(0% at 50% 50%)'
 const ENABLE_TRANSITION_DEBUG_LOG = false
+const ENABLE_ELEMENT_ANIMATION_DEBUG_LOG = true
 const DEFAULT_ELEMENT_ANIMATION_DURATION_MS = 300
 const FLICKER_KEYFRAME_ID = 'seewo-element-flicker-keyframes'
 const FLICKER_KEYFRAME_NAME = 'seewo-element-flicker'
@@ -381,6 +382,15 @@ export function SlideViewer({
     console.log(`[SlideViewer] ${message}`)
   }, [])
 
+  const logElementAnimationDebug = useCallback((message: string, payload?: Record<string, unknown>) => {
+    if (!ENABLE_ELEMENT_ANIMATION_DEBUG_LOG) return
+    if (payload) {
+      console.log(`[SlideViewer][ElementAnimation] ${message}`, payload)
+      return
+    }
+    console.log(`[SlideViewer][ElementAnimation] ${message}`)
+  }, [])
+
   const logLayerComputedStyle = useCallback((label: string, index: number) => {
     if (!ENABLE_TRANSITION_DEBUG_LOG) return
     const layer = layerRefs.current[index]
@@ -451,6 +461,15 @@ export function SlideViewer({
     let nextStep = currentAnimationStep
     while (nextStep < currentClickAnimations.length) {
       const hasVisualChange = runAnimation(currentClickAnimations[nextStep], opacityByElement)
+      logElementAnimationDebug('尝试推进动画步骤', {
+        slideId: slide.id,
+        fromStep: nextStep,
+        animationId: currentClickAnimations[nextStep].id,
+        type: currentClickAnimations[nextStep].type,
+        category: currentClickAnimations[nextStep].category,
+        targetId: currentClickAnimations[nextStep].targetId,
+        hasVisualChange
+      })
       nextStep += 1
       if (hasVisualChange) break
     }
@@ -459,8 +478,13 @@ export function SlideViewer({
       ...previous,
       [slide.id]: Math.min(currentClickAnimations.length, nextStep)
     }))
+    logElementAnimationDebug('动画步骤已推进', {
+      slideId: slide.id,
+      previousStep: currentAnimationStep,
+      nextStep
+    })
     return true
-  }, [slide.id, currentClickAnimations, currentAnimationStep, hasRemainingClickAnimations])
+  }, [slide.id, currentClickAnimations, currentAnimationStep, hasRemainingClickAnimations, logElementAnimationDebug])
 
   const stepBackwardElementAnimation = useCallback((): boolean => {
     if (currentAnimationStep <= 0) return false
@@ -468,18 +492,31 @@ export function SlideViewer({
       ...previous,
       [slide.id]: Math.max(0, (previous[slide.id] || 0) - 1)
     }))
+    logElementAnimationDebug('动画步骤已回退', {
+      slideId: slide.id,
+      previousStep: currentAnimationStep,
+      nextStep: Math.max(0, currentAnimationStep - 1)
+    })
     return true
-  }, [slide.id, currentAnimationStep])
+  }, [slide.id, currentAnimationStep, logElementAnimationDebug])
 
   const handlePrevSlide = (source: SlideChangeSource = 'pager') => {
     if (stepBackwardElementAnimation()) return
     if (isFirstSlide) return
+    logElementAnimationDebug('无可回退动画，执行上一页', {
+      slideId: slide.id,
+      source
+    })
     onSlideChange(currentIndex - 1, source)
   }
 
   const handleNextSlide = (source: SlideChangeSource = 'pager') => {
     if (stepForwardElementAnimation()) return
     if (isLastSlide) return
+    logElementAnimationDebug('无可推进动画，执行下一页', {
+      slideId: slide.id,
+      source
+    })
     onSlideChange(currentIndex + 1, source)
   }
 
@@ -552,6 +589,37 @@ export function SlideViewer({
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleNextSlide, handlePrevSlide])
+
+  useEffect(() => {
+    const animationSequence = currentClickAnimations.map((animation, index) => ({
+      index: index + 1,
+      id: animation.id,
+      type: animation.type,
+      category: animation.category,
+      targetId: animation.targetId,
+      durationMs: animation.durationMs
+    }))
+    logElementAnimationDebug('当前页动画序列', {
+      slideId: slide.id,
+      currentAnimationStep,
+      total: currentClickAnimations.length,
+      animationSequence
+    })
+  }, [slide.id, currentClickAnimations, currentAnimationStep, logElementAnimationDebug])
+
+  useEffect(() => {
+    const styleSummary = Object.entries(elementDisplayStyles).map(([elementId, style]) => ({
+      elementId,
+      opacity: style.opacity,
+      transition: style.transition,
+      animation: style.animation
+    }))
+    logElementAnimationDebug('当前页元素动画样式状态', {
+      slideId: slide.id,
+      currentAnimationStep,
+      styleSummary
+    })
+  }, [slide.id, currentAnimationStep, elementDisplayStyles, logElementAnimationDebug])
 
   useLayoutEffect(() => {
     if (previousIndexRef.current === currentIndex) return
