@@ -6,11 +6,41 @@
   "license": "AGPL-3.0-only",
   "private": true,
   "type": "module",
+  "main": "electron/main.mjs",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:desktop": "pnpm build && electron-builder",
+    "build:desktop:win": "pnpm build && electron-builder --win",
+    "build:desktop:mac": "pnpm build && electron-builder --mac",
+    "build:desktop:linux": "pnpm build && electron-builder --linux",
+    "dist:desktop": "pnpm build && electron-builder --dir",
+    "dev:desktop": "concurrently -k \"vite\" \"wait-on tcp:5173 && VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
     "preview": "vite preview",
     "watch:enbx": "node scripts/watch-enbx.mjs"
+  },
+  "build": {
+    "appId": "com.pandajsr.webeasinote",
+    "productName": "WebEasiNote",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.education"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Education"
+    }
   },
   "dependencies": {
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
@@ -24,7 +54,11 @@
     "@types/react-dom": "^18.2.17",
     "@types/wicg-file-system-access": "^2023.10.7",
     "@vitejs/plugin-react": "^4.2.1",
+    "concurrently": "^9.2.1",
+    "electron": "^41.0.2",
+    "electron-builder": "^26.8.1",
     "typescript": "^5.3.3",
-    "vite": "^5.0.8"
+    "vite": "^5.0.8",
+    "wait-on": "^9.0.4"
   }
 }

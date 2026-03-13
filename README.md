@@ -35,6 +35,28 @@ pnpm build
 pnpm preview
 ```
 
+## Electron 桌面版
+
+开发模式（连接 Vite 开发服务器）：
+
+```bash
+pnpm dev:desktop
+```
+
+打包静态桌面版本：
+
+```bash
+# 当前平台
+pnpm build:desktop
+
+# 指定平台
+pnpm build:desktop:win
+pnpm build:desktop:mac
+pnpm build:desktop:linux
+```
+
+构建产物输出目录：`release/`
+
 ## 技术栈
 
 - React 18
