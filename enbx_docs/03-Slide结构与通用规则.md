@@ -79,7 +79,7 @@ Slide 级别：
 - `Id`
 - `Type`（如 `FadeIn`/`FadeOut`/`Flicker`）
 - `Category`（`Appearance`/`Disappearance`/`Emphasis`）
-- `Trigger`（当前消费 `Click`）
+- `Trigger`（当前消费 `Click` / `Before` / `After`）
 - `Number`
 - `Start` / `End`
 - `Duration` / `Delay`（ticks）
@@ -92,8 +92,10 @@ Slide 级别：
 - `delayMs = round(Delay / 10000)`
 
 当前播放规则：
-- 幻灯片区域点击或“下一页”按钮优先推进一条 `Click` 动画
-- “上一页”按钮优先回退一条动画
+- 幻灯片区域点击或“下一页”按钮优先推进一组点击动画（一个 `Click` 及其后续 `Before/After` 链）
+- `Before`：与上一条动画同一开始时刻触发（受自身 `Delay` 影响）
+- `After`：在上一条动画结束后触发（再叠加自身 `Delay`）
+- “上一页”按钮优先回退一条点击步（回到上一个 `Click` 分组结束态）
 - 回退动画时采用硬切（不播放过渡，不重播动画）
 - 键盘方向键（←/↑/→/↓）与翻页按钮使用同一动画步进逻辑
 - 仅当前页应用元素动画样式
