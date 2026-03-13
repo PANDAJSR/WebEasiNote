@@ -1,9 +1,5 @@
-import { app, BrowserWindow } from 'electron'
-import { fileURLToPath } from 'node:url'
-import path from 'node:path'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const { app, BrowserWindow } = require('electron')
+const path = require('node:path')
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -12,7 +8,7 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 640,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.mjs'),
+      preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false
     }

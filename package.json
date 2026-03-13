@@ -6,16 +6,17 @@
   "license": "AGPL-3.0-only",
   "private": true,
   "type": "module",
-  "main": "electron/main.mjs",
+  "main": "dist-electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "build:desktop": "pnpm build && electron-builder",
-    "build:desktop:win": "pnpm build && electron-builder --win",
-    "build:desktop:mac": "pnpm build && electron-builder --mac",
-    "build:desktop:linux": "pnpm build && electron-builder --linux",
-    "dist:desktop": "pnpm build && electron-builder --dir",
-    "dev:desktop": "concurrently -k \"vite\" \"wait-on tcp:5173 && VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "build:desktop": "pnpm build && pnpm build:electron && electron-builder",
+    "build:desktop:win": "pnpm build && pnpm build:electron && electron-builder --win",
+    "build:desktop:mac": "pnpm build && pnpm build:electron && electron-builder --mac",
+    "build:desktop:linux": "pnpm build && pnpm build:electron && electron-builder --linux",
+    "dist:desktop": "pnpm build && pnpm build:electron && electron-builder --dir",
+    "dev:desktop": "concurrently -k \"vite\" \"tsc -p tsconfig.electron.json --watch --preserveWatchOutput\" \"wait-on http://127.0.0.1:5173 file:dist-electron/main.cjs && node scripts/start-electron.cjs\"",
     "preview": "vite preview",
     "watch:enbx": "node scripts/watch-enbx.mjs"
   },
@@ -27,7 +28,7 @@
     },
     "files": [
       "dist/**/*",
-      "electron/**/*",
+      "dist-electron/**/*",
       "package.json"
     ],
     "mac": {
@@ -42,6 +43,12 @@
       "category": "Education"
     }
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "esbuild"
+    ]
+  },
   "dependencies": {
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@fortawesome/react-fontawesome": "^0.2.2",
@@ -50,6 +57,7 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@types/node": "^24.6.1",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@types/wicg-file-system-access": "^2023.10.7",

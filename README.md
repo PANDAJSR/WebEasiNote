@@ -43,6 +43,8 @@ pnpm preview
 pnpm dev:desktop
 ```
 
+Electron 主进程与 preload 使用 TypeScript，开发时会自动监听编译到 `dist-electron/`。
+
 打包静态桌面版本：
 
 ```bash
