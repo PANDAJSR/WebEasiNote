@@ -41,6 +41,8 @@ const CIRCLE_IN_START_CLIP_PATH = 'circle(150% at 50% 50%)'
 const CIRCLE_IN_END_CLIP_PATH = 'circle(0% at 50% 50%)'
 const ENABLE_TRANSITION_DEBUG_LOG = false
 const DEFAULT_ELEMENT_ANIMATION_DURATION_MS = 300
+const FLICKER_KEYFRAME_ID = 'seewo-element-flicker-keyframes'
+const FLICKER_KEYFRAME_NAME = 'seewo-element-flicker'
 
 type LayerSnapshot = {
   opacity: number
@@ -74,6 +76,12 @@ function isDisappearanceAnimation(type: string, category: string): boolean {
 function isFadeAnimation(type: string): boolean {
   const normalizedType = type.trim().toLowerCase()
   return normalizedType === 'fadein' || normalizedType === 'fadeout'
+}
+
+function isFlickerAnimation(type: string, category: string): boolean {
+  const normalizedType = type.trim().toLowerCase()
+  const normalizedCategory = category.trim().toLowerCase()
+  return normalizedType === 'flicker' || normalizedCategory === 'emphasis'
 }
 
 function normalizeTransitionKey(transitionKey: string): string {
@@ -273,9 +281,13 @@ export function SlideViewer({
   const currentViewportWidth = Math.max(0, slide.width * currentScale)
   const currentViewportHeight = Math.max(0, slide.height * currentScale)
   const elementIdSet = useMemo(() => new Set(slide.elements.map(element => element.id)), [slide.elements])
-  const resolvedFadeClickAnimations = useMemo(() => {
+  const resolvedClickAnimations = useMemo(() => {
     return slide.animations
-      .filter(animation => animation.trigger.toLowerCase() === 'click' && isFadeAnimation(animation.type))
+      .filter(
+        animation =>
+          animation.trigger.toLowerCase() === 'click'
+          && (isFadeAnimation(animation.type) || isFlickerAnimation(animation.type, animation.category))
+      )
       .map(animation => {
         const targetId = elementIdSet.has(animation.targetId)
           ? animation.targetId
@@ -289,14 +301,14 @@ export function SlideViewer({
       })
   }, [slide.animations, elementIdSet])
   const currentClickAnimations = useMemo(() => {
-    return resolvedFadeClickAnimations
-  }, [resolvedFadeClickAnimations])
+    return resolvedClickAnimations
+  }, [resolvedClickAnimations])
   const currentAnimationStep = slideAnimationSteps[slide.id] || 0
   const hasRemainingClickAnimations = currentAnimationStep < currentClickAnimations.length
 
   const elementDisplayStyles = useMemo(() => {
     const allAnimatedElementIds = new Set(
-      resolvedFadeClickAnimations
+      resolvedClickAnimations
         .map(animation => animation.targetId)
     )
     if (allAnimatedElementIds.size === 0) return {}
@@ -316,6 +328,7 @@ export function SlideViewer({
     executedAnimations.forEach(animation => {
       latestAnimationByElement.set(animation.targetId, animation)
     })
+    const activeFlickerAnimation = executedAnimations[executedAnimations.length - 1]
 
     const result: Record<string, CSSProperties> = {}
     allAnimatedElementIds.forEach(elementId => {
@@ -341,11 +354,19 @@ export function SlideViewer({
         transition: durationMs > 0 ? `opacity ${durationMs}ms ease` : 'none',
         willChange: 'opacity'
       }
+      if (
+        activeFlickerAnimation
+        && activeFlickerAnimation.targetId === elementId
+        && isFlickerAnimation(activeFlickerAnimation.type, activeFlickerAnimation.category)
+      ) {
+        const flickerDurationMs = Math.max(1, activeFlickerAnimation.durationMs || 1000)
+        style.animation = `${FLICKER_KEYFRAME_NAME} ${flickerDurationMs}ms ease-in-out`
+      }
       result[elementId] = style
     })
 
     return result
-  }, [resolvedFadeClickAnimations, currentClickAnimations, currentAnimationStep])
+  }, [resolvedClickAnimations, currentClickAnimations, currentAnimationStep])
 
   const logTransitionDebug = useCallback((message: string, payload?: Record<string, unknown>) => {
     if (!ENABLE_TRANSITION_DEBUG_LOG) return
@@ -372,6 +393,25 @@ export function SlideViewer({
     })
   }, [])
 
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    if (document.getElementById(FLICKER_KEYFRAME_ID)) return
+    const styleElement = document.createElement('style')
+    styleElement.id = FLICKER_KEYFRAME_ID
+    styleElement.textContent = `
+      @keyframes ${FLICKER_KEYFRAME_NAME} {
+        0% { opacity: 1; }
+        15% { opacity: 0.2; }
+        30% { opacity: 1; }
+        45% { opacity: 0.2; }
+        60% { opacity: 1; }
+        75% { opacity: 0.2; }
+        100% { opacity: 1; }
+      }
+    `
+    document.head.appendChild(styleElement)
+  }, [])
+
   const stepForwardElementAnimation = useCallback((): boolean => {
     if (!hasRemainingClickAnimations) return false
 
@@ -392,6 +432,8 @@ export function SlideViewer({
         after = 1
       } else if (isDisappearanceAnimation(animation.type, animation.category)) {
         after = 0
+      } else if (isFlickerAnimation(animation.type, animation.category)) {
+        return true
       }
       opacityByElement.set(animation.targetId, after)
       return before !== after
