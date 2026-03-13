@@ -1108,7 +1108,12 @@ export function SlideViewer({
             <FontAwesomeIcon icon={faChevronLeft} />
           </button>
           <button style={styles.slidePanelToggleButton} onClick={() => setSlidePanelOpen(open => !open)}>
-            {currentIndex + 1} / {slides.length}
+            <span style={styles.slidePanelToggleStatus}>
+              <span style={styles.slidePanelToggleBadge}>页</span>
+              {currentIndex + 1} / {slides.length}
+              <span style={styles.slidePanelToggleBadge}>动</span>
+              {currentAnimationStep} / {currentClickAnimations.length}
+            </span>
           </button>
           <button
             style={{
