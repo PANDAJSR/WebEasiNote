@@ -179,7 +179,7 @@ export const overlayStyles: Record<string, CSSProperties> = {
     whiteSpace: 'nowrap'
   },
   floatingPagerPageButtonWithProgress: {
-    minWidth: '118px',
+    minWidth: '76px',
     height: '44px',
     padding: '0 10px'
   },
