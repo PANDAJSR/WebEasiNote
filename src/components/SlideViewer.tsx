@@ -276,6 +276,7 @@ export function SlideViewer({
   const lineRevealRafRef = useRef<number | null>(null)
   const transitionIdRef = useRef(0)
   const layerRefs = useRef<Record<number, HTMLDivElement | null>>({})
+  const lastStepChangeDirectionRef = useRef<'forward' | 'backward' | 'none'>('none')
   const isFirstSlide = currentIndex <= 0
   const isLastSlide = currentIndex >= slides.length - 1
   const currentScale = slideScaleMap[slide.id] || 1
@@ -317,6 +318,7 @@ export function SlideViewer({
     const firstAppearanceAnimationByElement = new Map<string, SlideData['animations'][number]>()
     const executedAnimations = currentClickAnimations.slice(0, currentAnimationStep)
     const latestAnimationByElement = new Map<string, SlideData['animations'][number]>()
+    const shouldInstantApply = lastStepChangeDirectionRef.current === 'backward'
 
     currentClickAnimations.forEach(animation => {
       if (
@@ -351,6 +353,9 @@ export function SlideViewer({
           opacity = 1
           durationMs = 0
         }
+      }
+      if (shouldInstantApply) {
+        durationMs = 0
       }
 
       const style: CSSProperties = {
@@ -428,6 +433,7 @@ export function SlideViewer({
 
   const stepForwardElementAnimation = useCallback((): boolean => {
     if (!hasRemainingClickAnimations) return false
+    lastStepChangeDirectionRef.current = 'forward'
 
     const baseOpacityByElement = new Map<string, number>()
     currentClickAnimations.forEach(animation => {
@@ -489,6 +495,7 @@ export function SlideViewer({
 
   const stepBackwardElementAnimation = useCallback((): boolean => {
     if (currentAnimationStep <= 0) return false
+    lastStepChangeDirectionRef.current = 'backward'
     setSlideAnimationSteps(previous => ({
       ...previous,
       [slide.id]: Math.max(0, (previous[slide.id] || 0) - 1)
@@ -502,6 +509,7 @@ export function SlideViewer({
   }, [slide.id, currentAnimationStep, logElementAnimationDebug])
 
   const handlePrevSlide = (source: SlideChangeSource = 'pager') => {
+    lastStepChangeDirectionRef.current = 'none'
     if (stepBackwardElementAnimation()) return
     if (isFirstSlide) return
     logElementAnimationDebug('无可回退动画，执行上一页', {
@@ -512,6 +520,7 @@ export function SlideViewer({
   }
 
   const handleNextSlide = (source: SlideChangeSource = 'pager') => {
+    lastStepChangeDirectionRef.current = 'none'
     if (stepForwardElementAnimation()) return
     if (isLastSlide) return
     logElementAnimationDebug('无可推进动画，执行下一页', {
