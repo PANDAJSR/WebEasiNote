@@ -92,6 +92,7 @@ export function SlideRenderer({
         {slide.elements.map((element) => (
           <div
             key={element.id}
+            data-slide-element='true'
             style={elementDisplayStyles[element.id]}
           >
             <ElementRenderer

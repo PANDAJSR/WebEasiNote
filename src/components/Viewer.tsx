@@ -4,7 +4,7 @@ import { SlideViewer } from './SlideViewer';
 import type { CoursewareMetadata, SlideData, SlideIssue } from '../parser';
 import { isFontFamilyMissing } from '../font-utils';
 
-export type SlideChangeSource = 'keyboard' | 'pager' | 'thumbnail' | 'programmatic'
+export type SlideChangeSource = 'keyboard' | 'pager' | 'thumbnail' | 'programmatic' | 'click'
 
 interface ViewerProps {
   metadata: CoursewareMetadata;
@@ -14,6 +14,7 @@ interface ViewerProps {
   slideChangeSource: SlideChangeSource;
   onClear: () => void;
   resourceMap?: Record<string, string>;
+  clickToNextEnabled: boolean;
 }
 
 type IssueFilter = 'all' | SlideIssue['kind']
@@ -79,7 +80,8 @@ export function Viewer({
   onSlideChange, 
   slideChangeSource,
   onClear,
-  resourceMap = {}
+  resourceMap = {},
+  clickToNextEnabled
 }: ViewerProps) {
   const [isIssueModalOpen, setIssueModalOpen] = useState(false);
   const [issueFilter, setIssueFilter] = useState<IssueFilter>('all');
@@ -166,6 +168,7 @@ export function Viewer({
           onSlideChange={onSlideChange}
           slideChangeSource={slideChangeSource}
           resourceMap={resourceMap}
+          clickToNextEnabled={clickToNextEnabled}
         />
       </div>
 

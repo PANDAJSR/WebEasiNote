@@ -130,6 +130,9 @@ export const styles: Record<string, CSSProperties> = {
   },
   settingsBody: {
     padding: '16px 20px 20px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
   },
   settingsRow: {
     display: 'flex',

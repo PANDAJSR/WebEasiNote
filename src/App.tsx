@@ -23,6 +23,7 @@ type ENBXWatchState = {
   size: number
 }
 const AUTO_RELOAD_STORAGE_KEY = 'webeasinote:autoReloadEnabled'
+const CLICK_TO_NEXT_STORAGE_KEY = 'webeasinote:clickToNextEnabled'
 
 type PickerWindow = Window & {
   showOpenFilePicker?: (options?: {
@@ -57,6 +58,7 @@ function App() {
   const [resourceMap, setResourceMap] = useState<Record<string, string>>({})
   const [watchedENBX, setWatchedENBX] = useState<ENBXWatchState | null>(null)
   const [autoReloadEnabled, setAutoReloadEnabled] = useState(false)
+  const [clickToNextEnabled, setClickToNextEnabled] = useState(true)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const autoReloadingRef = useRef(false)
 
@@ -69,8 +71,12 @@ function App() {
       if (saved === '1') {
         setAutoReloadEnabled(true)
       }
+      const savedClickToNext = localStorage.getItem(CLICK_TO_NEXT_STORAGE_KEY)
+      if (savedClickToNext === '0') {
+        setClickToNextEnabled(false)
+      }
     } catch (error) {
-      console.warn('[App] 读取自动重载配置失败', error)
+      console.warn('[App] 读取本地配置失败', error)
     }
   }, [])
 
@@ -85,6 +91,14 @@ function App() {
       setWatchedENBX(null)
     }
   }, [autoReloadEnabled])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CLICK_TO_NEXT_STORAGE_KEY, clickToNextEnabled ? '1' : '0')
+    } catch (error) {
+      console.warn('[App] 保存单击翻页配置失败', error)
+    }
+  }, [clickToNextEnabled])
 
   const revokeObjectUrls = (map: Record<string, string>) => {
     Object.values(map).forEach(url => {
@@ -367,6 +381,8 @@ function App() {
           onFolderSelect={handleFolderSelect}
           autoReloadEnabled={autoReloadEnabled}
           onAutoReloadChange={setAutoReloadEnabled}
+          clickToNextEnabled={clickToNextEnabled}
+          onClickToNextChange={setClickToNextEnabled}
           fileInputRef={fileInputRef}
           supportsAutoReload={supportsOpenFilePicker}
         />
@@ -382,6 +398,7 @@ function App() {
           slideChangeSource={slideChangeSource}
           onClear={handleClear}
           resourceMap={resourceMap}
+          clickToNextEnabled={clickToNextEnabled}
         />
       )}
     </div>

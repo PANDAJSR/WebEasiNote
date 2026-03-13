@@ -14,6 +14,7 @@ interface SlideViewerProps {
   onSlideChange: (index: number, source?: SlideChangeSource) => void
   slideChangeSource: SlideChangeSource
   resourceMap?: Record<string, string>
+  clickToNextEnabled: boolean
 }
 
 interface SlideThumbnailProps {
@@ -261,7 +262,8 @@ export function SlideViewer({
   currentIndex,
   onSlideChange,
   slideChangeSource,
-  resourceMap = {}
+  resourceMap = {},
+  clickToNextEnabled
 }: SlideViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [slideScaleMap, setSlideScaleMap] = useState<Record<string, number>>({})
@@ -530,8 +532,11 @@ export function SlideViewer({
     onSlideChange(currentIndex + 1, source)
   }
 
-  const handleSlideViewportClick = () => {
-    handleNextSlide()
+  const handleSlideViewportClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!clickToNextEnabled) return
+    const target = event.target as HTMLElement
+    if (target.closest('[data-slide-element="true"]')) return
+    handleNextSlide('click')
   }
 
   // 预计算每一页缩放比例，切页时直接展示已渲染内容

@@ -9,6 +9,8 @@ interface WelcomeViewProps {
   supportsAutoReload: boolean
   autoReloadEnabled: boolean
   onAutoReloadChange: (enabled: boolean) => void
+  clickToNextEnabled: boolean
+  onClickToNextChange: (enabled: boolean) => void
 }
 
 export function WelcomeView({
@@ -18,7 +20,9 @@ export function WelcomeView({
   fileInputRef,
   supportsAutoReload,
   autoReloadEnabled,
-  onAutoReloadChange
+  onAutoReloadChange,
+  clickToNextEnabled,
+  onClickToNextChange
 }: WelcomeViewProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
@@ -82,6 +86,20 @@ export function WelcomeView({
                   checked={autoReloadEnabled}
                   disabled={!supportsAutoReload}
                   onChange={event => onAutoReloadChange(event.target.checked)}
+                  style={styles.settingsToggle}
+                />
+              </label>
+              <label style={styles.settingsRow}>
+                <div style={styles.settingsLabelGroup}>
+                  <div style={styles.settingsLabel}>单击背景翻页</div>
+                  <div style={styles.settingsDescription}>
+                    仅在单击幻灯片背景时触发下一页
+                  </div>
+                </div>
+                <input
+                  type='checkbox'
+                  checked={clickToNextEnabled}
+                  onChange={event => onClickToNextChange(event.target.checked)}
                   style={styles.settingsToggle}
                 />
               </label>
