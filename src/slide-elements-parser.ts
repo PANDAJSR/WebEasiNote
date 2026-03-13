@@ -25,7 +25,18 @@ interface ParseSlideElementsResult {
 }
 
 const KNOWN_PARAMETERS: Record<string, Set<string>> = {
-  Text: new Set(['Id', 'X', 'Y', 'Width', 'Height', 'Rotation', 'BorderThickness', 'BorderType', 'RichText']),
+  Text: new Set([
+    'Id',
+    'X',
+    'Y',
+    'Width',
+    'Height',
+    'Rotation',
+    'BorderThickness',
+    'BorderType',
+    'RichText',
+    'Animations'
+  ]),
   Shape: new Set([
     'Id',
     'X',
@@ -56,7 +67,8 @@ const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'Alpha',
     'Rotation',
     'DisplayRegion',
-    'MetaData'
+    'MetaData',
+    'Animations'
   ]),
   Video: new Set([
     'Id',
@@ -73,7 +85,8 @@ const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'NaturalVideoRotation',
     'NaturalVideoRotationAdapted',
     'ElementBehavior',
-    'Thumbnail'
+    'Thumbnail',
+    'Animations'
   ]),
   Table: new Set([
     'Id',
@@ -91,9 +104,10 @@ const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'ShowRotateOrigin',
     'IsLocked',
     'SaveInfoMetadata',
-    'CanClone'
+    'CanClone',
+    'Animations'
   ]),
-  Group: new Set(['Id', 'X', 'Y', 'Width', 'Height', 'Rotation', 'Elements']),
+  Group: new Set(['Id', 'X', 'Y', 'Width', 'Height', 'Rotation', 'Elements', 'Animations']),
   Topic: new Set([
     'Title',
     'Type',
@@ -121,7 +135,8 @@ const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'IsLocked',
     'SaveInfoMetadata',
     'Id',
-    'CanClone'
+    'CanClone',
+    'Animations'
   ]),
   Cylinder: new Set([
     'ExpandType',
@@ -145,7 +160,8 @@ const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'Hyperlink',
     'HasMask',
     'RotateOrigin',
-    'SaveInfoMetadata'
+    'SaveInfoMetadata',
+    'Animations'
   ]),
   Cone: new Set([
     'ExpandType',
@@ -169,7 +185,8 @@ const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'Hyperlink',
     'HasMask',
     'RotateOrigin',
-    'SaveInfoMetadata'
+    'SaveInfoMetadata',
+    'Animations'
   ]),
   Cube: new Set([
     'ExpandType',
@@ -193,7 +210,8 @@ const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'Hyperlink',
     'HasMask',
     'RotateOrigin',
-    'SaveInfoMetadata'
+    'SaveInfoMetadata',
+    'Animations'
   ]),
   GeometryElement: new Set([
     'Geometries',
@@ -208,7 +226,8 @@ const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'RotateOrigin',
     'ShowRotateOrigin',
     'IsLocked',
-    'CanClone'
+    'CanClone',
+    'Animations'
   ]),
   MathFormula: new Set([
     'Foreground',

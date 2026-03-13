@@ -12,6 +12,9 @@
   <Background>...</Background>
   <TransitionKey>Fade</TransitionKey>
   <Duration>5000000</Duration>
+  <AnimationOrders>
+    <Item>...</Item>
+  </AnimationOrders>
   <Elements>...</Elements>
 </Slide>
 ```
@@ -22,6 +25,7 @@
 - `Background`
 - `TransitionKey`
 - `Duration`
+- `AnimationOrders`
 - `Elements`
 
 ## 3.2 背景解析
@@ -66,14 +70,41 @@
 - `MathFormula`
 - `RuledPaper`
 
-## 3.5 Group 的特殊规则
+## 3.5 元素动画（Animations）
+
+Slide 级别：
+- `AnimationOrders/Item`：动画 ID 顺序，优先级高于 `Animation/Number`
+
+元素级别（每个元素可选 `Animations/Animation`）：
+- `Id`
+- `Type`（如 `FadeIn`/`FadeOut`/`Flicker`）
+- `Category`（`Appearance`/`Disappearance`/`Emphasis`）
+- `Trigger`（当前消费 `Click`）
+- `Number`
+- `Start` / `End`
+- `Duration` / `Delay`（ticks）
+- `RepeatBehavior`
+- `TargetId` / `ElementId`
+
+当前转换规则：
+- `Duration`、`Delay` 视为 ticks（100ns）
+- `durationMs = round(Duration / 10000)`
+- `delayMs = round(Delay / 10000)`
+
+当前播放规则：
+- 幻灯片区域点击或“下一页”按钮优先推进一条 `Click` 动画
+- “上一页”按钮优先回退一条动画
+- 仅当前页应用元素动画样式
+- 已支持类型：`FadeIn`、`FadeOut`、`Flicker`
+
+## 3.6 Group 的特殊规则
 
 `Group` 当前行为：
 - 解析 `X/Y` 作为子元素整体偏移
 - 递归解析 `Group/Elements`
 - `Group Rotation` 暂不支持，仅记录警告并按未旋转处理
 
-## 3.6 参数识别与问题上报
+## 3.7 参数识别与问题上报
 
 解析器对每种元素有“已知参数白名单”。
 

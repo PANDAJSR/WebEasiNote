@@ -28,6 +28,7 @@ interface SlideRendererProps {
   resourceMap?: Record<string, string>; // sourceId -> blob URL
   slideIndex?: number;
   currentIndex?: number;
+  elementDisplayStyles?: Record<string, CSSProperties>;
 }
 
 function buildTextGradient(run: TextElement['textLines'][number]['textRuns'][number]): string | undefined {
@@ -54,7 +55,8 @@ export function SlideRenderer({
   scale = 1,
   resourceMap = {},
   slideIndex = 0,
-  currentIndex = 0
+  currentIndex = 0,
+  elementDisplayStyles = {}
 }: SlideRendererProps) {
   // 获取背景图片 URL
   const backgroundImageUrl = slide.backgroundImage ? resourceMap[slide.backgroundImage] : null;
@@ -88,14 +90,18 @@ export function SlideRenderer({
         }}
       >
         {slide.elements.map((element) => (
-          <ElementRenderer
+          <div
             key={element.id}
-            element={element}
-            scale={1}
-            resourceMap={resourceMap}
-            slideIndex={slideIndex}
-            currentIndex={currentIndex}
-          />
+            style={elementDisplayStyles[element.id]}
+          >
+            <ElementRenderer
+              element={element}
+              scale={1}
+              resourceMap={resourceMap}
+              slideIndex={slideIndex}
+              currentIndex={currentIndex}
+            />
+          </div>
         ))}
       </div>
     </div>

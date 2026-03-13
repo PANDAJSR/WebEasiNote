@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react'
+import { useState, useEffect, useRef, useCallback, useLayoutEffect, useMemo } from 'react'
+import type { CSSProperties } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons'
 import { styles } from '../styles'
@@ -39,6 +40,10 @@ const DEFAULT_TRANSFORM = 'translate3d(0%, 0%, 0px)'
 const CIRCLE_IN_START_CLIP_PATH = 'circle(150% at 50% 50%)'
 const CIRCLE_IN_END_CLIP_PATH = 'circle(0% at 50% 50%)'
 const ENABLE_TRANSITION_DEBUG_LOG = false
+const FLICKER_KEYFRAME_ID = 'seewo-element-flicker-keyframes'
+const FLICKER_KEYFRAME_NAME = 'seewo-element-flicker'
+const DEFAULT_ELEMENT_ANIMATION_DURATION_MS = 300
+
 type LayerSnapshot = {
   opacity: number
   transform: string
@@ -52,6 +57,24 @@ interface TransitionState {
   durationMs: number
   isReverseBackTransition: boolean
   phase: 'prepare' | 'running'
+}
+
+function isAppearanceAnimation(type: string, category: string): boolean {
+  const normalizedType = type.trim().toLowerCase()
+  const normalizedCategory = category.trim().toLowerCase()
+  return normalizedCategory === 'appearance'
+    || normalizedType === 'fadein'
+}
+
+function isDisappearanceAnimation(type: string, category: string): boolean {
+  const normalizedType = type.trim().toLowerCase()
+  const normalizedCategory = category.trim().toLowerCase()
+  return normalizedCategory === 'disappearance'
+    || normalizedType === 'fadeout'
+}
+
+function isFlickerAnimation(type: string): boolean {
+  return type.trim().toLowerCase() === 'flicker'
 }
 
 function normalizeTransitionKey(transitionKey: string): string {
@@ -239,6 +262,7 @@ export function SlideViewer({
   const [transitionState, setTransitionState] = useState<TransitionState | null>(null)
   const [layerSnapshots, setLayerSnapshots] = useState<Record<number, LayerSnapshot>>({})
   const [lineRevealProgress, setLineRevealProgress] = useState(0)
+  const [slideAnimationSteps, setSlideAnimationSteps] = useState<Record<string, number>>({})
   const leaveAnimationTimerRef = useRef<number | null>(null)
   const transitionRafRef = useRef<number | null>(null)
   const lineRevealRafRef = useRef<number | null>(null)
@@ -249,6 +273,68 @@ export function SlideViewer({
   const currentScale = slideScaleMap[slide.id] || 1
   const currentViewportWidth = Math.max(0, slide.width * currentScale)
   const currentViewportHeight = Math.max(0, slide.height * currentScale)
+  const currentClickAnimations = useMemo(() => {
+    return slide.animations.filter(animation => animation.trigger.toLowerCase() === 'click')
+  }, [slide.animations])
+  const currentAnimationStep = slideAnimationSteps[slide.id] || 0
+  const hasRemainingClickAnimations = currentAnimationStep < currentClickAnimations.length
+
+  const elementDisplayStyles = useMemo(() => {
+    const allAnimatedElementIds = new Set(slide.animations.map(animation => animation.targetId))
+    if (allAnimatedElementIds.size === 0) return {}
+
+    const firstAnimationByElement = new Map<string, SlideData['animations'][number]>()
+    const executedAnimations = currentClickAnimations.slice(0, currentAnimationStep)
+    const latestAnimationByElement = new Map<string, SlideData['animations'][number]>()
+
+    slide.animations.forEach(animation => {
+      if (!firstAnimationByElement.has(animation.targetId)) {
+        firstAnimationByElement.set(animation.targetId, animation)
+      }
+    })
+    executedAnimations.forEach(animation => {
+      latestAnimationByElement.set(animation.targetId, animation)
+    })
+
+    const activeFlickerAnimation = executedAnimations[executedAnimations.length - 1]
+    const result: Record<string, CSSProperties> = {}
+    allAnimatedElementIds.forEach(elementId => {
+      const firstAnimation = firstAnimationByElement.get(elementId)
+      const latestAnimation = latestAnimationByElement.get(elementId)
+      const startHidden = Boolean(
+        firstAnimation
+        && firstAnimation.trigger.toLowerCase() === 'click'
+        && isAppearanceAnimation(firstAnimation.type, firstAnimation.category)
+      )
+      let opacity = startHidden ? 0 : 1
+      let durationMs = DEFAULT_ELEMENT_ANIMATION_DURATION_MS
+      if (latestAnimation) {
+        durationMs = Math.max(0, latestAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS)
+        if (isAppearanceAnimation(latestAnimation.type, latestAnimation.category)) {
+          opacity = 1
+        } else if (isDisappearanceAnimation(latestAnimation.type, latestAnimation.category)) {
+          opacity = 0
+        }
+      }
+
+      const style: CSSProperties = {
+        opacity,
+        transition: `opacity ${durationMs}ms ease`,
+        willChange: 'opacity'
+      }
+      if (
+        activeFlickerAnimation
+        && activeFlickerAnimation.targetId === elementId
+        && isFlickerAnimation(activeFlickerAnimation.type)
+      ) {
+        const flickerDurationMs = Math.max(1, activeFlickerAnimation.durationMs || 1000)
+        style.animation = `${FLICKER_KEYFRAME_NAME} ${flickerDurationMs}ms ease-in-out`
+      }
+      result[elementId] = style
+    })
+
+    return result
+  }, [slide.animations, currentClickAnimations, currentAnimationStep])
 
   const logTransitionDebug = useCallback((message: string, payload?: Record<string, unknown>) => {
     if (!ENABLE_TRANSITION_DEBUG_LOG) return
@@ -275,14 +361,56 @@ export function SlideViewer({
     })
   }, [])
 
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    if (document.getElementById(FLICKER_KEYFRAME_ID)) return
+    const styleElement = document.createElement('style')
+    styleElement.id = FLICKER_KEYFRAME_ID
+    styleElement.textContent = `
+      @keyframes ${FLICKER_KEYFRAME_NAME} {
+        0% { opacity: 1; }
+        20% { opacity: 0.15; }
+        40% { opacity: 1; }
+        60% { opacity: 0.15; }
+        80% { opacity: 1; }
+        100% { opacity: 1; }
+      }
+    `
+    document.head.appendChild(styleElement)
+  }, [])
+
+  const stepForwardElementAnimation = useCallback((): boolean => {
+    if (!hasRemainingClickAnimations) return false
+    setSlideAnimationSteps(previous => ({
+      ...previous,
+      [slide.id]: Math.min(currentClickAnimations.length, (previous[slide.id] || 0) + 1)
+    }))
+    return true
+  }, [slide.id, currentClickAnimations.length, hasRemainingClickAnimations])
+
+  const stepBackwardElementAnimation = useCallback((): boolean => {
+    if (currentAnimationStep <= 0) return false
+    setSlideAnimationSteps(previous => ({
+      ...previous,
+      [slide.id]: Math.max(0, (previous[slide.id] || 0) - 1)
+    }))
+    return true
+  }, [slide.id, currentAnimationStep])
+
   const handlePrevSlide = () => {
+    if (stepBackwardElementAnimation()) return
     if (isFirstSlide) return
     onSlideChange(currentIndex - 1, 'pager')
   }
 
   const handleNextSlide = () => {
+    if (stepForwardElementAnimation()) return
     if (isLastSlide) return
     onSlideChange(currentIndex + 1, 'pager')
+  }
+
+  const handleSlideViewportClick = () => {
+    stepForwardElementAnimation()
   }
 
   // 预计算每一页缩放比例，切页时直接展示已渲染内容
@@ -547,6 +675,16 @@ export function SlideViewer({
     }
   }, [])
 
+  useEffect(() => {
+    setSlideAnimationSteps(previous => {
+      if (!previous[slide.id]) return previous
+      return {
+        ...previous,
+        [slide.id]: 0
+      }
+    })
+  }, [slide.id])
+
   return (
     <div style={styles.slideViewerContainer}>
       {isSlidePanelOpen && (
@@ -577,6 +715,7 @@ export function SlideViewer({
               width: `${currentViewportWidth}px`,
               height: `${currentViewportHeight}px`,
             }}
+            onClick={handleSlideViewportClick}
           >
             <div style={styles.slideWhiteBackdrop} />
             {slides.map((slideItem, index) => {
@@ -721,6 +860,7 @@ export function SlideViewer({
                     resourceMap={resourceMap}
                     slideIndex={index}
                     currentIndex={currentIndex}
+                    elementDisplayStyles={isCurrent ? elementDisplayStyles : undefined}
                   />
                 </div>
               </div>
@@ -778,6 +918,10 @@ export function SlideViewer({
           <div style={styles.infoItem}>
             <span style={styles.infoLabel}>文本:</span>
             <span>{slide.elements.length}</span>
+          </div>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>动画:</span>
+            <span>{currentAnimationStep}/{currentClickAnimations.length}</span>
           </div>
         </div>
         <div style={styles.slidePagerControls}>

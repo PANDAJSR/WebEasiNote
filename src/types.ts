@@ -360,6 +360,24 @@ export interface SlideIssue {
   value?: string;
 }
 
+export interface ElementAnimation {
+  id: string;
+  type: string;
+  category: string;
+  trigger: string;
+  triggerSource: string;
+  number: number;
+  start: number;
+  end: number;
+  magnitude?: string;
+  durationMs: number;
+  delayMs: number;
+  repeatBehaviorRaw?: string;
+  repeatCount?: number;
+  targetId: string;
+  sourceElementId: string;
+}
+
 export interface SlideData {
   id: string;
   width: number;
@@ -370,6 +388,8 @@ export interface SlideData {
     key: string;
     durationMs: number;
   };
+  animationOrders: string[];
+  animations: ElementAnimation[];
   issues: SlideIssue[];
   elements: (TextElement | ShapeElement | PictureElement | VideoElement | TableElement | TopicElement | CylinderElement | ConeElement | CubeElement | GeometryElement | MathFormulaElement | UnknownElement)[];
 }

@@ -6,6 +6,7 @@ import type {
 } from './types';
 import { parseXML, getElementText, parseColor } from './xml-utils';
 import { parseSlideElements } from './slide-elements-parser';
+import { parseSlideAnimations } from './slide-animations'
 
 export type {
 CoursewareMetadata,
@@ -24,6 +25,7 @@ ShapeElement,
   CubeElement,
   GeometryElement,
   MathFormulaElement,
+  ElementAnimation,
   TableCell,
   UnknownElement,
   SlideIssue,
@@ -258,6 +260,10 @@ function parseSlideXML(xmlString: string): SlideData {
   const transitionDurationMs = Number.isFinite(durationTicks) && durationTicks > 0
     ? Math.max(0, Math.round(durationTicks / 10000))
     : 0
+  const {
+    animationOrders,
+    animations
+  } = parseSlideAnimations(slideElement)
   
   // 解析背景色或背景图片
   const backgroundElement = slideElement.querySelector('Background');
@@ -314,6 +320,8 @@ function parseSlideXML(xmlString: string): SlideData {
       key: transitionKey,
       durationMs: transitionDurationMs
     },
+    animationOrders,
+    animations,
     issues,
     elements
   };
