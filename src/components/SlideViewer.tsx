@@ -1063,36 +1063,31 @@ export function SlideViewer({
 
       {/* 右下角悬浮翻页控件 */}
       <div style={styles.floatingPagerContainer}>
-        <div style={styles.floatingPagerPanel}>
-          <button
-            style={{
-              ...styles.floatingPagerActionButton,
-              ...(isFirstSlide ? styles.floatingPagerActionButtonDisabled : {})
-            }}
-            onClick={() => handlePrevSlide('pager')}
-            disabled={isFirstSlide}
-            aria-label="上一页"
-          >
-            <FontAwesomeIcon icon={faChevronLeft} style={styles.floatingPagerActionIcon} />
-            <span style={styles.floatingPagerLabel}>上一页</span>
-          </button>
-          <button style={styles.floatingPagerPageButton} onClick={() => setSlidePanelOpen(open => !open)}>
-            <span style={styles.floatingPagerValue}>{currentIndex + 1}/{slides.length}</span>
-            <span style={styles.floatingPagerLabel}>页码</span>
-          </button>
-          <button
-            style={{
-              ...styles.floatingPagerActionButton,
-              ...(isLastSlide ? styles.floatingPagerActionButtonDisabled : {})
-            }}
-            onClick={() => handleNextSlide('pager')}
-            disabled={isLastSlide}
-            aria-label="下一页"
-          >
-            <FontAwesomeIcon icon={faChevronRight} style={styles.floatingPagerActionIcon} />
-            <span style={styles.floatingPagerLabel}>下一页</span>
-          </button>
-        </div>
+        <button
+          style={{
+            ...styles.floatingPagerActionButton,
+            ...(isFirstSlide ? styles.floatingPagerActionButtonDisabled : {})
+          }}
+          onClick={() => handlePrevSlide('pager')}
+          disabled={isFirstSlide}
+          aria-label="上一页"
+        >
+          <FontAwesomeIcon icon={faChevronLeft} style={styles.floatingPagerActionIcon} />
+        </button>
+        <button style={styles.floatingPagerPageButton} onClick={() => setSlidePanelOpen(open => !open)}>
+          <span style={styles.floatingPagerValue}>{currentIndex + 1}/{slides.length}</span>
+        </button>
+        <button
+          style={{
+            ...styles.floatingPagerActionButton,
+            ...(isLastSlide ? styles.floatingPagerActionButtonDisabled : {})
+          }}
+          onClick={() => handleNextSlide('pager')}
+          disabled={isLastSlide}
+          aria-label="下一页"
+        >
+          <FontAwesomeIcon icon={faChevronRight} style={styles.floatingPagerActionIcon} />
+        </button>
       </div>
     </div>
   )
