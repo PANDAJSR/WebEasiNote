@@ -314,7 +314,7 @@ export const styles: Record<string, CSSProperties> = {
   slideList: {
     flex: 1,
     overflowY: 'auto',
-    padding: '8px',
+    padding: '6px',
     display: 'flex',
     flexDirection: 'column',
     gap: '4px',
@@ -641,7 +641,8 @@ export const styles: Record<string, CSSProperties> = {
     top: '16px',
     bottom: '68px',
     width: '200px',
-    backgroundColor: '#ffffff',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backdropFilter: 'blur(4px)',
     border: '1px solid #e2e8f0',
     borderRadius: '8px',
     boxShadow: '0 14px 28px rgba(15, 23, 42, 0.16)',
