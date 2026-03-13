@@ -80,6 +80,7 @@ Slide 级别：
 - `Type`（如 `FadeIn`/`FadeOut`/`Flicker`）
 - `Category`（`Appearance`/`Disappearance`/`Emphasis`）
 - `Trigger`（当前消费 `Click` / `Before` / `After`）
+- `TriggerSource`（可选，表示需点击指定元素才触发）
 - `Number`
 - `Start` / `End`
 - `Duration` / `Delay`（ticks）
@@ -93,6 +94,7 @@ Slide 级别：
 
 当前播放规则：
 - 幻灯片区域点击或“下一页”按钮优先推进一组点击动画（一个 `Click` 及其后续 `Before/After` 链）
+- 当该组 `Click` 动画含 `TriggerSource` 时，普通空白点击不会触发，需点击对应元素触发
 - `Before`：与上一条动画同一开始时刻触发（受自身 `Delay` 影响）
 - `After`：在上一条动画结束后触发（再叠加自身 `Delay`）
 - “上一页”按钮优先回退一条点击步（回到上一个 `Click` 分组结束态）

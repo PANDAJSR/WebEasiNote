@@ -4,8 +4,7 @@ import type { SlideData } from '../../parser'
 import {
   buildAnimationStartBatches,
   getExecutedCountForClickStep,
-  getGroupEndIndex,
-  resolveClickGroupStartIndexes,
+  resolveClickAnimationGroups,
   resolveTimelineAnimations,
   type TimelineAnimation
 } from './element-animation-timeline'
@@ -80,25 +79,21 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     document.head.appendChild(styleElement)
   }, [])
 
-  useEffect(() => {
-    return () => clearPendingTimers()
-  }, [clearPendingTimers])
+  useEffect(() => () => clearPendingTimers(), [clearPendingTimers])
 
-  useEffect(() => {
-    clearPendingTimers()
-  }, [slide.id, clearPendingTimers])
+  useEffect(() => { clearPendingTimers() }, [slide.id, clearPendingTimers])
 
   const timelineAnimations = useMemo(() => {
     return resolveTimelineAnimations(slide.animations, elementIdSet, isConsumableAnimation)
   }, [slide.animations, elementIdSet])
 
-  const clickGroupStartIndexes = useMemo(() => {
-    return resolveClickGroupStartIndexes(timelineAnimations)
+  const clickAnimationGroups = useMemo(() => {
+    return resolveClickAnimationGroups(timelineAnimations)
   }, [timelineAnimations])
 
   const currentClickStep = slideClickSteps[slide.id] || 0
   const currentExecutedCount = slideExecutedCounts[slide.id] || 0
-  const hasRemainingClickAnimations = currentClickStep < clickGroupStartIndexes.length
+  const hasRemainingClickAnimations = currentClickStep < clickAnimationGroups.length
 
   const currentTriggeredAnimations = useMemo(() => {
     const animationIdSet = new Set(recentlyTriggeredAnimationIds[slide.id] || [])
@@ -117,7 +112,6 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
   const executedAnimations = useMemo(() => {
     return timelineAnimations.slice(0, currentExecutedCount)
   }, [timelineAnimations, currentExecutedCount])
-
   const elementRenderStates = useMemo(() => {
     const result: Record<string, boolean> = {}
     if (timelineAnimations.length === 0) return result
@@ -231,15 +225,13 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     return result
   }, [timelineAnimations, executedAnimations, currentTriggeredAnimationByElementId])
 
-  const stepForwardElementAnimation = useCallback((): boolean => {
-    if (!hasRemainingClickAnimations) return false
+  const playClickAnimationGroup = useCallback((groupIndex: number) => {
+    const group = clickAnimationGroups[groupIndex]
+    if (!group) return false
+
     clearPendingTimers()
     lastStepChangeDirectionRef.current = 'forward'
-
-    const groupIndex = currentClickStep
-    const groupStartIndex = clickGroupStartIndexes[groupIndex]
-    const groupEndIndex = getGroupEndIndex(clickGroupStartIndexes, groupIndex, timelineAnimations.length)
-    const startBatches = buildAnimationStartBatches(timelineAnimations, groupStartIndex, groupEndIndex)
+    const startBatches = buildAnimationStartBatches(timelineAnimations, group)
 
     const applyBatch = (batchIndexes: number[]) => {
       setSlideExecutedCounts(previous => ({
@@ -272,23 +264,46 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
 
     setSlideClickSteps(previous => ({
       ...previous,
-      [slide.id]: currentClickStep + 1
+      [slide.id]: groupIndex + 1
     }))
     logElementAnimationDebug('动画点击步进已推进', {
       slideId: slide.id,
-      previousStep: currentClickStep,
-      nextStep: currentClickStep + 1
+      previousStep: groupIndex,
+      nextStep: groupIndex + 1,
+      triggerSource: group.triggerSource
     })
     return true
+  }, [slide.id, clickAnimationGroups, timelineAnimations, clearPendingTimers, logElementAnimationDebug])
+
+  const stepForwardElementAnimation = useCallback((): boolean => {
+    if (!hasRemainingClickAnimations) return false
+    const group = clickAnimationGroups[currentClickStep]
+    if (!group) return false
+    if (group.triggerSource) {
+      logElementAnimationDebug('普通点击被源触发动画拦截', {
+        slideId: slide.id,
+        currentClickStep,
+        requiredTriggerSource: group.triggerSource
+      })
+      return true
+    }
+    return playClickAnimationGroup(currentClickStep)
   }, [
-    slide.id,
     currentClickStep,
-    clickGroupStartIndexes,
-    timelineAnimations,
+    clickAnimationGroups,
     hasRemainingClickAnimations,
-    clearPendingTimers,
-    logElementAnimationDebug
+    playClickAnimationGroup,
+    logElementAnimationDebug,
+    slide.id
   ])
+
+  const triggerElementSourceAnimation = useCallback((sourceElementId: string): boolean => {
+    if (!hasRemainingClickAnimations) return false
+    const group = clickAnimationGroups[currentClickStep]
+    if (!group?.triggerSource) return false
+    if (group.triggerSource !== sourceElementId) return false
+    return playClickAnimationGroup(currentClickStep)
+  }, [hasRemainingClickAnimations, clickAnimationGroups, currentClickStep, playClickAnimationGroup])
 
   const stepBackwardElementAnimation = useCallback((): boolean => {
     if (currentClickStep <= 0) return false
@@ -298,7 +313,7 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     const nextClickStep = Math.max(0, currentClickStep - 1)
     const nextExecutedCount = getExecutedCountForClickStep(
       nextClickStep,
-      clickGroupStartIndexes,
+      clickAnimationGroups,
       timelineAnimations.length
     )
 
@@ -322,7 +337,7 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
       nextExecutedCount
     })
     return true
-  }, [slide.id, currentClickStep, clickGroupStartIndexes, timelineAnimations.length, clearPendingTimers, logElementAnimationDebug])
+  }, [slide.id, currentClickStep, clickAnimationGroups, timelineAnimations.length, clearPendingTimers, logElementAnimationDebug])
 
   useEffect(() => {
     const animationSequence = timelineAnimations.map((animation, index) => ({
@@ -339,7 +354,7 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
       slideId: slide.id,
       currentClickStep,
       currentExecutedCount,
-      clickGroupCount: clickGroupStartIndexes.length,
+      clickGroupCount: clickAnimationGroups.length,
       animationSequence
     })
   }, [
@@ -347,7 +362,7 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     timelineAnimations,
     currentClickStep,
     currentExecutedCount,
-    clickGroupStartIndexes,
+    clickAnimationGroups,
     logElementAnimationDebug
   ])
 
@@ -375,8 +390,9 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     elementRenderStates,
     hasRemainingClickAnimations,
     currentAnimationStep: currentClickStep,
-    totalClickAnimations: clickGroupStartIndexes.length,
+    totalClickAnimations: clickAnimationGroups.length,
     stepForwardElementAnimation,
+    triggerElementSourceAnimation,
     stepBackwardElementAnimation,
     clearStepDirection
   }

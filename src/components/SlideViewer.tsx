@@ -56,6 +56,7 @@ export function SlideViewer({
     currentAnimationStep,
     totalClickAnimations,
     stepForwardElementAnimation,
+    triggerElementSourceAnimation,
     stepBackwardElementAnimation,
     clearStepDirection
   } = useElementAnimations({ slide })
@@ -265,8 +266,8 @@ export function SlideViewer({
               )
 
               return (
-                <div
-                  key={`${slideItem.id}-${index}`}
+              <div
+                key={`${slideItem.id}-${index}`}
                   style={{
                     position: 'absolute',
                     top: 0,
@@ -306,6 +307,7 @@ export function SlideViewer({
                       currentIndex={currentIndex}
                       elementDisplayStyles={isCurrent ? elementDisplayStyles : undefined}
                       elementRenderStates={isCurrent ? elementRenderStates : undefined}
+                      onElementClick={isCurrent ? triggerElementSourceAnimation : undefined}
                     />
                   </div>
                 </div>

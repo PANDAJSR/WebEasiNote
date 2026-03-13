@@ -10,6 +10,7 @@ interface SlideRendererProps {
   currentIndex?: number
   elementDisplayStyles?: Record<string, CSSProperties>
   elementRenderStates?: Record<string, boolean>
+  onElementClick?: (elementId: string) => void
 }
 
 /**
@@ -22,7 +23,8 @@ export function SlideRenderer({
   slideIndex = 0,
   currentIndex = 0,
   elementDisplayStyles = {},
-  elementRenderStates = {}
+  elementRenderStates = {},
+  onElementClick
 }: SlideRendererProps) {
   const backgroundImageUrl = slide.backgroundImage ? resourceMap[slide.backgroundImage] : null
   const scaledWidth = slide.width * scale
@@ -61,6 +63,7 @@ export function SlideRenderer({
               key={element.id}
               data-slide-element='true'
               style={elementDisplayStyles[element.id]}
+              onClick={() => onElementClick?.(element.id)}
             >
               <ElementRenderer
                 element={element}

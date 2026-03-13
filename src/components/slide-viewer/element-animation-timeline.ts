@@ -11,6 +11,12 @@ export interface AnimationStartBatch {
   indexes: number[]
 }
 
+export interface ClickAnimationGroup {
+  startIndex: number
+  endIndex: number
+  triggerSource: string
+}
+
 function normalizeAnimationTrigger(trigger: string): SupportedAnimationTrigger | null {
   const normalizedTrigger = trigger.trim().toLowerCase()
   if (normalizedTrigger === 'click' || normalizedTrigger === 'before' || normalizedTrigger === 'after') {
@@ -44,7 +50,7 @@ export function resolveTimelineAnimations(
   return result
 }
 
-export function resolveClickGroupStartIndexes(timelineAnimations: TimelineAnimation[]): number[] {
+function resolveClickGroupStartIndexes(timelineAnimations: TimelineAnimation[]): number[] {
   const groupStarts: number[] = []
   timelineAnimations.forEach((animation, index) => {
     if (animation.normalizedTrigger === 'click') {
@@ -58,7 +64,7 @@ export function resolveClickGroupStartIndexes(timelineAnimations: TimelineAnimat
   return groupStarts
 }
 
-export function getGroupEndIndex(
+function getGroupEndIndex(
   groupStartIndexes: number[],
   groupIndex: number,
   totalAnimations: number
@@ -68,21 +74,34 @@ export function getGroupEndIndex(
   return nextGroupStart - 1
 }
 
+export function resolveClickAnimationGroups(timelineAnimations: TimelineAnimation[]): ClickAnimationGroup[] {
+  const groupStartIndexes = resolveClickGroupStartIndexes(timelineAnimations)
+  return groupStartIndexes.map((startIndex, groupIndex) => {
+    const endIndex = getGroupEndIndex(groupStartIndexes, groupIndex, timelineAnimations.length)
+    const triggerSource = (timelineAnimations[startIndex]?.triggerSource || '').trim()
+    return {
+      startIndex,
+      endIndex,
+      triggerSource
+    }
+  })
+}
+
 export function getExecutedCountForClickStep(
   clickStep: number,
-  groupStartIndexes: number[],
+  groups: ClickAnimationGroup[],
   totalAnimations: number
 ): number {
   if (clickStep <= 0) return 0
-  if (clickStep >= groupStartIndexes.length) return totalAnimations
-  return groupStartIndexes[clickStep]
+  if (clickStep >= groups.length) return totalAnimations
+  return groups[clickStep].startIndex
 }
 
 export function buildAnimationStartBatches(
   timelineAnimations: TimelineAnimation[],
-  groupStartIndex: number,
-  groupEndIndex: number
+  group: ClickAnimationGroup
 ): AnimationStartBatch[] {
+  const { startIndex: groupStartIndex, endIndex: groupEndIndex } = group
   if (groupStartIndex > groupEndIndex) return []
 
   const animationIndexesByTime = new Map<number, number[]>()
