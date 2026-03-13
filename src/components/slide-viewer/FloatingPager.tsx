@@ -30,9 +30,6 @@ export function FloatingPager({
   animationTotalSteps
 }: FloatingPagerProps) {
   const shouldShowAnimationProgress = showAnimationProgress && animationTotalSteps > 0
-  const animationProgressRatio = shouldShowAnimationProgress
-    ? Math.min(1, Math.max(0, animationCurrentStep / animationTotalSteps))
-    : 0
 
   return (
     <div
@@ -65,18 +62,8 @@ export function FloatingPager({
         <span style={styles.floatingPagerPageContent}>
           <span style={styles.floatingPagerValue}>{currentIndex + 1}/{totalSlides}</span>
           {shouldShowAnimationProgress && (
-            <span style={styles.floatingPagerAnimationProgressWrap}>
-              <span style={styles.floatingPagerAnimationProgressText}>
-                动画 {animationCurrentStep}/{animationTotalSteps}
-              </span>
-              <span style={styles.floatingPagerAnimationProgressTrack}>
-                <span
-                  style={{
-                    ...styles.floatingPagerAnimationProgressFill,
-                    width: `${animationProgressRatio * 100}%`
-                  }}
-                />
-              </span>
+            <span style={styles.floatingPagerAnimationProgressText}>
+              动画 {animationCurrentStep}/{animationTotalSteps}
             </span>
           )}
         </span>

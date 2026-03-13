@@ -180,8 +180,8 @@ export const overlayStyles: Record<string, CSSProperties> = {
   },
   floatingPagerPageButtonWithProgress: {
     minWidth: '118px',
-    height: '58px',
-    padding: '6px 10px'
+    height: '44px',
+    padding: '0 10px'
   },
   floatingPagerPageContent: {
     width: '100%',
@@ -208,20 +208,6 @@ export const overlayStyles: Record<string, CSSProperties> = {
     fontSize: '0.6875rem',
     lineHeight: 1,
     color: '#475569'
-  },
-  floatingPagerAnimationProgressTrack: {
-    width: '100%',
-    height: '4px',
-    borderRadius: '999px',
-    backgroundColor: 'rgba(148, 163, 184, 0.35)',
-    overflow: 'hidden'
-  },
-  floatingPagerAnimationProgressFill: {
-    display: 'block',
-    height: '100%',
-    borderRadius: '999px',
-    backgroundColor: '#3b82f6',
-    transition: 'width 180ms ease'
   },
   slidePanelOverlay: {
     position: 'absolute',
