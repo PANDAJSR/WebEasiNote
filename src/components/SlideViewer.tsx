@@ -287,6 +287,7 @@ export function SlideViewer({
   const lineRevealRafRef = useRef<number | null>(null)
   const slidePanelExitTimerRef = useRef<number | null>(null)
   const slidePanelEnterRafRef = useRef<number | null>(null)
+  const slidePanelEnterRafInnerRef = useRef<number | null>(null)
   const transitionIdRef = useRef(0)
   const layerRefs = useRef<Record<number, HTMLDivElement | null>>({})
   const lastStepChangeDirectionRef = useRef<'forward' | 'backward' | 'none'>('none')
@@ -614,11 +615,18 @@ export function SlideViewer({
       window.cancelAnimationFrame(slidePanelEnterRafRef.current)
       slidePanelEnterRafRef.current = null
     }
+    if (slidePanelEnterRafInnerRef.current !== null) {
+      window.cancelAnimationFrame(slidePanelEnterRafInnerRef.current)
+      slidePanelEnterRafInnerRef.current = null
+    }
 
     if (isSlidePanelOpen) {
       setSlidePanelRendered(true)
       slidePanelEnterRafRef.current = window.requestAnimationFrame(() => {
-        setSlidePanelActive(true)
+        slidePanelEnterRafInnerRef.current = window.requestAnimationFrame(() => {
+          setSlidePanelActive(true)
+          slidePanelEnterRafInnerRef.current = null
+        })
         slidePanelEnterRafRef.current = null
       })
       return
@@ -956,6 +964,9 @@ export function SlideViewer({
       }
       if (slidePanelEnterRafRef.current !== null) {
         window.cancelAnimationFrame(slidePanelEnterRafRef.current)
+      }
+      if (slidePanelEnterRafInnerRef.current !== null) {
+        window.cancelAnimationFrame(slidePanelEnterRafInnerRef.current)
       }
     }
   }, [])
