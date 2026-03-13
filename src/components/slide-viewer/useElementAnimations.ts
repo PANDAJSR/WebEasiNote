@@ -176,7 +176,8 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
         willChange: 'opacity'
       }
       if (
-        activeFlickerAnimation
+        !shouldInstantApply
+        && activeFlickerAnimation
         && activeFlickerAnimation.targetId === elementId
         && isFlickerAnimation(activeFlickerAnimation.type, activeFlickerAnimation.category)
       ) {
@@ -184,6 +185,8 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
         style.animation = `${FLICKER_KEYFRAME_NAME} ${flickerDurationMs}ms ease-in-out 1`
         style.animationFillMode = 'forwards'
       } else if (
+        !shouldInstantApply
+        &&
         triggeredAnimation
         && triggeredAnimation.targetId === elementId
         && isAppearanceAnimation(triggeredAnimation.type, triggeredAnimation.category)
@@ -192,6 +195,8 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
         style.animation = `${FADE_IN_KEYFRAME_NAME} ${fadeInDurationMs}ms ease 1`
         style.animationFillMode = 'forwards'
       } else if (
+        !shouldInstantApply
+        &&
         triggeredAnimation
         && triggeredAnimation.targetId === elementId
         && isDisappearanceAnimation(triggeredAnimation.type, triggeredAnimation.category)
