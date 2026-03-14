@@ -18,20 +18,21 @@ import {
   isDisappearanceAnimation,
   isFadeAnimation,
   isFlickerAnimation,
+  isTranslateFadeInAnimation,
   isTranslateInAnimation,
   normalizeWipeOrientation
 } from './constants'
+import { buildTranslateFadeInKeyframeName, buildTranslateFadeInKeyframesCss, resolveTranslateFadeInOffset, TRANSLATE_FADE_IN_OFFSET_X_VAR, TRANSLATE_FADE_IN_OFFSET_Y_VAR } from './translate-fade-animation'
 import { buildTranslateInKeyframeName, buildTranslateInKeyframesCss } from './translate-animation'
 import { buildWipeInKeyframeName, buildWipeInKeyframesCss } from './wipe-animation'
-interface UseElementAnimationsParams {
-  slide: SlideData
-}
+interface UseElementAnimationsParams { slide: SlideData }
 const FADE_IN_KEYFRAME_NAME = 'seewo-element-fade-in'
 const FADE_OUT_KEYFRAME_NAME = 'seewo-element-fade-out'
 function isConsumableAnimation(animation: SlideData['animations'][number]): boolean {
   return isFadeAnimation(animation.type)
     || isFlickerAnimation(animation.type, animation.category)
     || isDiagonalWipeInAnimation(animation.type)
+    || isTranslateFadeInAnimation(animation.type)
     || isTranslateInAnimation(animation.type)
 }
 export function useElementAnimations({ slide }: UseElementAnimationsParams) {
@@ -80,6 +81,7 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
         100% { opacity: 0; }
       }
       ${buildWipeInKeyframesCss()}
+      ${buildTranslateFadeInKeyframesCss()}
       ${buildTranslateInKeyframesCss()}
     `
     document.head.appendChild(styleElement)
@@ -89,9 +91,7 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
   const timelineAnimations = useMemo(() => {
     return resolveTimelineAnimations(slide.animations, elementIdSet, isConsumableAnimation)
   }, [slide.animations, elementIdSet])
-  const clickAnimationGroups = useMemo(() => {
-    return resolveClickAnimationGroups(timelineAnimations)
-  }, [timelineAnimations])
+  const clickAnimationGroups = useMemo(() => resolveClickAnimationGroups(timelineAnimations), [timelineAnimations])
   const currentClickStep = slideClickSteps[slide.id] || 0
   const currentExecutedCount = slideExecutedCounts[slide.id] || 0
   const stickyVisibleElementIdSet = new Set(slideStickyVisibleElementIds[slide.id] || [])
@@ -202,6 +202,23 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
         const wipeKeyframeName = buildWipeInKeyframeName(wipeOrientation)
         style.animation = `${wipeKeyframeName} ${wipeInDurationMs}ms linear 1`
         style.animationFillMode = 'forwards'
+      } else if (
+        !shouldInstantApply
+        && triggeredAnimation
+        && isTranslateFadeInAnimation(triggeredAnimation.type)
+      ) {
+        const translateFadeInDurationMs = Math.max(
+          1,
+          triggeredAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS
+        )
+        const translateFadeOrientation = normalizeWipeOrientation(triggeredAnimation.orientation)
+        const translateFadeOffset = resolveTranslateFadeInOffset(triggeredAnimation.path, translateFadeOrientation)
+        const translateFadeKeyframeName = buildTranslateFadeInKeyframeName()
+        style.transition = 'none'
+        style.animation = `${translateFadeKeyframeName} ${translateFadeInDurationMs}ms ease-out 1`
+        style.animationFillMode = 'forwards'
+        ;(style as CSSProperties & Record<string, string>)[TRANSLATE_FADE_IN_OFFSET_X_VAR] = `${translateFadeOffset.x}px`
+        ;(style as CSSProperties & Record<string, string>)[TRANSLATE_FADE_IN_OFFSET_Y_VAR] = `${translateFadeOffset.y}px`
       } else if (
         !shouldInstantApply
         && triggeredAnimation

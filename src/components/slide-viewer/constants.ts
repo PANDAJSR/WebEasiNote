@@ -37,6 +37,7 @@ export const FLICKER_KEYFRAME_ID = 'seewo-element-flicker-keyframes'
 export const FLICKER_KEYFRAME_NAME = 'seewo-element-flicker'
 export const WIPE_IN_KEYFRAME_PREFIX = 'seewo-element-wipe-in'
 export const TRANSLATE_IN_KEYFRAME_PREFIX = 'seewo-element-translate-in'
+export const TRANSLATE_FADE_IN_KEYFRAME_PREFIX = 'seewo-element-translate-fade-in'
 export const SLIDE_PANEL_ANIMATION_MS = 180
 
 export function isAppearanceAnimation(type: string, category: string): boolean {
@@ -91,6 +92,11 @@ export function isDiagonalWipeInAnimation(type: string): boolean {
 export function isTranslateInAnimation(type: string): boolean {
   const normalizedType = type.trim().toLowerCase()
   return normalizedType === 'translatein'
+}
+
+export function isTranslateFadeInAnimation(type: string): boolean {
+  const normalizedType = type.trim().toLowerCase()
+  return normalizedType === 'translatefadein'
 }
 
 export function normalizeWipeOrientation(rawValue?: string): WipeOrientation {

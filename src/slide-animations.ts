@@ -28,6 +28,24 @@ function findClosestElementId(node: Element | null): string | null {
   return null
 }
 
+function resolveAnimationPath(animationNode: Element): string | undefined {
+  const directPath = getDirectChildText(animationNode, 'Path')?.trim()
+  if (directPath) return directPath
+
+  const childrenNode = getDirectChildElement(animationNode, 'Children')
+  if (!childrenNode) return undefined
+
+  for (const childNode of Array.from(childrenNode.children)) {
+    if (childNode.tagName !== 'Animation') continue
+    const type = getDirectChildText(childNode, 'Type')?.trim().toLowerCase()
+    if (type !== 'line') continue
+    const childPath = getDirectChildText(childNode, 'Path')?.trim()
+    if (childPath) return childPath
+  }
+
+  return undefined
+}
+
 function parseAnimationNode(
   animationNode: Element,
   sourceElementId: string,
@@ -48,6 +66,7 @@ function parseAnimationNode(
     category: getDirectChildText(animationNode, 'Category') || 'Unknown',
     effect: getDirectChildText(animationNode, 'Effect') || undefined,
     orientation: getDirectChildText(animationNode, 'Orientation') || undefined,
+    path: resolveAnimationPath(animationNode),
     trigger: getDirectChildText(animationNode, 'Trigger') || 'Click',
     triggerSource: getDirectChildText(animationNode, 'TriggerSource') || '',
     number: parseInt(getDirectChildText(animationNode, 'Number') || '0', 10),

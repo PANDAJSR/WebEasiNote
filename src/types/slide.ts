@@ -37,6 +37,7 @@ export interface ElementAnimation {
   category: string
   effect?: string
   orientation?: string
+  path?: string
   trigger: string
   triggerSource: string
   number: number
