@@ -18,8 +18,10 @@ import {
   isDisappearanceAnimation,
   isFadeAnimation,
   isFlickerAnimation,
+  isTranslateInAnimation,
   normalizeWipeOrientation
 } from './constants'
+import { buildTranslateInKeyframeName, buildTranslateInKeyframesCss } from './translate-animation'
 import { buildWipeInKeyframeName, buildWipeInKeyframesCss } from './wipe-animation'
 interface UseElementAnimationsParams {
   slide: SlideData
@@ -30,8 +32,8 @@ function isConsumableAnimation(animation: SlideData['animations'][number]): bool
   return isFadeAnimation(animation.type)
     || isFlickerAnimation(animation.type, animation.category)
     || isDiagonalWipeInAnimation(animation.type)
+    || isTranslateInAnimation(animation.type)
 }
-
 export function useElementAnimations({ slide }: UseElementAnimationsParams) {
   const [slideClickSteps, setSlideClickSteps] = useState<Record<string, number>>({})
   const [slideExecutedCounts, setSlideExecutedCounts] = useState<Record<string, number>>({})
@@ -54,7 +56,6 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     timerIdsRef.current.forEach(timerId => window.clearTimeout(timerId))
     timerIdsRef.current = []
   }, [])
-
   useEffect(() => {
     if (typeof document === 'undefined') return
     if (document.getElementById(FLICKER_KEYFRAME_ID)) return
@@ -79,33 +80,27 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
         100% { opacity: 0; }
       }
       ${buildWipeInKeyframesCss()}
+      ${buildTranslateInKeyframesCss()}
     `
     document.head.appendChild(styleElement)
   }, [])
-
   useEffect(() => () => clearPendingTimers(), [clearPendingTimers])
-
   useEffect(() => { clearPendingTimers() }, [slide.id, clearPendingTimers])
-
   const timelineAnimations = useMemo(() => {
     return resolveTimelineAnimations(slide.animations, elementIdSet, isConsumableAnimation)
   }, [slide.animations, elementIdSet])
-
   const clickAnimationGroups = useMemo(() => {
     return resolveClickAnimationGroups(timelineAnimations)
   }, [timelineAnimations])
-
   const currentClickStep = slideClickSteps[slide.id] || 0
   const currentExecutedCount = slideExecutedCounts[slide.id] || 0
   const stickyVisibleElementIdSet = new Set(slideStickyVisibleElementIds[slide.id] || [])
   const hasRemainingClickAnimations = currentClickStep < clickAnimationGroups.length
-
   const currentTriggeredAnimations = useMemo(() => {
     const animationIdSet = new Set(recentlyTriggeredAnimationIds[slide.id] || [])
     if (animationIdSet.size === 0) return []
     return timelineAnimations.filter(animation => animationIdSet.has(animation.id))
   }, [slide.id, timelineAnimations, recentlyTriggeredAnimationIds])
-
   const currentTriggeredAnimationByElementId = useMemo(() => {
     const animationByElementId = new Map<string, TimelineAnimation>()
     currentTriggeredAnimations.forEach(animation => {
@@ -113,17 +108,14 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     })
     return animationByElementId
   }, [currentTriggeredAnimations])
-
   const executedAnimations = useMemo(() => {
     return timelineAnimations.slice(0, currentExecutedCount)
   }, [timelineAnimations, currentExecutedCount])
   const elementRenderStates = useMemo(() => {
     const result: Record<string, boolean> = {}
     if (timelineAnimations.length === 0) return result
-
     const firstAppearanceAnimationByElement = new Map<string, TimelineAnimation>()
     const appearedElementIds = new Set<string>()
-
     timelineAnimations.forEach(animation => {
       if (
         !firstAppearanceAnimationByElement.has(animation.targetId)
@@ -132,28 +124,22 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
         firstAppearanceAnimationByElement.set(animation.targetId, animation)
       }
     })
-
     executedAnimations.forEach(animation => {
       if (isAppearanceAnimation(animation.type, animation.category)) {
         appearedElementIds.add(animation.targetId)
       }
     })
-
     firstAppearanceAnimationByElement.forEach((_, elementId) => {
       result[elementId] = appearedElementIds.has(elementId) || stickyVisibleElementIdSet.has(elementId)
     })
-
     return result
   }, [timelineAnimations, executedAnimations, stickyVisibleElementIdSet])
-
   const elementDisplayStyles = useMemo(() => {
     const allAnimatedElementIds = new Set(timelineAnimations.map(animation => animation.targetId))
     if (allAnimatedElementIds.size === 0) return {}
-
     const firstAppearanceAnimationByElement = new Map<string, TimelineAnimation>()
     const latestAnimationByElement = new Map<string, TimelineAnimation>()
     const shouldInstantApply = lastStepChangeDirectionRef.current === 'backward'
-
     timelineAnimations.forEach(animation => {
       if (
         !firstAppearanceAnimationByElement.has(animation.targetId)
@@ -165,7 +151,6 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     executedAnimations.forEach(animation => {
       latestAnimationByElement.set(animation.targetId, animation)
     })
-
     const result: Record<string, CSSProperties> = {}
     allAnimatedElementIds.forEach(elementId => {
       const firstAppearanceAnimation = firstAppearanceAnimationByElement.get(elementId)
@@ -173,7 +158,6 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
       const startHidden = Boolean(firstAppearanceAnimation)
       let opacity = startHidden ? 0 : 1
       let durationMs = 0
-
       if (latestAnimation) {
         durationMs = Math.max(0, latestAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS)
         if (isAppearanceAnimation(latestAnimation.type, latestAnimation.category)) {
@@ -194,13 +178,11 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
       if (shouldInstantApply) {
         durationMs = 0
       }
-
       const style: CSSProperties = {
         opacity,
         transition: durationMs > 0 ? `opacity ${durationMs}ms ease` : 'none',
         willChange: 'opacity'
       }
-
       const triggeredAnimation = currentTriggeredAnimationByElementId.get(elementId)
       if (
         !shouldInstantApply
@@ -219,6 +201,19 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
         const wipeOrientation = normalizeWipeOrientation(triggeredAnimation.orientation)
         const wipeKeyframeName = buildWipeInKeyframeName(wipeOrientation)
         style.animation = `${wipeKeyframeName} ${wipeInDurationMs}ms linear 1`
+        style.animationFillMode = 'forwards'
+      } else if (
+        !shouldInstantApply
+        && triggeredAnimation
+        && isTranslateInAnimation(triggeredAnimation.type)
+      ) {
+        const translateInDurationMs = Math.max(
+          1,
+          triggeredAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS
+        )
+        const translateOrientation = normalizeWipeOrientation(triggeredAnimation.orientation)
+        const translateKeyframeName = buildTranslateInKeyframeName(translateOrientation)
+        style.animation = `${translateKeyframeName} ${translateInDurationMs}ms ease-out 1`
         style.animationFillMode = 'forwards'
       } else if (
         !shouldInstantApply
@@ -242,18 +237,14 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
       }
       result[elementId] = style
     })
-
     return result
   }, [timelineAnimations, executedAnimations, currentTriggeredAnimationByElementId, stickyVisibleElementIdSet])
-
   const playClickAnimationGroup = useCallback((groupIndex: number) => {
     const group = clickAnimationGroups[groupIndex]
     if (!group) return false
-
     clearPendingTimers()
     lastStepChangeDirectionRef.current = 'forward'
     const startBatches = buildAnimationStartBatches(timelineAnimations, group)
-
     const applyBatch = (batchIndexes: number[]) => {
       setSlideExecutedCounts(previous => ({
         ...previous,
@@ -283,7 +274,6 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
         animationIds
       })
     }
-
     startBatches.forEach(batch => {
       if (batch.atMs <= 0) {
         applyBatch(batch.indexes)
@@ -294,7 +284,6 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
       }, batch.atMs)
       timerIdsRef.current.push(timerId)
     })
-
     setSlideClickSteps(previous => ({
       ...previous,
       [slide.id]: groupIndex + 1
@@ -307,7 +296,6 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     })
     return true
   }, [slide.id, clickAnimationGroups, timelineAnimations, clearPendingTimers, logElementAnimationDebug])
-
   useEffect(() => {
     const firstGroup = clickAnimationGroups[0]
     const firstAnimation = firstGroup ? timelineAnimations[firstGroup.startIndex] : null
@@ -317,7 +305,6 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     autoStartedSlideIdsRef.current.add(slide.id)
     playClickAnimationGroup(0)
   }, [slide.id, currentClickStep, clickAnimationGroups, timelineAnimations, playClickAnimationGroup])
-
   const stepForwardElementAnimation = useCallback((): boolean => {
     if (!hasRemainingClickAnimations) return false
     const group = clickAnimationGroups[currentClickStep]
@@ -339,7 +326,6 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     logElementAnimationDebug,
     slide.id
   ])
-
   const triggerElementSourceAnimation = useCallback((sourceElementId: string): boolean => {
     if (!hasRemainingClickAnimations) return false
     const group = clickAnimationGroups[currentClickStep]
@@ -347,19 +333,16 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     if (group.triggerSource !== sourceElementId) return false
     return playClickAnimationGroup(currentClickStep)
   }, [hasRemainingClickAnimations, clickAnimationGroups, currentClickStep, playClickAnimationGroup])
-
   const stepBackwardElementAnimation = useCallback((): boolean => {
     if (currentClickStep <= 0) return false
     clearPendingTimers()
     lastStepChangeDirectionRef.current = 'backward'
-
     const nextClickStep = Math.max(0, currentClickStep - 1)
     const nextExecutedCount = getExecutedCountForClickStep(
       nextClickStep,
       clickAnimationGroups,
       timelineAnimations.length
     )
-
     setSlideClickSteps(previous => ({
       ...previous,
       [slide.id]: nextClickStep
@@ -372,7 +355,6 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
       ...previous,
       [slide.id]: []
     }))
-
     logElementAnimationDebug('动画点击步进已回退', {
       slideId: slide.id,
       previousStep: currentClickStep,
@@ -381,11 +363,9 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     })
     return true
   }, [slide.id, currentClickStep, clickAnimationGroups, timelineAnimations.length, clearPendingTimers, logElementAnimationDebug])
-
   const clearStepDirection = useCallback(() => {
     lastStepChangeDirectionRef.current = 'none'
   }, [])
-
   return {
     elementDisplayStyles,
     elementRenderStates,
