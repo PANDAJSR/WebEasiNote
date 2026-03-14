@@ -46,6 +46,8 @@ function parseAnimationNode(
     id,
     type: getDirectChildText(animationNode, 'Type') || 'Unknown',
     category: getDirectChildText(animationNode, 'Category') || 'Unknown',
+    effect: getDirectChildText(animationNode, 'Effect') || undefined,
+    orientation: getDirectChildText(animationNode, 'Orientation') || undefined,
     trigger: getDirectChildText(animationNode, 'Trigger') || 'Click',
     triggerSource: getDirectChildText(animationNode, 'TriggerSource') || '',
     number: parseInt(getDirectChildText(animationNode, 'Number') || '0', 10),

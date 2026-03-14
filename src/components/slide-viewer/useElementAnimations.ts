@@ -14,10 +14,13 @@ import {
   FLICKER_KEYFRAME_ID,
   FLICKER_KEYFRAME_NAME,
   isAppearanceAnimation,
+  isDiagonalWipeInAnimation,
   isDisappearanceAnimation,
   isFadeAnimation,
-  isFlickerAnimation
+  isFlickerAnimation,
+  normalizeWipeOrientation
 } from './constants'
+import { buildWipeInKeyframeName, buildWipeInKeyframesCss } from './wipe-animation'
 
 interface UseElementAnimationsParams {
   slide: SlideData
@@ -27,7 +30,11 @@ const FADE_IN_KEYFRAME_NAME = 'seewo-element-fade-in'
 const FADE_OUT_KEYFRAME_NAME = 'seewo-element-fade-out'
 
 function isConsumableAnimation(animation: SlideData['animations'][number]): boolean {
-  return isFadeAnimation(animation.type) || isFlickerAnimation(animation.type, animation.category)
+  return (
+    isFadeAnimation(animation.type)
+    || isFlickerAnimation(animation.type, animation.category)
+    || isDiagonalWipeInAnimation(animation.type)
+  )
 }
 
 export function useElementAnimations({ slide }: UseElementAnimationsParams) {
@@ -76,6 +83,7 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
         0% { opacity: 1; }
         100% { opacity: 0; }
       }
+      ${buildWipeInKeyframesCss()}
     `
     document.head.appendChild(styleElement)
   }, [])
@@ -206,6 +214,16 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
       ) {
         const flickerDurationMs = Math.max(1, triggeredAnimation.durationMs || 1000)
         style.animation = `${FLICKER_KEYFRAME_NAME} ${flickerDurationMs}ms ease-in-out 1`
+        style.animationFillMode = 'forwards'
+      } else if (
+        !shouldInstantApply
+        && triggeredAnimation
+        && isDiagonalWipeInAnimation(triggeredAnimation.type)
+      ) {
+        const wipeInDurationMs = Math.max(1, triggeredAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS)
+        const wipeOrientation = normalizeWipeOrientation(triggeredAnimation.orientation)
+        const wipeKeyframeName = buildWipeInKeyframeName(wipeOrientation)
+        style.animation = `${wipeKeyframeName} ${wipeInDurationMs}ms linear 1`
         style.animationFillMode = 'forwards'
       } else if (
         !shouldInstantApply

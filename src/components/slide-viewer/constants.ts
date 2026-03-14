@@ -35,6 +35,7 @@ export const ENABLE_ELEMENT_ANIMATION_DEBUG_LOG = true
 export const DEFAULT_ELEMENT_ANIMATION_DURATION_MS = 300
 export const FLICKER_KEYFRAME_ID = 'seewo-element-flicker-keyframes'
 export const FLICKER_KEYFRAME_NAME = 'seewo-element-flicker'
+export const WIPE_IN_KEYFRAME_PREFIX = 'seewo-element-wipe-in'
 export const SLIDE_PANEL_ANIMATION_MS = 180
 
 export function isAppearanceAnimation(type: string, category: string): boolean {
@@ -58,6 +59,38 @@ export function isFlickerAnimation(type: string, category: string): boolean {
   const normalizedType = type.trim().toLowerCase()
   const normalizedCategory = category.trim().toLowerCase()
   return normalizedType === 'flicker' || normalizedCategory === 'emphasis'
+}
+
+export type WipeOrientation =
+  | 'LeftToRight'
+  | 'RightToLeft'
+  | 'TopToBottom'
+  | 'BottomToTop'
+  | 'LeftTopToRightBottom'
+  | 'RightTopToLeftBottom'
+  | 'LeftBottomToRightTop'
+  | 'RightBottomToLeftTop'
+
+const wipeOrientations = new Set<WipeOrientation>([
+  'LeftToRight',
+  'RightToLeft',
+  'TopToBottom',
+  'BottomToTop',
+  'LeftTopToRightBottom',
+  'RightTopToLeftBottom',
+  'LeftBottomToRightTop',
+  'RightBottomToLeftTop'
+])
+
+export function isDiagonalWipeInAnimation(type: string): boolean {
+  const normalizedType = type.trim().toLowerCase()
+  return normalizedType === 'diagonalwipein'
+}
+
+export function normalizeWipeOrientation(rawValue?: string): WipeOrientation {
+  if (!rawValue) return 'LeftToRight'
+  const normalizedValue = rawValue.trim() as WipeOrientation
+  return wipeOrientations.has(normalizedValue) ? normalizedValue : 'LeftToRight'
 }
 
 export function normalizeTransitionKey(transitionKey: string): string {

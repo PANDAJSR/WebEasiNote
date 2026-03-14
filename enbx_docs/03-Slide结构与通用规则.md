@@ -79,6 +79,8 @@ Slide 级别：
 - `Id`
 - `Type`（如 `FadeIn`/`FadeOut`/`Flicker`）
 - `Category`（`Appearance`/`Disappearance`/`Emphasis`）
+- `Effect`（如 `In`）
+- `Orientation`（如 `LeftToRight`、`RightBottomToLeftTop`）
 - `Trigger`（当前消费 `Click` / `Before` / `After`）
 - `TriggerSource`（可选，表示需点击指定元素才触发）
 - `Number`
@@ -103,7 +105,8 @@ Slide 级别：
 - 键盘方向键（←/↑/→/↓）与翻页按钮使用同一动画步进逻辑
 - 仅当前页应用元素动画样式
 - 若元素存在 `FadeIn`（进入动画），初始默认隐藏
-- 当前已消费并可见生效：`FadeIn`、`FadeOut`、`Flicker`
+- 当前已消费并可见生效：`FadeIn`、`FadeOut`、`Flicker`、`DiagonalWipeIn`
+- `DiagonalWipeIn` 当前支持方向：`LeftToRight`、`RightToLeft`、`TopToBottom`、`BottomToTop`、`LeftTopToRightBottom`、`RightTopToLeftBottom`、`LeftBottomToRightTop`、`RightBottomToLeftTop`
 - `Flicker` 执行后会落在可见亮态（不会回退到隐藏态）
 - 兼容规则：当 `TargetId` 无法匹配到页面元素时，会回退到动画所属元素 `Id` 进行绑定
 - 每页动画步进状态会保留，切到其他页再返回时继续保持原步骤结果
