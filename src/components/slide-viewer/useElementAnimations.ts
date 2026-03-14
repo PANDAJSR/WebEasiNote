@@ -50,6 +50,7 @@ function isConsumableAnimation(animation: SlideData['animations'][number]): bool
 export function useElementAnimations({ slide }: UseElementAnimationsParams) {
   const [slideClickSteps, setSlideClickSteps] = useState<Record<string, number>>({})
   const [slideExecutedCounts, setSlideExecutedCounts] = useState<Record<string, number>>({})
+  const [slideSkippedGroupIndexes, setSlideSkippedGroupIndexes] = useState<Record<string, number[]>>({})
   const [slideStickyVisibleElementIds, setSlideStickyVisibleElementIds] = useState<Record<string, string[]>>({})
   const [recentlyTriggeredAnimationIds, setRecentlyTriggeredAnimationIds] = useState<Record<string, string[]>>({})
   const autoStartedSlideIdsRef = useRef(new Set<string>())
@@ -80,6 +81,7 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
   const clickAnimationGroups = useMemo(() => resolveClickAnimationGroups(timelineAnimations), [timelineAnimations])
   const currentClickStep = slideClickSteps[slide.id] || 0
   const currentExecutedCount = slideExecutedCounts[slide.id] || 0
+  const skippedGroupIndexSet = new Set(slideSkippedGroupIndexes[slide.id] || [])
   const stickyVisibleElementIdSet = new Set(slideStickyVisibleElementIds[slide.id] || [])
   const hasRemainingClickAnimations = currentClickStep < clickAnimationGroups.length
   const currentTriggeredAnimations = useMemo(() => {
@@ -95,8 +97,22 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     return animationByElementId
   }, [currentTriggeredAnimations])
   const executedAnimations = useMemo(() => {
-    return timelineAnimations.slice(0, currentExecutedCount)
-  }, [timelineAnimations, currentExecutedCount])
+    if (currentExecutedCount <= 0) return []
+    if (skippedGroupIndexSet.size === 0) {
+      return timelineAnimations.slice(0, currentExecutedCount)
+    }
+    const skippedAnimationIndexes = new Set<number>()
+    skippedGroupIndexSet.forEach(groupIndex => {
+      const group = clickAnimationGroups[groupIndex]
+      if (!group) return
+      for (let index = group.startIndex; index <= group.endIndex; index += 1) {
+        skippedAnimationIndexes.add(index)
+      }
+    })
+    return timelineAnimations
+      .slice(0, currentExecutedCount)
+      .filter((_, index) => !skippedAnimationIndexes.has(index))
+  }, [timelineAnimations, currentExecutedCount, skippedGroupIndexSet, clickAnimationGroups])
   const elementRenderStates = useMemo(() => {
     const result: Record<string, boolean> = {}
     if (timelineAnimations.length === 0) return result
@@ -329,19 +345,31 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
   const stepForwardElementAnimation = useCallback((): boolean => {
     if (!hasRemainingClickAnimations) return false
     let nextPlayableGroupIndex = currentClickStep
+    const skippedGroupIndexes: number[] = []
     while (nextPlayableGroupIndex < clickAnimationGroups.length) {
       const group = clickAnimationGroups[nextPlayableGroupIndex]
       if (!group) return false
       if (!group.triggerSource) {
+        if (skippedGroupIndexes.length > 0) {
+          setSlideSkippedGroupIndexes(previous => {
+            const previousIndexes = previous[slide.id] || []
+            return {
+              ...previous,
+              [slide.id]: Array.from(new Set([...previousIndexes, ...skippedGroupIndexes]))
+            }
+          })
+        }
         if (nextPlayableGroupIndex !== currentClickStep) {
           logElementAnimationDebug('普通点击跳过中间源触发动画分组，继续后续点击分组', {
             slideId: slide.id,
             currentClickStep,
-            nextPlayableGroupIndex
+            nextPlayableGroupIndex,
+            skippedGroupIndexes
           })
         }
         return playClickAnimationGroup(nextPlayableGroupIndex)
       }
+      skippedGroupIndexes.push(nextPlayableGroupIndex)
       nextPlayableGroupIndex += 1
     }
     logElementAnimationDebug('剩余分组均为源触发动画，普通点击不再消费动画', {
@@ -381,6 +409,10 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     setSlideExecutedCounts(previous => ({
       ...previous,
       [slide.id]: nextExecutedCount
+    }))
+    setSlideSkippedGroupIndexes(previous => ({
+      ...previous,
+      [slide.id]: (previous[slide.id] || []).filter(groupIndex => groupIndex < nextClickStep)
     }))
     setRecentlyTriggeredAnimationIds(previous => ({
       ...previous,
