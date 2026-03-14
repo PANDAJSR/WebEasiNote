@@ -62,22 +62,54 @@ export function buildBlindInKeyframesCss(): string {
   return `
     @keyframes ${verticalKeyframeName} {
       0% {
+        -webkit-mask-image: linear-gradient(to right, #000 0%, #000 84%, transparent 84%, transparent 100%);
+        mask-image: linear-gradient(to right, #000 0%, #000 84%, transparent 84%, transparent 100%);
+        -webkit-mask-repeat: repeat;
+        mask-repeat: repeat;
         -webkit-mask-size: 0% 100%;
         mask-size: 0% 100%;
       }
-      100% {
+      99% {
+        -webkit-mask-image: linear-gradient(to right, #000 0%, #000 84%, transparent 84%, transparent 100%);
+        mask-image: linear-gradient(to right, #000 0%, #000 84%, transparent 84%, transparent 100%);
+        -webkit-mask-repeat: repeat;
+        mask-repeat: repeat;
         -webkit-mask-size: 10% 100%;
         mask-size: 10% 100%;
+      }
+      100% {
+        -webkit-mask-image: linear-gradient(to right, #000 0%, #000 100%);
+        mask-image: linear-gradient(to right, #000 0%, #000 100%);
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-size: 100% 100%;
+        mask-size: 100% 100%;
       }
     }
     @keyframes ${horizontalKeyframeName} {
       0% {
+        -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 84%, transparent 84%, transparent 100%);
+        mask-image: linear-gradient(to bottom, #000 0%, #000 84%, transparent 84%, transparent 100%);
+        -webkit-mask-repeat: repeat;
+        mask-repeat: repeat;
         -webkit-mask-size: 100% 0%;
         mask-size: 100% 0%;
       }
-      100% {
+      99% {
+        -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 84%, transparent 84%, transparent 100%);
+        mask-image: linear-gradient(to bottom, #000 0%, #000 84%, transparent 84%, transparent 100%);
+        -webkit-mask-repeat: repeat;
+        mask-repeat: repeat;
         -webkit-mask-size: 100% 10%;
         mask-size: 100% 10%;
+      }
+      100% {
+        -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 100%);
+        mask-image: linear-gradient(to bottom, #000 0%, #000 100%);
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-size: 100% 100%;
+        mask-size: 100% 100%;
       }
     }
   `
