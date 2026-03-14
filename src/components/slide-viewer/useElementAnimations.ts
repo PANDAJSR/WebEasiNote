@@ -21,20 +21,15 @@ import {
   normalizeWipeOrientation
 } from './constants'
 import { buildWipeInKeyframeName, buildWipeInKeyframesCss } from './wipe-animation'
-
 interface UseElementAnimationsParams {
   slide: SlideData
 }
-
 const FADE_IN_KEYFRAME_NAME = 'seewo-element-fade-in'
 const FADE_OUT_KEYFRAME_NAME = 'seewo-element-fade-out'
-
 function isConsumableAnimation(animation: SlideData['animations'][number]): boolean {
-  return (
-    isFadeAnimation(animation.type)
+  return isFadeAnimation(animation.type)
     || isFlickerAnimation(animation.type, animation.category)
     || isDiagonalWipeInAnimation(animation.type)
-  )
 }
 
 export function useElementAnimations({ slide }: UseElementAnimationsParams) {
@@ -42,6 +37,7 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
   const [slideExecutedCounts, setSlideExecutedCounts] = useState<Record<string, number>>({})
   const [slideStickyVisibleElementIds, setSlideStickyVisibleElementIds] = useState<Record<string, string[]>>({})
   const [recentlyTriggeredAnimationIds, setRecentlyTriggeredAnimationIds] = useState<Record<string, string[]>>({})
+  const autoStartedSlideIdsRef = useRef(new Set<string>())
   const timerIdsRef = useRef<number[]>([])
   const lastStepChangeDirectionRef = useRef<'forward' | 'backward' | 'none'>('none')
   const elementIdSet = useMemo(() => new Set(slide.elements.map(element => element.id)), [slide.elements])
@@ -54,7 +50,6 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     }
     console.log(`[SlideViewer][ElementAnimation] ${message}`)
   }, [])
-
   const clearPendingTimers = useCallback(() => {
     timerIdsRef.current.forEach(timerId => window.clearTimeout(timerId))
     timerIdsRef.current = []
@@ -312,6 +307,16 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     })
     return true
   }, [slide.id, clickAnimationGroups, timelineAnimations, clearPendingTimers, logElementAnimationDebug])
+
+  useEffect(() => {
+    const firstGroup = clickAnimationGroups[0]
+    const firstAnimation = firstGroup ? timelineAnimations[firstGroup.startIndex] : null
+    if (currentClickStep !== 0 || !firstGroup || !firstAnimation) return
+    if (firstAnimation.normalizedTrigger === 'click' || firstGroup.triggerSource) return
+    if (autoStartedSlideIdsRef.current.has(slide.id)) return
+    autoStartedSlideIdsRef.current.add(slide.id)
+    playClickAnimationGroup(0)
+  }, [slide.id, currentClickStep, clickAnimationGroups, timelineAnimations, playClickAnimationGroup])
 
   const stepForwardElementAnimation = useCallback((): boolean => {
     if (!hasRemainingClickAnimations) return false
