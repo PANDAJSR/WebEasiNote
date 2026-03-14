@@ -5,7 +5,7 @@ import {
 import { buildScaleInKeyframesCss } from './scale-animation'
 import { buildTranslateFadeInKeyframesCss } from './translate-fade-animation'
 import { buildTranslateInKeyframesCss } from './translate-animation'
-import { buildWipeInKeyframesCss } from './wipe-animation'
+import { buildBlindInKeyframesCss, buildWipeInKeyframesCss } from './wipe-animation'
 
 export const FADE_IN_KEYFRAME_NAME = 'seewo-element-fade-in'
 export const FADE_OUT_KEYFRAME_NAME = 'seewo-element-fade-out'
@@ -35,6 +35,7 @@ export function ensureElementAnimationKeyframes(): void {
       100% { opacity: 0; }
     }
     ${buildWipeInKeyframesCss()}
+    ${buildBlindInKeyframesCss()}
     ${buildTranslateFadeInKeyframesCss()}
     ${buildTranslateInKeyframesCss()}
     ${buildScaleInKeyframesCss()}

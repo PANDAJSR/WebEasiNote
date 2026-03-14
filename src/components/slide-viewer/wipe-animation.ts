@@ -1,5 +1,5 @@
-import type { WipeOrientation } from './constants'
-import { WIPE_IN_KEYFRAME_PREFIX } from './constants'
+import type { BlindDirection, WipeOrientation } from './constants'
+import { BLIND_IN_KEYFRAME_PREFIX, WIPE_IN_KEYFRAME_PREFIX } from './constants'
 
 function resolveWipeStartClipPath(orientation: WipeOrientation): string {
   if (orientation === 'LeftToRight') return 'inset(0 100% 0 0)'
@@ -50,4 +50,35 @@ export function buildWipeInKeyframesCss(): string {
       }
     `
   }).join('\n')
+}
+
+export function buildBlindInKeyframeName(direction: BlindDirection): string {
+  return `${BLIND_IN_KEYFRAME_PREFIX}-${direction}`
+}
+
+export function buildBlindInKeyframesCss(): string {
+  const horizontalKeyframeName = buildBlindInKeyframeName('Horizontal')
+  const verticalKeyframeName = buildBlindInKeyframeName('Vertical')
+  return `
+    @keyframes ${verticalKeyframeName} {
+      0% {
+        -webkit-mask-image: linear-gradient(to right, #000 0%, #000 0%, transparent 0%, transparent 100%);
+        mask-image: linear-gradient(to right, #000 0%, #000 0%, transparent 0%, transparent 100%);
+      }
+      100% {
+        -webkit-mask-image: linear-gradient(to right, #000 0%, #000 100%, transparent 100%, transparent 100%);
+        mask-image: linear-gradient(to right, #000 0%, #000 100%, transparent 100%, transparent 100%);
+      }
+    }
+    @keyframes ${horizontalKeyframeName} {
+      0% {
+        -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 0%, transparent 0%, transparent 100%);
+        mask-image: linear-gradient(to bottom, #000 0%, #000 0%, transparent 0%, transparent 100%);
+      }
+      100% {
+        -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 100%, transparent 100%, transparent 100%);
+        mask-image: linear-gradient(to bottom, #000 0%, #000 100%, transparent 100%, transparent 100%);
+      }
+    }
+  `
 }

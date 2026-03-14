@@ -13,6 +13,7 @@ import {
   ENABLE_ELEMENT_ANIMATION_DEBUG_LOG,
   FLICKER_KEYFRAME_NAME,
   isAppearanceAnimation,
+  isBlindInAnimation,
   isDiagonalWipeInAnimation,
   isDisappearanceAnimation,
   isFadeAnimation,
@@ -20,6 +21,7 @@ import {
   isScaleInAnimation,
   isTranslateFadeInAnimation,
   isTranslateInAnimation,
+  normalizeBlindDirection,
   normalizeWipeOrientation
 } from './constants'
 import {
@@ -33,13 +35,14 @@ import {
 import { FADE_IN_KEYFRAME_NAME, FADE_OUT_KEYFRAME_NAME, ensureElementAnimationKeyframes } from './element-animation-keyframes'
 import { buildTranslateFadeInKeyframeName, resolveTranslateFadeInOffset, TRANSLATE_FADE_IN_OFFSET_X_VAR, TRANSLATE_FADE_IN_OFFSET_Y_VAR } from './translate-fade-animation'
 import { buildTranslateInKeyframeName } from './translate-animation'
-import { buildWipeInKeyframeName } from './wipe-animation'
+import { buildBlindInKeyframeName, buildWipeInKeyframeName } from './wipe-animation'
 interface UseElementAnimationsParams { slide: SlideData }
 
 function isConsumableAnimation(animation: SlideData['animations'][number]): boolean {
   return isFadeAnimation(animation.type)
     || isFlickerAnimation(animation.type, animation.category)
     || isDiagonalWipeInAnimation(animation.type)
+    || isBlindInAnimation(animation.type)
     || isTranslateFadeInAnimation(animation.type)
     || isTranslateInAnimation(animation.type)
     || isScaleInAnimation(animation.type)
@@ -185,6 +188,21 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
         const wipeKeyframeName = buildWipeInKeyframeName(wipeOrientation)
         style.animation = `${wipeKeyframeName} ${wipeInDurationMs}ms linear 1`
         style.animationFillMode = 'forwards'
+      } else if (
+        !shouldInstantApply
+        && triggeredAnimation
+        && isBlindInAnimation(triggeredAnimation.type)
+      ) {
+        const blindInDurationMs = Math.max(1, triggeredAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS)
+        const blindDirection = normalizeBlindDirection(triggeredAnimation.direction)
+        const blindKeyframeName = buildBlindInKeyframeName(blindDirection)
+        style.transition = 'none'
+        style.animation = `${blindKeyframeName} ${blindInDurationMs}ms linear 1`
+        style.animationFillMode = 'forwards'
+        style.WebkitMaskSize = blindDirection === 'Vertical' ? '10% 100%' : '100% 10%'
+        style.maskSize = blindDirection === 'Vertical' ? '10% 100%' : '100% 10%'
+        style.WebkitMaskRepeat = 'repeat'
+        style.maskRepeat = 'repeat'
       } else if (
         !shouldInstantApply
         && triggeredAnimation

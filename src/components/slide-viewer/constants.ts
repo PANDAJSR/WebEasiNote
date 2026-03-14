@@ -36,6 +36,7 @@ export const DEFAULT_ELEMENT_ANIMATION_DURATION_MS = 300
 export const FLICKER_KEYFRAME_ID = 'seewo-element-flicker-keyframes'
 export const FLICKER_KEYFRAME_NAME = 'seewo-element-flicker'
 export const WIPE_IN_KEYFRAME_PREFIX = 'seewo-element-wipe-in'
+export const BLIND_IN_KEYFRAME_PREFIX = 'seewo-element-blind-in'
 export const TRANSLATE_IN_KEYFRAME_PREFIX = 'seewo-element-translate-in'
 export const TRANSLATE_FADE_IN_KEYFRAME_PREFIX = 'seewo-element-translate-fade-in'
 export const SCALE_IN_KEYFRAME_PREFIX = 'seewo-element-scale-in'
@@ -90,6 +91,11 @@ export function isDiagonalWipeInAnimation(type: string): boolean {
   return normalizedType === 'diagonalwipein'
 }
 
+export function isBlindInAnimation(type: string): boolean {
+  const normalizedType = type.trim().toLowerCase()
+  return normalizedType === 'blindin'
+}
+
 export function isTranslateInAnimation(type: string): boolean {
   const normalizedType = type.trim().toLowerCase()
   return normalizedType === 'translatein'
@@ -109,6 +115,16 @@ export function normalizeWipeOrientation(rawValue?: string): WipeOrientation {
   if (!rawValue) return 'LeftToRight'
   const normalizedValue = rawValue.trim() as WipeOrientation
   return wipeOrientations.has(normalizedValue) ? normalizedValue : 'LeftToRight'
+}
+
+export type BlindDirection = 'Vertical' | 'Horizontal'
+
+const blindDirections = new Set<BlindDirection>(['Vertical', 'Horizontal'])
+
+export function normalizeBlindDirection(rawValue?: string): BlindDirection {
+  if (!rawValue) return 'Vertical'
+  const normalizedValue = rawValue.trim() as BlindDirection
+  return blindDirections.has(normalizedValue) ? normalizedValue : 'Vertical'
 }
 
 export function normalizeTransitionKey(transitionKey: string): string {

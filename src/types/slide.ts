@@ -37,6 +37,7 @@ export interface ElementAnimation {
   category: string
   effect?: string
   orientation?: string
+  direction?: string
   path?: string
   trigger: string
   triggerSource: string

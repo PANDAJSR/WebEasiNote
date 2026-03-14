@@ -77,10 +77,11 @@ Slide 级别：
 
 元素级别（每个元素可选 `Animations/Animation`）：
 - `Id`
-- `Type`（如 `FadeIn`/`FadeOut`/`Flicker`/`DiagonalWipeIn`/`TranslateIn`/`TranslateFadeIn`/`ScaleIn`）
+- `Type`（如 `FadeIn`/`FadeOut`/`Flicker`/`DiagonalWipeIn`/`BlindIn`/`TranslateIn`/`TranslateFadeIn`/`ScaleIn`）
 - `Category`（`Appearance`/`Disappearance`/`Emphasis`）
 - `Effect`（如 `In`）
 - `Orientation`（如 `LeftToRight`、`RightBottomToLeftTop`）
+- `Direction`（如 `Vertical`、`Horizontal`，用于 `BlindIn`）
 - `Path`（路径动画字符串，样例中 `TranslateIn` 可出现，如 `M1280,0L1280,0 0,0`）
 - `Children/Animation`（如 `TranslateFadeIn` 下可包含 `FadeIn` 与 `Line` 子动画，位移常在 `Line/Path`）
 - `Trigger`（当前消费 `Click` / `Before` / `After`）
@@ -108,9 +109,10 @@ Slide 级别：
 - 若元素通过带 `TriggerSource` 的进入动画出现过，则后续回退点击步时保持可见（不因回退而再次隐藏）
 - 键盘方向键（←/↑/→/↓）与翻页按钮使用同一动画步进逻辑
 - 仅当前页应用元素动画样式
-- 若元素存在进入类动画（如 `FadeIn`、`DiagonalWipeIn`、`TranslateIn`、`TranslateFadeIn`），初始默认隐藏
-- 当前已消费并可见生效：`FadeIn`、`FadeOut`、`Flicker`、`DiagonalWipeIn`、`TranslateIn`、`TranslateFadeIn`、`ScaleIn`
+- 若元素存在进入类动画（如 `FadeIn`、`DiagonalWipeIn`、`BlindIn`、`TranslateIn`、`TranslateFadeIn`），初始默认隐藏
+- 当前已消费并可见生效：`FadeIn`、`FadeOut`、`Flicker`、`DiagonalWipeIn`、`BlindIn`、`TranslateIn`、`TranslateFadeIn`、`ScaleIn`
 - `DiagonalWipeIn` 当前支持方向：`LeftToRight`、`RightToLeft`、`TopToBottom`、`BottomToTop`、`LeftTopToRightBottom`、`RightTopToLeftBottom`、`LeftBottomToRightTop`、`RightBottomToLeftTop`
+- `BlindIn` 当前支持方向：`Direction=Vertical/Horizontal`（渲染为等分条带同步展开的百叶窗遮罩）
 - `TranslateIn` 当前支持方向：`LeftToRight`、`RightToLeft`、`TopToBottom`、`BottomToTop`、`LeftTopToRightBottom`、`RightTopToLeftBottom`、`LeftBottomToRightTop`、`RightBottomToLeftTop`（从页面外区域移入到目标位置）
 - `TranslateIn` 当前按 `Orientation` 播放移入动画，`Path` 仅识别但未参与轨迹计算
 - `TranslateFadeIn` 当前支持方向：同 `TranslateIn`；渲染为“位移 + 透明度”联动浮现

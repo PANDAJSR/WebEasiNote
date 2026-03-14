@@ -75,6 +75,7 @@ function parseAnimationNode(
     category: getDirectChildText(animationNode, 'Category') || 'Unknown',
     effect: getDirectChildText(animationNode, 'Effect') || undefined,
     orientation: getDirectChildText(animationNode, 'Orientation') || undefined,
+    direction: getDirectChildText(animationNode, 'Direction') || undefined,
     path: resolveAnimationPath(animationNode),
     trigger: getDirectChildText(animationNode, 'Trigger') || 'Click',
     triggerSource: getDirectChildText(animationNode, 'TriggerSource') || '',
