@@ -199,8 +199,16 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
         style.transition = 'none'
         style.animation = `${blindKeyframeName} ${blindInDurationMs}ms linear 1`
         style.animationFillMode = 'forwards'
+        style.WebkitMaskImage = blindDirection === 'Vertical'
+          ? 'linear-gradient(to right, #000 0%, #000 84%, transparent 84%, transparent 100%)'
+          : 'linear-gradient(to bottom, #000 0%, #000 84%, transparent 84%, transparent 100%)'
+        style.maskImage = blindDirection === 'Vertical'
+          ? 'linear-gradient(to right, #000 0%, #000 84%, transparent 84%, transparent 100%)'
+          : 'linear-gradient(to bottom, #000 0%, #000 84%, transparent 84%, transparent 100%)'
         style.WebkitMaskSize = blindDirection === 'Vertical' ? '10% 100%' : '100% 10%'
         style.maskSize = blindDirection === 'Vertical' ? '10% 100%' : '100% 10%'
+        style.WebkitMaskPosition = '0 0'
+        style.maskPosition = '0 0'
         style.WebkitMaskRepeat = 'repeat'
         style.maskRepeat = 'repeat'
       } else if (

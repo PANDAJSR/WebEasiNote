@@ -62,22 +62,22 @@ export function buildBlindInKeyframesCss(): string {
   return `
     @keyframes ${verticalKeyframeName} {
       0% {
-        -webkit-mask-image: linear-gradient(to right, #000 0%, #000 0%, transparent 0%, transparent 100%);
-        mask-image: linear-gradient(to right, #000 0%, #000 0%, transparent 0%, transparent 100%);
+        -webkit-mask-size: 0% 100%;
+        mask-size: 0% 100%;
       }
       100% {
-        -webkit-mask-image: linear-gradient(to right, #000 0%, #000 100%, transparent 100%, transparent 100%);
-        mask-image: linear-gradient(to right, #000 0%, #000 100%, transparent 100%, transparent 100%);
+        -webkit-mask-size: 10% 100%;
+        mask-size: 10% 100%;
       }
     }
     @keyframes ${horizontalKeyframeName} {
       0% {
-        -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 0%, transparent 0%, transparent 100%);
-        mask-image: linear-gradient(to bottom, #000 0%, #000 0%, transparent 0%, transparent 100%);
+        -webkit-mask-size: 100% 0%;
+        mask-size: 100% 0%;
       }
       100% {
-        -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 100%, transparent 100%, transparent 100%);
-        mask-image: linear-gradient(to bottom, #000 0%, #000 100%, transparent 100%, transparent 100%);
+        -webkit-mask-size: 100% 10%;
+        mask-size: 100% 10%;
       }
     }
   `
