@@ -18,6 +18,7 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
   const textOuterPadding = 10 * scale
   const ruledPaper = element.ruledPaper
   const mainHeight = height * scale
+  const renderedWidth = ruledPaper ? width * scale : (width + 2) * scale
   const ruledContentPadding = ruledPaper ? mainHeight * RULED_PAPER_CONTENT_PADDING_RATIO : 0
   const ruledRowCount = ruledPaper ? Math.max(1, textLines.length || 1) : 0
   const ruledUsableHeight = ruledPaper ? Math.max(1, mainHeight - ruledContentPadding * 2) : 0
@@ -134,12 +135,12 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
     ? Math.min(95, Math.max(20, (1 - reflectionDepth) * 100))
     : 0
   const textContainerStyle: CSSProperties = {
-    width: width * scale,
+    width: renderedWidth,
     minHeight: mainHeight,
     height: element.sizeToContent === 'Manual' ? mainHeight : 'auto',
     boxSizing: 'border-box',
     padding: containerPadding,
-    paddingRight: ruledPaper ? containerPadding : 9.5 * scale,
+    paddingRight: containerPadding,
     overflow: 'visible',
     pointerEvents: 'none',
     display: 'flex',
@@ -177,7 +178,7 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
           position: 'absolute',
           left: ruledContentPadding,
           top: 0,
-          width: Math.max(0, width * scale - ruledContentPadding * 2),
+          width: Math.max(0, renderedWidth - ruledContentPadding * 2),
           height: mainHeight,
           pointerEvents: 'none'
         }}
@@ -329,7 +330,7 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
         position: 'absolute',
         left: x * scale,
         top: y * scale,
-        width: width * scale,
+        width: renderedWidth,
         height: mainHeight + (hasReflection ? reflectionVisibleHeight + reflectionOffset : 0),
         overflow: 'visible',
         pointerEvents: 'none'
@@ -353,7 +354,7 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
             position: 'absolute',
             left: 0,
             top: textBottom + reflectionVisibleHeight + reflectionOffset,
-            width: width * scale,
+            width: renderedWidth,
             height: reflectionVisibleHeight,
             transform: 'scaleY(-1)',
             transformOrigin: 'center top',
