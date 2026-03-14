@@ -328,17 +328,27 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
   }, [slide.id, currentClickStep, clickAnimationGroups, timelineAnimations, playClickAnimationGroup])
   const stepForwardElementAnimation = useCallback((): boolean => {
     if (!hasRemainingClickAnimations) return false
-    const group = clickAnimationGroups[currentClickStep]
-    if (!group) return false
-    if (group.triggerSource) {
-      logElementAnimationDebug('普通点击跳过源触发动画分组，允许继续翻页', {
-        slideId: slide.id,
-        currentClickStep,
-        requiredTriggerSource: group.triggerSource
-      })
-      return false
+    let nextPlayableGroupIndex = currentClickStep
+    while (nextPlayableGroupIndex < clickAnimationGroups.length) {
+      const group = clickAnimationGroups[nextPlayableGroupIndex]
+      if (!group) return false
+      if (!group.triggerSource) {
+        if (nextPlayableGroupIndex !== currentClickStep) {
+          logElementAnimationDebug('普通点击跳过中间源触发动画分组，继续后续点击分组', {
+            slideId: slide.id,
+            currentClickStep,
+            nextPlayableGroupIndex
+          })
+        }
+        return playClickAnimationGroup(nextPlayableGroupIndex)
+      }
+      nextPlayableGroupIndex += 1
     }
-    return playClickAnimationGroup(currentClickStep)
+    logElementAnimationDebug('剩余分组均为源触发动画，普通点击不再消费动画', {
+      slideId: slide.id,
+      currentClickStep
+    })
+    return false
   }, [
     currentClickStep,
     clickAnimationGroups,
