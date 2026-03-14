@@ -52,6 +52,9 @@ export function resolveTimelineAnimations(
 
 function resolveClickGroupStartIndexes(timelineAnimations: TimelineAnimation[]): number[] {
   const groupStarts: number[] = []
+  if (timelineAnimations.length > 0 && timelineAnimations[0].normalizedTrigger !== 'click') {
+    groupStarts.push(0)
+  }
   timelineAnimations.forEach((animation, index) => {
     if (animation.normalizedTrigger === 'click') {
       groupStarts.push(index)
