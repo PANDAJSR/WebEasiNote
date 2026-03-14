@@ -12,13 +12,37 @@ import {
 } from './text-style-utils'
 const RULED_PAPER_TEXT_VERTICAL_OFFSET_RATIO = -0.12
 const RULED_PAPER_CONTENT_PADDING_RATIO = 0.08
+
+let textMeasureCanvas: HTMLCanvasElement | null = null
+
+function measureRunWidth(
+  run: TextElement['textLines'][number]['textRuns'][number],
+  scale: number
+): number {
+  const content = run.text.replace(/\r/g, '')
+  if (!content) return 0
+  if (typeof document === 'undefined') {
+    return content.length * run.fontSize * scale
+  }
+  textMeasureCanvas ||= document.createElement('canvas')
+  const ctx = textMeasureCanvas.getContext('2d')
+  if (!ctx) {
+    return content.length * run.fontSize * scale
+  }
+  const fontStyle = run.fontStyle || 'normal'
+  const fontWeight = run.fontWeight || 'normal'
+  const fontFamily = buildFontFamily(run.fontFamily) || 'sans-serif'
+  ctx.font = `${fontStyle} ${fontWeight} ${(run.fontSize * scale).toFixed(4)}px ${fontFamily}`
+  return ctx.measureText(content).width
+}
+
 export function TextElementRenderer({ element, scale }: { element: TextElement; scale: number }) {
   const { x, y, width, height, textLines } = element
   const markerCounters: Record<string, number> = {}
   const textOuterPadding = 10 * scale
   const ruledPaper = element.ruledPaper
   const mainHeight = height * scale
-  const renderedWidth = ruledPaper ? width * scale : (width + 2) * scale
+  const baseWidth = ruledPaper ? width * scale : (width + 2) * scale
   const ruledContentPadding = ruledPaper ? mainHeight * RULED_PAPER_CONTENT_PADDING_RATIO : 0
   const ruledRowCount = ruledPaper ? Math.max(1, textLines.length || 1) : 0
   const ruledUsableHeight = ruledPaper ? Math.max(1, mainHeight - ruledContentPadding * 2) : 0
@@ -134,10 +158,23 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
   const reflectionFadeStop = hasReflection
     ? Math.min(95, Math.max(20, (1 - reflectionDepth) * 100))
     : 0
+  const widthAndHeightAutoSizing = !ruledPaper
+    && element.arrangingType !== 'Vertical'
+    && element.sizeToContent === 'WidthAndHeight'
+  const maxMeasuredLineWidth = widthAndHeightAutoSizing
+    ? textLines.reduce((maxWidth, line) => {
+      const marginLeftWidth = (line.marginLeft || 0) * scale
+      const runsWidth = line.textRuns.reduce((sum, run) => sum + measureRunWidth(run, scale), 0)
+      return Math.max(maxWidth, marginLeftWidth + runsWidth)
+    }, 0)
+    : 0
+  const renderedWidth = widthAndHeightAutoSizing
+    ? Math.max(baseWidth, Math.ceil(maxMeasuredLineWidth + textOuterPadding * 2))
+    : baseWidth
   const textContainerStyle: CSSProperties = {
     width: renderedWidth,
     minHeight: mainHeight,
-    height: element.sizeToContent === 'Manual' ? mainHeight : 'auto',
+    height: mainHeight,
     boxSizing: 'border-box',
     padding: containerPadding,
     paddingRight: containerPadding,
@@ -229,6 +266,8 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
               transform: ruledPaper ? `translateY(${ruledTextVerticalOffset}px)` : undefined,
               textAlign: alignment,
               lineHeight: getLineHeight(line),
+              whiteSpace: 'nowrap',
+              wordBreak: 'keep-all',
               marginTop: ruledPaper ? 0 : (line.spaceBefore || 0) * scale,
               marginBottom: ruledPaper ? 0 : (line.spaceAfter || 0) * scale,
               direction: line.direction === 'RightToLeft' ? 'rtl' : 'ltr',
@@ -283,8 +322,8 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
                         textShadow: getShadowStyle(run, scale),
                         WebkitTextStrokeWidth: textStrokeStyle.WebkitTextStrokeWidth,
                         WebkitTextStrokeColor: textStrokeStyle.WebkitTextStrokeColor,
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word'
+                        whiteSpace: 'pre',
+                        wordBreak: 'keep-all'
                       }}
                     >
                       {run.text}
@@ -310,8 +349,8 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
                         textShadow: line.textRuns[0] ? getShadowStyle(line.textRuns[0], scale) : undefined,
                         WebkitTextStrokeWidth: textStrokeStyle.WebkitTextStrokeWidth,
                         WebkitTextStrokeColor: textStrokeStyle.WebkitTextStrokeColor,
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word'
+                        whiteSpace: 'pre',
+                        wordBreak: 'keep-all'
                       }}
                     >
                       {'\u00A0'}
