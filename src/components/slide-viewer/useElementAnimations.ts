@@ -331,12 +331,12 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     const group = clickAnimationGroups[currentClickStep]
     if (!group) return false
     if (group.triggerSource) {
-      logElementAnimationDebug('普通点击被源触发动画拦截', {
+      logElementAnimationDebug('普通点击跳过源触发动画分组，允许继续翻页', {
         slideId: slide.id,
         currentClickStep,
         requiredTriggerSource: group.triggerSource
       })
-      return true
+      return false
     }
     return playClickAnimationGroup(currentClickStep)
   }, [
