@@ -199,8 +199,6 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
         style.transition = 'none'
         style.animation = `${blindKeyframeName} ${blindInDurationMs}ms linear 1`
         style.animationFillMode = 'forwards'
-        style.WebkitMaskPosition = '0 0'
-        style.maskPosition = '0 0'
       } else if (
         !shouldInstantApply
         && triggeredAnimation
