@@ -49,6 +49,20 @@ export function SlideRenderer({
     return null
   }
 
+  const resolveElementBounds = (
+    element: SlideData['elements'][number]
+  ): { x: number; y: number; width: number; height: number } => {
+    const x = typeof element.x === 'number' && Number.isFinite(element.x) ? element.x : 0
+    const y = typeof element.y === 'number' && Number.isFinite(element.y) ? element.y : 0
+    const width = typeof element.width === 'number' && Number.isFinite(element.width)
+      ? Math.max(1, element.width)
+      : 1
+    const height = typeof element.height === 'number' && Number.isFinite(element.height)
+      ? Math.max(1, element.height)
+      : 1
+    return { x, y, width, height }
+  }
+
   const handleSlideClickCapture = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!onElementClick) return
     const rect = event.currentTarget.getBoundingClientRect()
@@ -92,20 +106,37 @@ export function SlideRenderer({
       >
         {slide.elements.map(element => {
           if (elementRenderStates[element.id] === false) return null
+          const bounds = resolveElementBounds(element)
           return (
             <div
               key={element.id}
               data-slide-element='true'
-              style={elementDisplayStyles[element.id]}
+              style={{
+                position: 'absolute',
+                left: bounds.x,
+                top: bounds.y,
+                width: bounds.width,
+                height: bounds.height,
+                overflow: 'visible',
+                ...elementDisplayStyles[element.id]
+              }}
               onClick={() => onElementClick?.(element.id)}
             >
-              <ElementRenderer
-                element={element}
-                scale={1}
-                resourceMap={resourceMap}
-                slideIndex={slideIndex}
-                currentIndex={currentIndex}
-              />
+              <div
+                style={{
+                  position: 'absolute',
+                  left: -bounds.x,
+                  top: -bounds.y
+                }}
+              >
+                <ElementRenderer
+                  element={element}
+                  scale={1}
+                  resourceMap={resourceMap}
+                  slideIndex={slideIndex}
+                  currentIndex={currentIndex}
+                />
+              </div>
             </div>
           )
         })}
