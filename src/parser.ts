@@ -4,7 +4,7 @@ import type {
   DocumentData,
   SlideData
 } from './types';
-import { parseXML, getElementText, parseColor } from './xml-utils';
+import { parseXML, getElementText, getDirectChildElement, getDirectChildText, parseColor } from './xml-utils';
 import { parseSlideElements } from './slide-elements-parser';
 import { parseSlideAnimations } from './slide-animations'
 
@@ -266,23 +266,23 @@ function parseSlideXML(xmlString: string): SlideData {
   } = parseSlideAnimations(slideElement)
   
   // 解析背景色或背景图片
-  const backgroundElement = slideElement.querySelector('Background');
+  const backgroundElement = getDirectChildElement(slideElement, 'Background');
   let backgroundColor = '#ffffff';
   let backgroundImage: string | undefined;
   
   if (backgroundElement) {
-    // 先检查是否有 ColorBrush
-    const colorBrush = backgroundElement.querySelector('ColorBrush');
-    if (colorBrush?.textContent) {
-      backgroundColor = parseColor(colorBrush.textContent);
+    // 先检查是否有直属 ColorBrush
+    const colorBrush = getDirectChildText(backgroundElement, 'ColorBrush')
+    if (colorBrush) {
+      backgroundColor = parseColor(colorBrush)
     }
     
-    // 检查是否有 ImageBrush
-    const imageBrush = backgroundElement.querySelector('ImageBrush');
+    // 检查是否有直属 ImageBrush
+    const imageBrush = getDirectChildElement(backgroundElement, 'ImageBrush')
     if (imageBrush) {
-      const source = imageBrush.querySelector('Source')?.textContent;
+      const source = getDirectChildText(imageBrush, 'Source')
       if (source) {
-        backgroundImage = source.replace('id://', '');
+        backgroundImage = source.replace('id://', '')
       }
     }
   }

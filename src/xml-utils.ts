@@ -38,23 +38,24 @@ export function getDirectChildElement(parent: Element, tagName: string): Element
  * @param preserveAlpha - 是否保留透明度（默认false，返回hex；true则返回rgba）
  */
 export function parseColor(colorValue: string, preserveAlpha = false): string {
+  const normalizedColorValue = colorValue.trim()
   // 处理 ARGB 格式: #AARRGGBB
-  if (colorValue.match(/^#[0-9A-Fa-f]{8}$/)) {
-    const a = parseInt(colorValue.substr(1, 2), 16) / 255;
-    const r = parseInt(colorValue.substr(3, 2), 16);
-    const g = parseInt(colorValue.substr(5, 2), 16);
-    const b = parseInt(colorValue.substr(7, 2), 16);
+  if (normalizedColorValue.match(/^#[0-9A-Fa-f]{8}$/)) {
+    const a = parseInt(normalizedColorValue.substr(1, 2), 16) / 255;
+    const r = parseInt(normalizedColorValue.substr(3, 2), 16);
+    const g = parseInt(normalizedColorValue.substr(5, 2), 16);
+    const b = parseInt(normalizedColorValue.substr(7, 2), 16);
     
     if (preserveAlpha && a < 1) {
       return `rgba(${r}, ${g}, ${b}, ${a.toFixed(2)})`;
     }
-    return `#${colorValue.substr(3, 2)}${colorValue.substr(5, 2)}${colorValue.substr(7, 2)}`;
+    return `#${normalizedColorValue.substr(3, 2)}${normalizedColorValue.substr(5, 2)}${normalizedColorValue.substr(7, 2)}`;
   }
   // 处理 RGB 格式: #RRGGBB
-  if (colorValue.match(/^#[0-9A-Fa-f]{6}$/)) {
-    return colorValue;
+  if (normalizedColorValue.match(/^#[0-9A-Fa-f]{6}$/)) {
+    return normalizedColorValue;
   }
-  return colorValue;
+  return normalizedColorValue;
 }
 
 /**
