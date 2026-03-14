@@ -60,18 +60,49 @@ export function buildBlindInKeyframesCss(): string {
   const horizontalKeyframeName = buildBlindInKeyframeName('Horizontal')
   const verticalKeyframeName = buildBlindInKeyframeName('Vertical')
   return `
+    @property --seewo-blind-open-ratio {
+      syntax: '<percentage>';
+      inherits: false;
+      initial-value: 0%;
+    }
     @keyframes ${verticalKeyframeName} {
       0% {
-        -webkit-mask-image: linear-gradient(to right, #000 0%, #000 84%, transparent 84%, transparent 100%);
-        mask-image: linear-gradient(to right, #000 0%, #000 84%, transparent 84%, transparent 100%);
+        --seewo-blind-open-ratio: 0%;
+        -webkit-mask-image: repeating-linear-gradient(
+          to right,
+          #000 0%,
+          #000 var(--seewo-blind-open-ratio),
+          transparent var(--seewo-blind-open-ratio),
+          transparent 100%
+        );
+        mask-image: repeating-linear-gradient(
+          to right,
+          #000 0%,
+          #000 var(--seewo-blind-open-ratio),
+          transparent var(--seewo-blind-open-ratio),
+          transparent 100%
+        );
         -webkit-mask-repeat: repeat;
         mask-repeat: repeat;
-        -webkit-mask-size: 0% 100%;
-        mask-size: 0% 100%;
+        -webkit-mask-size: 10% 100%;
+        mask-size: 10% 100%;
       }
       99% {
-        -webkit-mask-image: linear-gradient(to right, #000 0%, #000 84%, transparent 84%, transparent 100%);
-        mask-image: linear-gradient(to right, #000 0%, #000 84%, transparent 84%, transparent 100%);
+        --seewo-blind-open-ratio: 84%;
+        -webkit-mask-image: repeating-linear-gradient(
+          to right,
+          #000 0%,
+          #000 var(--seewo-blind-open-ratio),
+          transparent var(--seewo-blind-open-ratio),
+          transparent 100%
+        );
+        mask-image: repeating-linear-gradient(
+          to right,
+          #000 0%,
+          #000 var(--seewo-blind-open-ratio),
+          transparent var(--seewo-blind-open-ratio),
+          transparent 100%
+        );
         -webkit-mask-repeat: repeat;
         mask-repeat: repeat;
         -webkit-mask-size: 10% 100%;
@@ -88,16 +119,42 @@ export function buildBlindInKeyframesCss(): string {
     }
     @keyframes ${horizontalKeyframeName} {
       0% {
-        -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 84%, transparent 84%, transparent 100%);
-        mask-image: linear-gradient(to bottom, #000 0%, #000 84%, transparent 84%, transparent 100%);
+        --seewo-blind-open-ratio: 0%;
+        -webkit-mask-image: repeating-linear-gradient(
+          to bottom,
+          #000 0%,
+          #000 var(--seewo-blind-open-ratio),
+          transparent var(--seewo-blind-open-ratio),
+          transparent 100%
+        );
+        mask-image: repeating-linear-gradient(
+          to bottom,
+          #000 0%,
+          #000 var(--seewo-blind-open-ratio),
+          transparent var(--seewo-blind-open-ratio),
+          transparent 100%
+        );
         -webkit-mask-repeat: repeat;
         mask-repeat: repeat;
-        -webkit-mask-size: 100% 0%;
-        mask-size: 100% 0%;
+        -webkit-mask-size: 100% 10%;
+        mask-size: 100% 10%;
       }
       99% {
-        -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 84%, transparent 84%, transparent 100%);
-        mask-image: linear-gradient(to bottom, #000 0%, #000 84%, transparent 84%, transparent 100%);
+        --seewo-blind-open-ratio: 84%;
+        -webkit-mask-image: repeating-linear-gradient(
+          to bottom,
+          #000 0%,
+          #000 var(--seewo-blind-open-ratio),
+          transparent var(--seewo-blind-open-ratio),
+          transparent 100%
+        );
+        mask-image: repeating-linear-gradient(
+          to bottom,
+          #000 0%,
+          #000 var(--seewo-blind-open-ratio),
+          transparent var(--seewo-blind-open-ratio),
+          transparent 100%
+        );
         -webkit-mask-repeat: repeat;
         mask-repeat: repeat;
         -webkit-mask-size: 100% 10%;
