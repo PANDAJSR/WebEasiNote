@@ -11,29 +11,38 @@ import {
 import {
   DEFAULT_ELEMENT_ANIMATION_DURATION_MS,
   ENABLE_ELEMENT_ANIMATION_DEBUG_LOG,
-  FLICKER_KEYFRAME_ID,
   FLICKER_KEYFRAME_NAME,
   isAppearanceAnimation,
   isDiagonalWipeInAnimation,
   isDisappearanceAnimation,
   isFadeAnimation,
   isFlickerAnimation,
+  isScaleInAnimation,
   isTranslateFadeInAnimation,
   isTranslateInAnimation,
   normalizeWipeOrientation
 } from './constants'
-import { buildTranslateFadeInKeyframeName, buildTranslateFadeInKeyframesCss, resolveTranslateFadeInOffset, TRANSLATE_FADE_IN_OFFSET_X_VAR, TRANSLATE_FADE_IN_OFFSET_Y_VAR } from './translate-fade-animation'
-import { buildTranslateInKeyframeName, buildTranslateInKeyframesCss } from './translate-animation'
-import { buildWipeInKeyframeName, buildWipeInKeyframesCss } from './wipe-animation'
+import {
+  buildScaleInKeyframeName,
+  resolveScaleInRange,
+  SCALE_IN_END_X_VAR,
+  SCALE_IN_END_Y_VAR,
+  SCALE_IN_START_X_VAR,
+  SCALE_IN_START_Y_VAR
+} from './scale-animation'
+import { FADE_IN_KEYFRAME_NAME, FADE_OUT_KEYFRAME_NAME, ensureElementAnimationKeyframes } from './element-animation-keyframes'
+import { buildTranslateFadeInKeyframeName, resolveTranslateFadeInOffset, TRANSLATE_FADE_IN_OFFSET_X_VAR, TRANSLATE_FADE_IN_OFFSET_Y_VAR } from './translate-fade-animation'
+import { buildTranslateInKeyframeName } from './translate-animation'
+import { buildWipeInKeyframeName } from './wipe-animation'
 interface UseElementAnimationsParams { slide: SlideData }
-const FADE_IN_KEYFRAME_NAME = 'seewo-element-fade-in'
-const FADE_OUT_KEYFRAME_NAME = 'seewo-element-fade-out'
+
 function isConsumableAnimation(animation: SlideData['animations'][number]): boolean {
   return isFadeAnimation(animation.type)
     || isFlickerAnimation(animation.type, animation.category)
     || isDiagonalWipeInAnimation(animation.type)
     || isTranslateFadeInAnimation(animation.type)
     || isTranslateInAnimation(animation.type)
+    || isScaleInAnimation(animation.type)
 }
 export function useElementAnimations({ slide }: UseElementAnimationsParams) {
   const [slideClickSteps, setSlideClickSteps] = useState<Record<string, number>>({})
@@ -58,33 +67,7 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     timerIdsRef.current = []
   }, [])
   useEffect(() => {
-    if (typeof document === 'undefined') return
-    if (document.getElementById(FLICKER_KEYFRAME_ID)) return
-    const styleElement = document.createElement('style')
-    styleElement.id = FLICKER_KEYFRAME_ID
-    styleElement.textContent = `
-      @keyframes ${FLICKER_KEYFRAME_NAME} {
-        0% { opacity: 1; }
-        15% { opacity: 0.2; }
-        30% { opacity: 1; }
-        45% { opacity: 0.2; }
-        60% { opacity: 1; }
-        75% { opacity: 0.2; }
-        100% { opacity: 1; }
-      }
-      @keyframes ${FADE_IN_KEYFRAME_NAME} {
-        0% { opacity: 0; }
-        100% { opacity: 1; }
-      }
-      @keyframes ${FADE_OUT_KEYFRAME_NAME} {
-        0% { opacity: 1; }
-        100% { opacity: 0; }
-      }
-      ${buildWipeInKeyframesCss()}
-      ${buildTranslateFadeInKeyframesCss()}
-      ${buildTranslateInKeyframesCss()}
-    `
-    document.head.appendChild(styleElement)
+    ensureElementAnimationKeyframes()
   }, [])
   useEffect(() => () => clearPendingTimers(), [clearPendingTimers])
   useEffect(() => { clearPendingTimers() }, [slide.id, clearPendingTimers])
@@ -207,10 +190,7 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
         && triggeredAnimation
         && isTranslateFadeInAnimation(triggeredAnimation.type)
       ) {
-        const translateFadeInDurationMs = Math.max(
-          1,
-          triggeredAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS
-        )
+        const translateFadeInDurationMs = Math.max(1, triggeredAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS)
         const translateFadeOrientation = normalizeWipeOrientation(triggeredAnimation.orientation)
         const translateFadeOffset = resolveTranslateFadeInOffset(triggeredAnimation.path, translateFadeOrientation)
         const translateFadeKeyframeName = buildTranslateFadeInKeyframeName()
@@ -224,14 +204,27 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
         && triggeredAnimation
         && isTranslateInAnimation(triggeredAnimation.type)
       ) {
-        const translateInDurationMs = Math.max(
-          1,
-          triggeredAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS
-        )
+        const translateInDurationMs = Math.max(1, triggeredAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS)
         const translateOrientation = normalizeWipeOrientation(triggeredAnimation.orientation)
         const translateKeyframeName = buildTranslateInKeyframeName(translateOrientation)
         style.animation = `${translateKeyframeName} ${translateInDurationMs}ms ease-out 1`
         style.animationFillMode = 'forwards'
+      } else if (
+        !shouldInstantApply
+        && triggeredAnimation
+        && isScaleInAnimation(triggeredAnimation.type)
+      ) {
+        const scaleInDurationMs = Math.max(1, triggeredAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS)
+        const scaleInKeyframeName = buildScaleInKeyframeName()
+        const scaleRange = resolveScaleInRange(triggeredAnimation)
+        style.transition = 'none'
+        style.transformOrigin = 'center center'
+        style.animation = `${scaleInKeyframeName} ${scaleInDurationMs}ms ease-out 1`
+        style.animationFillMode = 'forwards'
+        ;(style as CSSProperties & Record<string, string>)[SCALE_IN_START_X_VAR] = `${scaleRange.start.x}`
+        ;(style as CSSProperties & Record<string, string>)[SCALE_IN_START_Y_VAR] = `${scaleRange.start.y}`
+        ;(style as CSSProperties & Record<string, string>)[SCALE_IN_END_X_VAR] = `${scaleRange.end.x}`
+        ;(style as CSSProperties & Record<string, string>)[SCALE_IN_END_Y_VAR] = `${scaleRange.end.y}`
       } else if (
         !shouldInstantApply
         && triggeredAnimation
@@ -245,10 +238,7 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
         && triggeredAnimation
         && isDisappearanceAnimation(triggeredAnimation.type, triggeredAnimation.category)
       ) {
-        const fadeOutDurationMs = Math.max(
-          1,
-          triggeredAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS
-        )
+        const fadeOutDurationMs = Math.max(1, triggeredAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS)
         style.animation = `${FADE_OUT_KEYFRAME_NAME} ${fadeOutDurationMs}ms ease 1`
         style.animationFillMode = 'forwards'
       }

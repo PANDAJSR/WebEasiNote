@@ -43,6 +43,8 @@ export interface ElementAnimation {
   number: number
   start: number
   end: number
+  startSize?: { x: number; y: number }
+  endSize?: { x: number; y: number }
   magnitude?: string
   durationMs: number
   delayMs: number

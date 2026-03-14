@@ -18,6 +18,15 @@ function parseTicksToMs(value: string | null): number {
   return Math.max(0, Math.round(ticks / 10000))
 }
 
+function parseScalePair(value: string | null): { x: number; y: number } | undefined {
+  if (!value) return undefined
+  const [rawX, rawY] = value.split(',').map(item => item.trim())
+  const x = parseFloat(rawX || '')
+  const y = parseFloat(rawY || '')
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return undefined
+  return { x, y }
+}
+
 function findClosestElementId(node: Element | null): string | null {
   let current: Element | null = node
   while (current) {
@@ -72,6 +81,8 @@ function parseAnimationNode(
     number: parseInt(getDirectChildText(animationNode, 'Number') || '0', 10),
     start: parseNumber(getDirectChildText(animationNode, 'Start'), 0),
     end: parseNumber(getDirectChildText(animationNode, 'End'), 1),
+    startSize: parseScalePair(getDirectChildText(animationNode, 'StartSize')),
+    endSize: parseScalePair(getDirectChildText(animationNode, 'EndSize')),
     magnitude: getDirectChildText(animationNode, 'Magnitude') || undefined,
     durationMs: parseTicksToMs(getDirectChildText(animationNode, 'Duration')),
     delayMs: parseTicksToMs(getDirectChildText(animationNode, 'Delay')),
