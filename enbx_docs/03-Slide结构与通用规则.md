@@ -106,7 +106,6 @@ Slide 级别：
 - 若元素通过带 `TriggerSource` 的进入动画出现过，则后续回退点击步时保持可见（不因回退而再次隐藏）
 - 键盘方向键（←/↑/→/↓）与翻页按钮使用同一动画步进逻辑
 - 仅当前页应用元素动画样式
-- 若元素存在 `FadeIn`（进入动画），初始默认隐藏
 - 若元素存在进入类动画（如 `FadeIn`、`DiagonalWipeIn`、`TranslateIn`），初始默认隐藏
 - 当前已消费并可见生效：`FadeIn`、`FadeOut`、`Flicker`、`DiagonalWipeIn`、`TranslateIn`
 - `DiagonalWipeIn` 当前支持方向：`LeftToRight`、`RightToLeft`、`TopToBottom`、`BottomToTop`、`LeftTopToRightBottom`、`RightTopToLeftBottom`、`LeftBottomToRightTop`、`RightBottomToLeftTop`
