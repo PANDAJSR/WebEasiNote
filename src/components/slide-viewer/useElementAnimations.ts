@@ -37,6 +37,9 @@ import { buildTranslateFadeInKeyframeName, resolveTranslateFadeInOffset, TRANSLA
 import { buildTranslateInKeyframeName } from './translate-animation'
 import { buildBlindInKeyframeName, buildWipeInKeyframeName } from './wipe-animation'
 interface UseElementAnimationsParams { slide: SlideData }
+interface PlayClickAnimationGroupOptions {
+  advanceStep?: boolean
+}
 
 function isConsumableAnimation(animation: SlideData['animations'][number]): boolean {
   return isFadeAnimation(animation.type)
@@ -276,7 +279,8 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     })
     return result
   }, [timelineAnimations, executedAnimations, currentTriggeredAnimationByElementId, stickyVisibleElementIdSet])
-  const playClickAnimationGroup = useCallback((groupIndex: number) => {
+  const playClickAnimationGroup = useCallback((groupIndex: number, options: PlayClickAnimationGroupOptions = {}) => {
+    const shouldAdvanceStep = options.advanceStep !== false
     const group = clickAnimationGroups[groupIndex]
     if (!group) return false
     clearPendingTimers()
@@ -321,15 +325,18 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
       }, batch.atMs)
       timerIdsRef.current.push(timerId)
     })
-    setSlideClickSteps(previous => ({
-      ...previous,
-      [slide.id]: groupIndex + 1
-    }))
+    if (shouldAdvanceStep) {
+      setSlideClickSteps(previous => ({
+        ...previous,
+        [slide.id]: groupIndex + 1
+      }))
+    }
     logElementAnimationDebug('动画点击步进已推进', {
       slideId: slide.id,
       previousStep: groupIndex,
       nextStep: groupIndex + 1,
-      triggerSource: group.triggerSource
+      triggerSource: group.triggerSource,
+      advanceStep: shouldAdvanceStep
     })
     return true
   }, [slide.id, clickAnimationGroups, timelineAnimations, clearPendingTimers, logElementAnimationDebug])
@@ -367,7 +374,7 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
             skippedGroupIndexes
           })
         }
-        return playClickAnimationGroup(nextPlayableGroupIndex)
+        return playClickAnimationGroup(nextPlayableGroupIndex, { advanceStep: true })
       }
       skippedGroupIndexes.push(nextPlayableGroupIndex)
       nextPlayableGroupIndex += 1
@@ -386,12 +393,34 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     slide.id
   ])
   const triggerElementSourceAnimation = useCallback((sourceElementId: string): boolean => {
-    if (!hasRemainingClickAnimations) return false
-    const group = clickAnimationGroups[currentClickStep]
-    if (!group?.triggerSource) return false
-    if (group.triggerSource !== sourceElementId) return false
-    return playClickAnimationGroup(currentClickStep)
-  }, [hasRemainingClickAnimations, clickAnimationGroups, currentClickStep, playClickAnimationGroup])
+    if (!sourceElementId) return false
+    let targetGroupIndex = -1
+    for (let index = 0; index < clickAnimationGroups.length; index += 1) {
+      const group = clickAnimationGroups[index]
+      if (!group?.triggerSource || group.triggerSource !== sourceElementId) continue
+      const isSkipped = skippedGroupIndexSet.has(index)
+      const isAlreadyExecuted = index < currentClickStep && !isSkipped
+      if (isAlreadyExecuted) continue
+      targetGroupIndex = index
+      break
+    }
+    if (targetGroupIndex < 0) return false
+    const shouldAdvanceStep = targetGroupIndex >= currentClickStep
+    if (skippedGroupIndexSet.has(targetGroupIndex)) {
+      setSlideSkippedGroupIndexes(previous => ({
+        ...previous,
+        [slide.id]: (previous[slide.id] || []).filter(groupIndex => groupIndex !== targetGroupIndex)
+      }))
+    }
+    logElementAnimationDebug('源触发动画命中', {
+      slideId: slide.id,
+      sourceElementId,
+      targetGroupIndex,
+      currentClickStep,
+      shouldAdvanceStep
+    })
+    return playClickAnimationGroup(targetGroupIndex, { advanceStep: shouldAdvanceStep })
+  }, [clickAnimationGroups, skippedGroupIndexSet, currentClickStep, playClickAnimationGroup, logElementAnimationDebug, slide.id])
   const stepBackwardElementAnimation = useCallback((): boolean => {
     if (currentClickStep <= 0) return false
     clearPendingTimers()
