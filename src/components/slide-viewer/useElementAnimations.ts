@@ -41,6 +41,14 @@ interface PlayClickAnimationGroupOptions {
   advanceStep?: boolean
 }
 
+function areSameStringArray(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) return false
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) return false
+  }
+  return true
+}
+
 function isConsumableAnimation(animation: SlideData['animations'][number]): boolean {
   return isFadeAnimation(animation.type)
     || isFlickerAnimation(animation.type, animation.category)
@@ -78,6 +86,12 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
   }, [])
   useEffect(() => () => clearPendingTimers(), [clearPendingTimers])
   useEffect(() => { clearPendingTimers() }, [slide.id, clearPendingTimers])
+  useEffect(() => {
+    setRecentlyTriggeredAnimationIds(previous => ({
+      ...previous,
+      [slide.id]: []
+    }))
+  }, [slide.id])
   const timelineAnimations = useMemo(() => {
     return resolveTimelineAnimations(slide.animations, elementIdSet, isConsumableAnimation)
   }, [slide.animations, elementIdSet])
@@ -308,6 +322,23 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
         ...previous,
         [slide.id]: animationIds
       }))
+      const clearDelayMs = batchIndexes.reduce((maxDurationMs, index) => {
+        const durationMs = Math.max(0, timelineAnimations[index].durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS)
+        return Math.max(maxDurationMs, durationMs)
+      }, 0)
+      const clearTimerId = window.setTimeout(() => {
+        setRecentlyTriggeredAnimationIds(previous => {
+          const currentIds = previous[slide.id] || []
+          if (!areSameStringArray(currentIds, animationIds)) {
+            return previous
+          }
+          return {
+            ...previous,
+            [slide.id]: []
+          }
+        })
+      }, clearDelayMs + 34)
+      timerIdsRef.current.push(clearTimerId)
       logElementAnimationDebug('触发动画批次', {
         slideId: slide.id,
         clickStep: groupIndex + 1,
