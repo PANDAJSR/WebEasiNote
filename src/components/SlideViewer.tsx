@@ -166,6 +166,16 @@ export function SlideViewer({
       handleEditViewportWheel(event)
       return
     }
+    if (event.ctrlKey) {
+      handleEditViewportWheelZoomOnly(event)
+      return
+    }
+    const isLikelyTrackpadMove = event.deltaMode === 0
+      && (Math.abs(event.deltaX) > 0 || Math.abs(event.deltaY) < 40)
+    if (isLikelyTrackpadMove) {
+      handleEditViewportWheel(event)
+      return
+    }
     handleEditViewportWheelZoomOnly(event)
   }
 
