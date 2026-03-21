@@ -49,6 +49,13 @@ export function useEditViewport({
   const defaultScale = clampScale(fitScale * EDIT_MODE_DEFAULT_SCALE_RATIO)
   const currentScale = scaleOverrideMap[slideId] ?? defaultScale
   const currentOffset = getSlideOffset(offsetMap, slideId)
+  const currentScaleRef = useRef(currentScale)
+  const currentOffsetRef = useRef(currentOffset)
+
+  useEffect(() => {
+    currentScaleRef.current = currentScale
+    currentOffsetRef.current = currentOffset
+  }, [currentScale, currentOffset])
 
   const updateSlideOffset = useCallback((nextOffset: ViewportOffset) => {
     setOffsetMap(previous => ({
@@ -58,6 +65,8 @@ export function useEditViewport({
   }, [slideId])
 
   const applyWheelZoom = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
+    const liveScale = currentScaleRef.current
+    const liveOffset = currentOffsetRef.current
     const pinchScaleFactor = Math.exp(-event.deltaY * TRACKPAD_PINCH_SENSITIVITY)
     const wheelScaleFactor = event.deltaY < 0 ? WHEEL_ZOOM_IN_FACTOR : WHEEL_ZOOM_OUT_FACTOR
     const scaleFactor = event.ctrlKey
@@ -67,24 +76,26 @@ export function useEditViewport({
           : wheelScaleFactor
       )
       : wheelScaleFactor
-    const nextScale = clampScale(currentScale * scaleFactor)
-    if (Math.abs(nextScale - currentScale) < 0.0001) return
+    const nextScale = clampScale(liveScale * scaleFactor)
+    if (Math.abs(nextScale - liveScale) < 0.0001) return
 
     const rect = event.currentTarget.getBoundingClientRect()
     const localX = event.clientX - rect.left
     const localY = event.clientY - rect.top
-    const scaleRatio = nextScale / currentScale
+    const scaleRatio = nextScale / liveScale
     const nextOffset: ViewportOffset = {
-      x: currentOffset.x + localX * (1 - scaleRatio),
-      y: currentOffset.y + localY * (1 - scaleRatio)
+      x: liveOffset.x + localX * (1 - scaleRatio),
+      y: liveOffset.y + localY * (1 - scaleRatio)
     }
 
+    currentScaleRef.current = nextScale
+    currentOffsetRef.current = nextOffset
     setScaleOverrideMap(previous => ({
       ...previous,
       [slideId]: nextScale
     }))
     updateSlideOffset(nextOffset)
-  }, [currentScale, currentOffset, slideId, updateSlideOffset])
+  }, [slideId, updateSlideOffset])
 
   const handleEditViewportWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
     if (!isEditMode) return
