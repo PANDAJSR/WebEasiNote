@@ -89,7 +89,6 @@ export function SlideViewer({
     currentScale,
     currentOffset,
     handleEditViewportWheel,
-    handleEditViewportWheelZoomOnly,
     handleEditViewportMouseDown,
     handleEditViewportAuxClick
   } = useEditViewport({
@@ -161,22 +160,7 @@ export function SlideViewer({
 
   const handleEditWrapperWheel = (event: React.WheelEvent<HTMLDivElement>) => {
     if (!isEditMode) return
-    const target = event.target as HTMLElement
-    if (target.closest('[data-slide-viewport="true"]')) {
-      handleEditViewportWheel(event)
-      return
-    }
-    if (event.ctrlKey) {
-      handleEditViewportWheelZoomOnly(event)
-      return
-    }
-    const isLikelyTrackpadMove = event.deltaMode === 0
-      && (Math.abs(event.deltaX) > 0 || Math.abs(event.deltaY) < 40)
-    if (isLikelyTrackpadMove) {
-      handleEditViewportWheel(event)
-      return
-    }
-    handleEditViewportWheelZoomOnly(event)
+    handleEditViewportWheel(event)
   }
 
   return (

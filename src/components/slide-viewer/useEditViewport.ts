@@ -36,6 +36,11 @@ function getSlideOffset(
   return offsetMap[slideId] || { x: 0, y: 0 }
 }
 
+function isLikelyTrackpadMove(event: React.WheelEvent<HTMLDivElement>): boolean {
+  return event.deltaMode === 0
+    && (Math.abs(event.deltaX) > 0 || Math.abs(event.deltaY) < 40)
+}
+
 export function useEditViewport({
   slideId,
   fitScale,
@@ -102,7 +107,7 @@ export function useEditViewport({
     event.preventDefault()
 
     // 触摸板捏合通常会触发 ctrlKey=true 的 wheel 事件，双指移动则为普通 wheel 事件
-    if (!event.ctrlKey) {
+    if (!event.ctrlKey && isLikelyTrackpadMove(event)) {
       updateSlideOffset({
         x: currentOffset.x - event.deltaX,
         y: currentOffset.y - event.deltaY
@@ -112,12 +117,6 @@ export function useEditViewport({
 
     applyWheelZoom(event)
   }, [isEditMode, currentOffset, updateSlideOffset, applyWheelZoom])
-
-  const handleEditViewportWheelZoomOnly = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
-    if (!isEditMode) return
-    event.preventDefault()
-    applyWheelZoom(event)
-  }, [isEditMode, applyWheelZoom])
 
   const handleEditViewportMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (!isEditMode || event.button !== 1) return
@@ -180,7 +179,6 @@ export function useEditViewport({
     currentOffset,
     isMiddleDragging,
     handleEditViewportWheel,
-    handleEditViewportWheelZoomOnly,
     handleEditViewportMouseDown,
     handleEditViewportAuxClick
   }
