@@ -23,6 +23,7 @@ const MAX_EDIT_SCALE = 8
 const WHEEL_ZOOM_IN_FACTOR = 1.1
 const WHEEL_ZOOM_OUT_FACTOR = 1 / WHEEL_ZOOM_IN_FACTOR
 const EDIT_MODE_DEFAULT_SCALE_RATIO = 0.95
+const TRACKPAD_PINCH_SENSITIVITY = 0.01
 
 function clampScale(scale: number): number {
   return Math.max(MIN_EDIT_SCALE, Math.min(MAX_EDIT_SCALE, scale))
@@ -49,13 +50,32 @@ export function useEditViewport({
   const currentScale = scaleOverrideMap[slideId] ?? defaultScale
   const currentOffset = getSlideOffset(offsetMap, slideId)
 
+  const updateSlideOffset = useCallback((nextOffset: ViewportOffset) => {
+    setOffsetMap(previous => ({
+      ...previous,
+      [slideId]: nextOffset
+    }))
+  }, [slideId])
+
   const handleEditViewportWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
     if (!isEditMode) return
     event.preventDefault()
 
-    const nextScale = clampScale(
-      currentScale * (event.deltaY < 0 ? WHEEL_ZOOM_IN_FACTOR : WHEEL_ZOOM_OUT_FACTOR)
-    )
+    // 触摸板捏合通常会触发 ctrlKey=true 的 wheel 事件，双指移动则为普通 wheel 事件
+    if (!event.ctrlKey) {
+      updateSlideOffset({
+        x: currentOffset.x - event.deltaX,
+        y: currentOffset.y - event.deltaY
+      })
+      return
+    }
+
+    const pinchScaleFactor = Math.exp(-event.deltaY * TRACKPAD_PINCH_SENSITIVITY)
+    const wheelScaleFactor = event.deltaY < 0 ? WHEEL_ZOOM_IN_FACTOR : WHEEL_ZOOM_OUT_FACTOR
+    const scaleFactor = Number.isFinite(pinchScaleFactor) && pinchScaleFactor > 0
+      ? pinchScaleFactor
+      : wheelScaleFactor
+    const nextScale = clampScale(currentScale * scaleFactor)
     if (Math.abs(nextScale - currentScale) < 0.0001) return
 
     const rect = event.currentTarget.getBoundingClientRect()
@@ -71,11 +91,8 @@ export function useEditViewport({
       ...previous,
       [slideId]: nextScale
     }))
-    setOffsetMap(previous => ({
-      ...previous,
-      [slideId]: nextOffset
-    }))
-  }, [isEditMode, currentScale, currentOffset, slideId])
+    updateSlideOffset(nextOffset)
+  }, [isEditMode, currentScale, currentOffset, slideId, updateSlideOffset])
 
   const handleEditViewportMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (!isEditMode || event.button !== 1) return
