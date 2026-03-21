@@ -4,12 +4,13 @@ import { styles } from '../styles'
 import type { SlideElement } from '../parser'
 
 interface ElementXmlPanelProps {
-  element: SlideElement
+  element: SlideElement | null
   slideNumber: number
   xmlContent: string
   xmlError: string | null
+  isSlideXml: boolean
   onXmlChange: (value: string) => void
-  onClose: () => void
+  onClearSelection?: () => void
 }
 
 export function ElementXmlPanel({
@@ -17,23 +18,35 @@ export function ElementXmlPanel({
   slideNumber,
   xmlContent,
   xmlError,
+  isSlideXml,
   onXmlChange,
-  onClose
+  onClearSelection
 }: ElementXmlPanelProps) {
   return (
     <div style={styles.elementXmlPanel}>
       <div style={styles.elementXmlPanelHeader}>
         <div style={styles.elementXmlPanelTitle}>
-          第 {slideNumber} 页 · 元素 XML
+          第 {slideNumber} 页 · {isSlideXml ? '页面 XML' : '元素 XML'}
         </div>
-        <Button size='small' style={styles.elementXmlPanelCloseButton} onClick={onClose}>
-          关闭
-        </Button>
+        {!isSlideXml && onClearSelection && (
+          <Button size='small' style={styles.elementXmlPanelCloseButton} onClick={onClearSelection}>
+            取消选中
+          </Button>
+        )}
       </div>
       <div style={styles.elementXmlPanelMeta}>
-        <span>ID: {element.id}</span>
-        <span>类型: {element.type}</span>
-        <span>状态: {xmlError ? 'XML 解析失败（未同步）' : '实时同步中'}</span>
+        {isSlideXml ? (
+          <>
+            <span>范围: 当前页面完整 XML</span>
+            <span>状态: 仅展示</span>
+          </>
+        ) : (
+          <>
+            <span>ID: {element?.id}</span>
+            <span>类型: {element?.type}</span>
+            <span>状态: {xmlError ? 'XML 解析失败（未同步）' : '实时同步中'}</span>
+          </>
+        )}
       </div>
       {xmlError && (
         <div style={styles.elementXmlPanelError}>
@@ -44,14 +57,18 @@ export function ElementXmlPanel({
         <Editor
           language='xml'
           value={xmlContent}
-          onChange={value => onXmlChange(value || '')}
+          onChange={value => {
+            if (isSlideXml) return
+            onXmlChange(value || '')
+          }}
           theme='vs-dark'
           options={{
             minimap: { enabled: false },
             automaticLayout: true,
             wordWrap: 'on',
             fontSize: 13,
-            scrollBeyondLastLine: false
+            scrollBeyondLastLine: false,
+            readOnly: isSlideXml
           }}
         />
       </div>

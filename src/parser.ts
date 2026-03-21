@@ -314,6 +314,7 @@ function parseSlideXML(xmlString: string): SlideData {
     id,
     width,
     height,
+    rawXml: xmlString,
     backgroundColor,
     backgroundImage,
     transition: {

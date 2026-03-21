@@ -75,6 +75,20 @@ export const viewerStyles: Record<string, CSSProperties> = {
     position: 'relative',
     overflow: 'hidden'
   },
+  editCanvasLayout: {
+    flex: 1,
+    minHeight: 0,
+    display: 'flex',
+    overflow: 'hidden'
+  },
+  slideCanvasViewport: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden'
+  },
   sidebar: {
     width: '240px',
     minWidth: '240px',
@@ -218,20 +232,16 @@ export const viewerStyles: Record<string, CSSProperties> = {
     height: '100%'
   },
   elementXmlPanel: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
     width: '420px',
     minWidth: '320px',
     maxWidth: '50vw',
+    height: '100%',
+    flexShrink: 0,
     backgroundColor: '#1f2937',
     borderLeft: '1px solid #374151',
-    boxShadow: '-12px 0 28px rgba(0, 0, 0, 0.35)',
     display: 'flex',
     flexDirection: 'column',
-    overflow: 'hidden',
-    zIndex: 20
+    overflow: 'hidden'
   },
   elementXmlPanelHeader: {
     padding: '12px 14px',

@@ -173,6 +173,7 @@ export function Viewer({
     if (!selectedElementId) return null
     return currentSlide.elements.find(element => element.id === selectedElementId) || null
   }, [currentSlide.elements, selectedElementId])
+  const currentSlideXml = currentSlide.rawXml || ''
 
   const clearSelectedElement = () => {
     setSelectedElementId(null)
@@ -245,6 +246,22 @@ export function Viewer({
       [mapKey]: { ...targetElement, x: nextX, y: nextY, rawXml }
     }))
   }
+  const slideViewerProps = {
+    slide: currentSlide,
+    slides: resolvedSlides,
+    currentIndex,
+    onSlideChange,
+    slideChangeSource,
+    resourceMap,
+    clickToNextEnabled,
+    pagerPosition,
+    showAnimationProgress,
+    isEditMode,
+    selectedElementId,
+    onEditElementSelect: handleEditElementSelect,
+    onEditElementDrag: handleEditElementDrag,
+    onEditBackgroundClick: handleEditBackgroundClick
+  }
 
   return (
     <div style={styles.viewerContainer}>
@@ -292,31 +309,23 @@ export function Viewer({
           </div>
         )}
         <div style={styles.slideCanvasArea}>
-          <SlideViewer
-            slide={currentSlide}
-            slides={resolvedSlides}
-            currentIndex={currentIndex}
-            onSlideChange={onSlideChange}
-            slideChangeSource={slideChangeSource}
-            resourceMap={resourceMap}
-            clickToNextEnabled={clickToNextEnabled}
-            pagerPosition={pagerPosition}
-            showAnimationProgress={showAnimationProgress}
-            isEditMode={isEditMode}
-            selectedElementId={selectedElementId}
-            onEditElementSelect={handleEditElementSelect}
-            onEditElementDrag={handleEditElementDrag}
-            onEditBackgroundClick={handleEditBackgroundClick}
-          />
-          {isEditMode && selectedElement && (
-            <ElementXmlPanel
-              element={selectedElement}
-              slideNumber={currentIndex + 1}
-              xmlContent={selectedElementXml}
-              xmlError={selectedElementXmlError}
-              onXmlChange={handleSelectedElementXmlChange}
-              onClose={() => setSelectedElementId(null)}
-            />
+          {isEditMode ? (
+            <div style={styles.editCanvasLayout}>
+              <div style={styles.slideCanvasViewport}>
+                <SlideViewer {...slideViewerProps} />
+              </div>
+              <ElementXmlPanel
+                element={selectedElement}
+                slideNumber={currentIndex + 1}
+                xmlContent={selectedElement ? selectedElementXml : currentSlideXml}
+                xmlError={selectedElement ? selectedElementXmlError : null}
+                isSlideXml={!selectedElement}
+                onXmlChange={handleSelectedElementXmlChange}
+                onClearSelection={selectedElement ? clearSelectedElement : undefined}
+              />
+            </div>
+          ) : (
+            <SlideViewer {...slideViewerProps} />
           )}
         </div>
       </div>

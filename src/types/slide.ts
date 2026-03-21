@@ -74,6 +74,7 @@ export interface SlideData {
   id: string
   width: number
   height: number
+  rawXml?: string
   backgroundColor: string
   backgroundImage?: string
   transition?: {
