@@ -95,8 +95,9 @@ export function SlideViewer({
     fitScale,
     isEditMode
   })
-  const currentViewportWidth = Math.max(0, slide.width * currentScale)
-  const currentViewportHeight = Math.max(0, slide.height * currentScale)
+  const viewportScale = isEditMode ? currentScale : fitScale
+  const currentViewportWidth = Math.max(0, slide.width * viewportScale)
+  const currentViewportHeight = Math.max(0, slide.height * viewportScale)
 
   const handlePrevSlide = (source: SlideChangeSource = 'pager') => {
     clearStepDirection()
