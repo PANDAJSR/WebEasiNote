@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { styles } from '../styles'
 import { SlideRenderer } from './SlideRenderer'
 import type { SlideData } from '../parser'
@@ -7,6 +6,8 @@ import type { PagerPosition } from '../viewer-settings'
 import { FloatingPager } from './slide-viewer/FloatingPager'
 import { SlideThumbnail } from './slide-viewer/SlideThumbnail'
 import { useElementAnimations } from './slide-viewer/useElementAnimations'
+import { useEditViewport } from './slide-viewer/useEditViewport'
+import { useSlideKeyboardNavigation } from './slide-viewer/useSlideKeyboardNavigation'
 import { useSlidePanel } from './slide-viewer/useSlidePanel'
 import { useSlideScaleMap } from './slide-viewer/useSlideScaleMap'
 import { useSlideTransitions } from './slide-viewer/useSlideTransitions'
@@ -54,10 +55,7 @@ export function SlideViewer({
   onEditElementSelect,
   onEditBackgroundClick
 }: SlideViewerProps) {
-  const {
-    containerRef,
-    slideScaleMap
-  } = useSlideScaleMap(slides)
+  const { containerRef, slideScaleMap } = useSlideScaleMap(slides)
   const {
     elementDisplayStyles,
     elementRenderStates,
@@ -68,12 +66,7 @@ export function SlideViewer({
     stepBackwardElementAnimation,
     clearStepDirection
   } = useElementAnimations({ slide })
-  const {
-    transitionState,
-    layerSnapshots,
-    lineRevealProgress,
-    setLayerRef
-  } = useSlideTransitions({
+  const { transitionState, layerSnapshots, lineRevealProgress, setLayerRef } = useSlideTransitions({
     slides,
     currentIndex,
     slideChangeSource,
@@ -89,7 +82,19 @@ export function SlideViewer({
 
   const isFirstSlide = currentIndex <= 0
   const isLastSlide = currentIndex >= slides.length - 1
-  const currentScale = slideScaleMap[slide.id] || 1
+  const fitScale = slideScaleMap[slide.id] || 1
+  const {
+    currentScale,
+    currentOffset,
+    isMiddleDragging,
+    handleEditViewportWheel,
+    handleEditViewportMouseDown,
+    handleEditViewportAuxClick
+  } = useEditViewport({
+    slideId: slide.id,
+    fitScale,
+    isEditMode
+  })
   const currentViewportWidth = Math.max(0, slide.width * currentScale)
   const currentViewportHeight = Math.max(0, slide.height * currentScale)
 
@@ -127,34 +132,7 @@ export function SlideViewer({
     onEditBackgroundClick?.()
   }
 
-  useEffect(() => {
-    const isEditableTarget = (target: EventTarget | null) => {
-      if (!(target instanceof HTMLElement)) return false
-      const tagName = target.tagName
-      return (
-        tagName === 'INPUT'
-        || tagName === 'TEXTAREA'
-        || tagName === 'SELECT'
-        || target.isContentEditable
-      )
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (isEditableTarget(event.target)) return
-      if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
-        event.preventDefault()
-        handlePrevSlide('keyboard')
-        return
-      }
-      if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
-        event.preventDefault()
-        handleNextSlide('keyboard')
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentIndex, isFirstSlide, isLastSlide, stepBackwardElementAnimation, stepForwardElementAnimation])
+  useSlideKeyboardNavigation({ handlePrevSlide, handleNextSlide })
 
   const pagerSides: Array<'left' | 'right'> = pagerPosition === 'both'
     ? ['left', 'right']
@@ -183,9 +161,12 @@ export function SlideViewer({
           ...styles.slideContainer,
           position: 'relative',
           alignItems: 'stretch',
-          justifyContent: 'stretch'
+          justifyContent: 'stretch',
+          overflow: isEditMode ? 'hidden' : styles.slideContainer.overflow
         }}
         onClick={handleSlideContainerClick}
+        onMouseDown={handleEditViewportMouseDown}
+        onAuxClick={handleEditViewportAuxClick}
       >
         <div
           style={{
@@ -199,14 +180,20 @@ export function SlideViewer({
             style={{
               ...styles.slideViewport,
               width: `${currentViewportWidth}px`,
-              height: `${currentViewportHeight}px`
+              height: `${currentViewportHeight}px`,
+              transform: isEditMode
+                ? `translate(${currentOffset.x}px, ${currentOffset.y}px)`
+                : undefined,
+              cursor: isEditMode ? (isMiddleDragging ? 'grabbing' : 'grab') : undefined
             }}
             data-slide-viewport='true'
             onClick={handleSlideViewportClick}
+            onWheel={handleEditViewportWheel}
           >
             <div style={styles.slideWhiteBackdrop} />
             {slides.map((slideItem, index) => {
               const isCurrent = index === currentIndex
+              const slideScale = isEditMode && isCurrent ? currentScale : slideScaleMap[slideItem.id] || 1
               const isEntering = transitionState?.enteringIndex === index
               const isLeaving = transitionState?.leavingIndex === index
               const isAnimating = Boolean(isEntering || isLeaving)
@@ -330,7 +317,7 @@ export function SlideViewer({
                   >
                     <SlideRenderer
                       slide={slideItem}
-                      scale={slideScaleMap[slideItem.id] || 1}
+                      scale={slideScale}
                       resourceMap={resourceMap}
                       slideIndex={index}
                       currentIndex={currentIndex}
