@@ -70,7 +70,8 @@ export function SlideViewer({
   } = useSlideTransitions({
     slides,
     currentIndex,
-    slideChangeSource
+    slideChangeSource,
+    disableTransitions: isEditMode
   })
   const {
     isSlidePanelRendered,
@@ -88,19 +89,20 @@ export function SlideViewer({
 
   const handlePrevSlide = (source: SlideChangeSource = 'pager') => {
     clearStepDirection()
-    if (stepBackwardElementAnimation()) return
+    if (!isEditMode && stepBackwardElementAnimation()) return
     if (isFirstSlide) return
     onSlideChange(currentIndex - 1, source)
   }
 
   const handleNextSlide = (source: SlideChangeSource = 'pager') => {
     clearStepDirection()
-    if (stepForwardElementAnimation()) return
+    if (!isEditMode && stepForwardElementAnimation()) return
     if (isLastSlide) return
     onSlideChange(currentIndex + 1, source)
   }
 
   const handleSlideViewportClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (isEditMode) return
     if (!clickToNextEnabled) return
     const target = event.target as HTMLElement
     if (target.closest('[data-slide-element="true"]')) return
@@ -307,9 +309,9 @@ export function SlideViewer({
                       resourceMap={resourceMap}
                       slideIndex={index}
                       currentIndex={currentIndex}
-                      elementDisplayStyles={isCurrent ? elementDisplayStyles : undefined}
-                      elementRenderStates={isCurrent ? elementRenderStates : undefined}
-                      onElementClick={isCurrent ? triggerElementSourceAnimation : undefined}
+                      elementDisplayStyles={!isEditMode && isCurrent ? elementDisplayStyles : undefined}
+                      elementRenderStates={!isEditMode && isCurrent ? elementRenderStates : undefined}
+                      onElementClick={!isEditMode && isCurrent ? triggerElementSourceAnimation : undefined}
                     />
                   </div>
                 </div>

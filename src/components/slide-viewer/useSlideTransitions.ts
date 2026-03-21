@@ -20,9 +20,15 @@ interface UseSlideTransitionsParams {
   slides: SlideData[]
   currentIndex: number
   slideChangeSource: SlideChangeSource
+  disableTransitions?: boolean
 }
 
-export function useSlideTransitions({ slides, currentIndex, slideChangeSource }: UseSlideTransitionsParams) {
+export function useSlideTransitions({
+  slides,
+  currentIndex,
+  slideChangeSource,
+  disableTransitions = false
+}: UseSlideTransitionsParams) {
   const previousIndexRef = useRef(currentIndex)
   const [transitionState, setTransitionState] = useState<TransitionState | null>(null)
   const [layerSnapshots, setLayerSnapshots] = useState<Record<number, LayerSnapshot>>({})
@@ -63,6 +69,14 @@ export function useSlideTransitions({ slides, currentIndex, slideChangeSource }:
   }, [])
 
   useLayoutEffect(() => {
+    if (disableTransitions) {
+      previousIndexRef.current = currentIndex
+      setTransitionState(null)
+      setLayerSnapshots({})
+      setLineRevealProgress(0)
+      return
+    }
+
     if (previousIndexRef.current === currentIndex) return
     const previousIndex = previousIndexRef.current
     const nextSlide = slides[currentIndex]
@@ -188,7 +202,7 @@ export function useSlideTransitions({ slides, currentIndex, slideChangeSource }:
     }
 
     previousIndexRef.current = currentIndex
-  }, [currentIndex, slides, slideChangeSource, transitionState, logTransitionDebug])
+  }, [currentIndex, slides, slideChangeSource, transitionState, logTransitionDebug, disableTransitions])
 
   useEffect(() => {
     if (!transitionState) return
