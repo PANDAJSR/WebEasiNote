@@ -223,6 +223,12 @@ export function Viewer({
     }
   }
 
+  const handleEditBackgroundClick = () => {
+    setSelectedElementId(null)
+    setSelectedElementXml('')
+    setSelectedElementXmlError(null)
+  }
+
   return (
     <div style={styles.viewerContainer}>
       {/* 顶部工具栏 */}
@@ -283,6 +289,7 @@ export function Viewer({
           isEditMode={isEditMode}
           selectedElementId={selectedElementId}
           onEditElementSelect={handleEditElementSelect}
+          onEditBackgroundClick={handleEditBackgroundClick}
         />
         {isEditMode && selectedElement && (
           <ElementXmlPanel

@@ -36,6 +36,7 @@ interface SlideViewerProps {
   isEditMode: boolean
   selectedElementId?: string | null
   onEditElementSelect?: (elementId: string) => void
+  onEditBackgroundClick?: () => void
 }
 
 export function SlideViewer({
@@ -50,7 +51,8 @@ export function SlideViewer({
   showAnimationProgress,
   isEditMode,
   selectedElementId = null,
-  onEditElementSelect
+  onEditElementSelect,
+  onEditBackgroundClick
 }: SlideViewerProps) {
   const {
     containerRef,
@@ -106,11 +108,23 @@ export function SlideViewer({
   }
 
   const handleSlideViewportClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (isEditMode) return
-    if (!clickToNextEnabled) return
     const target = event.target as HTMLElement
+    if (isEditMode) {
+      if (target.closest('[data-slide-element="true"]')) return
+      onEditBackgroundClick?.()
+      return
+    }
+    if (!clickToNextEnabled) return
     if (target.closest('[data-slide-element="true"]')) return
     handleNextSlide('click')
+  }
+
+  const handleSlideContainerClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!isEditMode) return
+    const target = event.target as HTMLElement
+    if (target.closest('[data-slide-element="true"]')) return
+    if (target.closest('[data-slide-viewport="true"]')) return
+    onEditBackgroundClick?.()
   }
 
   useEffect(() => {
@@ -171,6 +185,7 @@ export function SlideViewer({
           alignItems: 'stretch',
           justifyContent: 'stretch'
         }}
+        onClick={handleSlideContainerClick}
       >
         <div
           style={{
@@ -186,6 +201,7 @@ export function SlideViewer({
               width: `${currentViewportWidth}px`,
               height: `${currentViewportHeight}px`
             }}
+            data-slide-viewport='true'
             onClick={handleSlideViewportClick}
           >
             <div style={styles.slideWhiteBackdrop} />
