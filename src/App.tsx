@@ -14,6 +14,7 @@ import { LoadingView } from './components/LoadingView'
 import { ErrorView } from './components/ErrorView'
 import { Viewer } from './components/Viewer'
 import type { SlideChangeSource } from './components/Viewer'
+import { exportSlidesToEnbx } from './enbx-export'
 import {
   DEFAULT_PAGER_POSITION,
   isPagerPosition,
@@ -45,10 +46,40 @@ function App() {
   const [clickToNextEnabled, setClickToNextEnabled] = useState(true)
   const [pagerPosition, setPagerPosition] = useState<PagerPosition>(DEFAULT_PAGER_POSITION)
   const [showAnimationProgress, setShowAnimationProgress] = useState(false)
+  const [sourceEnbxFile, setSourceEnbxFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const autoReloadingRef = useRef(false)
   const pickerWindow = window as PickerWindow
   const supportsOpenFilePicker = typeof pickerWindow.showOpenFilePicker === 'function'
+  const supportsSaveFilePicker = typeof pickerWindow.showSaveFilePicker === 'function'
+
+  const saveBlobToFile = async (blob: Blob, fileName: string) => {
+    if (supportsSaveFilePicker) {
+      const saveHandle = await pickerWindow.showSaveFilePicker!({
+        suggestedName: fileName,
+        excludeAcceptAllOption: true,
+        types: [
+          {
+            description: 'ENBX 课件文件',
+            accept: {
+              'application/octet-stream': ['.enbx']
+            }
+          }
+        ]
+      })
+      const writable = await saveHandle.createWritable()
+      await writable.write(blob)
+      await writable.close()
+      return
+    }
+
+    const fileUrl = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = fileUrl
+    anchor.download = fileName
+    anchor.click()
+    URL.revokeObjectURL(fileUrl)
+  }
   useEffect(() => {
     try {
       const saved = localStorage.getItem(AUTO_RELOAD_STORAGE_KEY)
@@ -145,6 +176,7 @@ function App() {
       console.log(`[App] 幻灯片: ${slideData.length} 页, 元素总数: ${totalElements}`)
       setMetadata(meta)
       setSlides(slideData)
+      setSourceEnbxFile(file)
       setResourceMap(previousMap => {
         revokeObjectUrls(previousMap)
         return loadedMap
@@ -231,6 +263,7 @@ function App() {
     setViewMode('loading')
     setError(null)
     setWatchedENBX(null)
+    setSourceEnbxFile(null)
     let loadedMap: Record<string, string> = {}
     try {
       const dirHandle = await window.showDirectoryPicker()
@@ -266,6 +299,7 @@ function App() {
       const slideData = await loadSlidesFromFolder(dirHandle)
       setMetadata(meta)
       setSlides(slideData)
+      setSourceEnbxFile(null)
       setResourceMap(previousMap => {
         revokeObjectUrls(previousMap)
         return loadedMap
@@ -292,6 +326,7 @@ function App() {
     setCurrentSlideIndex(0)
     setError(null)
     setWatchedENBX(null)
+    setSourceEnbxFile(null)
     setViewMode('welcome')
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
@@ -300,6 +335,21 @@ function App() {
   const handleSlideChange = (index: number, source: SlideChangeSource = 'programmatic') => {
     setSlideChangeSource(source)
     setCurrentSlideIndex(index)
+  }
+
+  const handleSaveAs = async (editedElements: Record<string, SlideData['elements'][number]>) => {
+    if (!metadata || !sourceEnbxFile) {
+      throw new Error('当前仅支持从 ENBX 文件打开后进行另存为')
+    }
+
+    const { blob, fileName } = await exportSlidesToEnbx({
+      sourceFile: sourceEnbxFile,
+      slides,
+      editedElements,
+      coursewareName: metadata.name
+    })
+
+    await saveBlobToFile(blob, fileName)
   }
   useEffect(() => {
     if (!autoReloadEnabled || !watchedENBX || viewMode !== 'viewer') return
@@ -356,6 +406,7 @@ function App() {
       {viewMode === 'error' && error && <ErrorView error={error} onBack={handleClear} />}
       {viewMode === 'viewer' && metadata && (
         <Viewer
+          onSaveAs={handleSaveAs}
           metadata={metadata}
           slides={slides}
           currentIndex={currentSlideIndex}

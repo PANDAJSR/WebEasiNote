@@ -18,6 +18,14 @@ export type PickerWindow = Window & {
       accept: Record<string, string[]>
     }>
   }) => Promise<FileSystemFileHandle[]>
+  showSaveFilePicker?: (options?: {
+    suggestedName?: string
+    excludeAcceptAllOption?: boolean
+    types?: Array<{
+      description: string
+      accept: Record<string, string[]>
+    }>
+  }) => Promise<FileSystemFileHandle>
 }
 
 export function ensureSpinKeyframes() {

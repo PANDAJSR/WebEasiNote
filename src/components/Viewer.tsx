@@ -15,6 +15,7 @@ type ViewerMode = 'play' | 'edit'
 type IssueFilter = 'all' | SlideIssue['kind']
 
 interface ViewerProps {
+  onSaveAs: (editedElements: Record<string, SlideElement>) => Promise<void>
   metadata: CoursewareMetadata
   slides: SlideData[]
   currentIndex: number
@@ -86,7 +87,8 @@ export function Viewer({
   resourceMap = {},
   clickToNextEnabled,
   pagerPosition,
-  showAnimationProgress
+  showAnimationProgress,
+  onSaveAs
 }: ViewerProps) {
   const [isIssueModalOpen, setIssueModalOpen] = useState(false)
   const [issueFilter, setIssueFilter] = useState<IssueFilter>('all')
@@ -96,6 +98,7 @@ export function Viewer({
   const [selectedElementXml, setSelectedElementXml] = useState('')
   const [selectedElementXmlError, setSelectedElementXmlError] = useState<string | null>(null)
   const [editedElements, setEditedElements] = useState<Record<string, SlideElement>>({})
+  const [isSaving, setIsSaving] = useState(false)
   const selectedElementIdRef = useRef<string | null>(null)
   const currentSlideIdRef = useRef<string>('')
 
@@ -252,6 +255,26 @@ export function Viewer({
       [mapKey]: { ...targetElement, x: nextX, y: nextY, rawXml }
     }))
   }
+
+  const handleSaveAs = async () => {
+    if (isSaving) return
+    setIsSaving(true)
+    try {
+      await onSaveAs(editedElements)
+      Modal.success({
+        title: '导出成功',
+        content: 'ENBX 文件已成功导出'
+      })
+    } catch (error) {
+      Modal.error({
+        title: '另存为失败',
+        content: (error as Error).message || '导出过程中发生未知错误'
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const slideViewerProps = {
     slide: currentSlide,
     slides: resolvedSlides,
@@ -284,6 +307,9 @@ export function Viewer({
             style={styles.modeToggleButton}
           >
             {isEditMode ? '播放模式' : '编辑模式'}
+          </Button>
+          <Button onClick={handleSaveAs} loading={isSaving} style={styles.saveAsButton}>
+            另存为
           </Button>
           <Button onClick={() => setIssueModalOpen(true)} style={styles.issueButton}>
             {issueButtonText}

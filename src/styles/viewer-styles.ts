@@ -44,6 +44,15 @@ export const viewerStyles: Record<string, CSSProperties> = {
     fontSize: '0.875rem',
     cursor: 'pointer'
   },
+  saveAsButton: {
+    padding: '6px 12px',
+    background: '#e6fffb',
+    color: '#006d75',
+    border: '1px solid #87e8de',
+    borderRadius: '4px',
+    fontSize: '0.875rem',
+    cursor: 'pointer'
+  },
   issueButton: {
     padding: '6px 12px',
     background: '#edf2f7',
