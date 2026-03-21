@@ -246,6 +246,13 @@ export const viewerStyles: Record<string, CSSProperties> = {
     gap: '4px',
     borderBottom: '1px solid #374151'
   },
+  elementXmlPanelError: {
+    padding: '8px 14px',
+    color: '#fecaca',
+    fontSize: '0.75rem',
+    backgroundColor: '#7f1d1d',
+    borderBottom: '1px solid #991b1b'
+  },
   elementXmlPanelEditor: {
     flex: 1,
     minHeight: 0

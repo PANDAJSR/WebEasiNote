@@ -120,10 +120,6 @@ export function SlideRenderer({
                 width: bounds.width,
                 height: bounds.height,
                 overflow: 'visible',
-                boxSizing: 'border-box',
-                outline: selectedElementId === element.id ? '2px solid #4a90e2' : 'none',
-                outlineOffset: 0,
-                borderRadius: selectedElementId === element.id ? '2px' : undefined,
                 ...elementDisplayStyles[element.id]
               }}
               onClick={() => onElementClick?.(element.id)}
@@ -146,6 +142,27 @@ export function SlideRenderer({
             </div>
           )
         })}
+        {selectedElementId && (() => {
+          const selectedElement = slide.elements.find(element => element.id === selectedElementId)
+          if (!selectedElement) return null
+          const bounds = resolveElementBounds(selectedElement)
+          return (
+            <div
+              style={{
+                position: 'absolute',
+                left: bounds.x,
+                top: bounds.y,
+                width: bounds.width,
+                height: bounds.height,
+                boxSizing: 'border-box',
+                border: '2px solid #4a90e2',
+                borderRadius: '2px',
+                pointerEvents: 'none',
+                zIndex: 2147483647
+              }}
+            />
+          )
+        })()}
       </div>
     </div>
   )

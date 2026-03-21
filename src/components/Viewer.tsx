@@ -3,9 +3,10 @@ import { styles } from '../styles';
 import { SlideViewer } from './SlideViewer';
 import { SlideThumbnail } from './slide-viewer/SlideThumbnail'
 import { ElementXmlPanel } from './ElementXmlPanel'
-import type { CoursewareMetadata, SlideData, SlideIssue } from '../parser';
+import type { CoursewareMetadata, SlideData, SlideElement, SlideIssue } from '../parser';
 import { isFontFamilyMissing } from '../font-utils';
 import type { PagerPosition } from '../viewer-settings'
+import { parseSingleElementXml } from './viewer-xml-sync'
 
 export type SlideChangeSource = 'keyboard' | 'pager' | 'thumbnail' | 'programmatic' | 'click'
 type ViewerMode = 'play' | 'edit'
@@ -96,7 +97,22 @@ export function Viewer({
   const [fontCheckTick, setFontCheckTick] = useState(0);
   const [viewerMode, setViewerMode] = useState<ViewerMode>('play')
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
-  const currentSlide = slides[currentIndex];
+  const [selectedElementXml, setSelectedElementXml] = useState('')
+  const [selectedElementXmlError, setSelectedElementXmlError] = useState<string | null>(null)
+  const [editedElements, setEditedElements] = useState<Record<string, SlideElement>>({})
+  const resolvedSlides = useMemo(() => {
+    return slides.map(slide => {
+      const resolvedElements = slide.elements.map(element => {
+        const key = `${slide.id}|${element.id}`
+        return editedElements[key] || element
+      })
+      return {
+        ...slide,
+        elements: resolvedElements
+      }
+    })
+  }, [slides, editedElements])
+  const currentSlide = resolvedSlides[currentIndex];
 
   useEffect(() => {
     if (typeof document === 'undefined' || !document.fonts) return
@@ -111,14 +127,14 @@ export function Viewer({
   }, [])
 
   const slideOrderMap = useMemo(() => {
-    return new Map(slides.map((slide, index) => [slide.id, index + 1]));
-  }, [slides]);
+    return new Map(resolvedSlides.map((slide, index) => [slide.id, index + 1]));
+  }, [resolvedSlides]);
   const missingFontIssues = useMemo(() => {
-    return collectMissingFontIssues(slides)
-  }, [slides, fontCheckTick]);
+    return collectMissingFontIssues(resolvedSlides)
+  }, [resolvedSlides, fontCheckTick]);
   const allIssues = useMemo(() => {
-    return [...slides.flatMap(slide => slide.issues || []), ...missingFontIssues];
-  }, [slides, missingFontIssues]);
+    return [...resolvedSlides.flatMap(slide => slide.issues || []), ...missingFontIssues];
+  }, [resolvedSlides, missingFontIssues]);
   const sortedIssues = useMemo(() => {
     const ordered = [...allIssues];
     ordered.sort((a, b) => {
@@ -156,13 +172,56 @@ export function Viewer({
 
   useEffect(() => {
     setSelectedElementId(null)
+    setSelectedElementXml('')
+    setSelectedElementXmlError(null)
   }, [currentSlide.id])
 
   useEffect(() => {
     if (!isEditMode) {
       setSelectedElementId(null)
+      setSelectedElementXml('')
+      setSelectedElementXmlError(null)
     }
   }, [isEditMode])
+
+  useEffect(() => {
+    setEditedElements({})
+  }, [slides])
+
+  useEffect(() => {
+    if (!selectedElementId) return
+    const targetElement = currentSlide.elements.find(element => element.id === selectedElementId)
+    if (!targetElement) return
+    setSelectedElementXml(targetElement.rawXml || '')
+    setSelectedElementXmlError(null)
+  }, [selectedElementId, currentSlide.elements])
+
+  const handleEditElementSelect = (elementId: string) => {
+    setSelectedElementId(elementId)
+    setSelectedElementXmlError(null)
+  }
+
+  const handleSelectedElementXmlChange = (value: string) => {
+    setSelectedElementXml(value)
+    if (!selectedElementId) return
+    const mapKey = `${currentSlide.id}|${selectedElementId}`
+
+    try {
+      const parsedElement = parseSingleElementXml(value, currentSlide.id)
+      const syncedElement: SlideElement = {
+        ...parsedElement,
+        id: selectedElementId,
+        rawXml: value
+      }
+      setEditedElements(prev => ({
+        ...prev,
+        [mapKey]: syncedElement
+      }))
+      setSelectedElementXmlError(null)
+    } catch (error) {
+      setSelectedElementXmlError((error as Error).message)
+    }
+  }
 
   return (
     <div style={styles.viewerContainer}>
@@ -171,7 +230,7 @@ export function Viewer({
         <div style={styles.toolbarLeft}>
           <span style={styles.coursewareName}>{metadata.name}</span>
           <span style={styles.slideInfo}>
-            第 {currentIndex + 1} / {slides.length} 页
+            第 {currentIndex + 1} / {resolvedSlides.length} 页
           </span>
         </div>
         <div style={styles.toolbarRight}>
@@ -198,7 +257,7 @@ export function Viewer({
               <span>幻灯片</span>
             </div>
             <div style={styles.slideList}>
-              {slides.map((slideItem, index) => (
+              {resolvedSlides.map((slideItem, index) => (
                 <SlideThumbnail
                   key={slideItem.id}
                   slide={slideItem}
@@ -213,7 +272,7 @@ export function Viewer({
         )}
         <SlideViewer
           slide={currentSlide}
-          slides={slides}
+          slides={resolvedSlides}
           currentIndex={currentIndex}
           onSlideChange={onSlideChange}
           slideChangeSource={slideChangeSource}
@@ -223,12 +282,15 @@ export function Viewer({
           showAnimationProgress={showAnimationProgress}
           isEditMode={isEditMode}
           selectedElementId={selectedElementId}
-          onEditElementSelect={setSelectedElementId}
+          onEditElementSelect={handleEditElementSelect}
         />
         {isEditMode && selectedElement && (
           <ElementXmlPanel
             element={selectedElement}
             slideNumber={currentIndex + 1}
+            xmlContent={selectedElementXml}
+            xmlError={selectedElementXmlError}
+            onXmlChange={handleSelectedElementXmlChange}
             onClose={() => setSelectedElementId(null)}
           />
         )}
