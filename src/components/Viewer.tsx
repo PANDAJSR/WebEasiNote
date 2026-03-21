@@ -6,11 +6,9 @@ import { ElementXmlPanel } from './ElementXmlPanel'
 import type { CoursewareMetadata, SlideData, SlideElement, SlideIssue } from '../parser';
 import { isFontFamilyMissing } from '../font-utils';
 import type { PagerPosition } from '../viewer-settings'
-import { parseSingleElementXml } from './viewer-xml-sync'
-
+import { parseSingleElementXml, syncElementPositionXml } from './viewer-xml-sync'
 export type SlideChangeSource = 'keyboard' | 'pager' | 'thumbnail' | 'programmatic' | 'click'
 type ViewerMode = 'play' | 'edit'
-
 interface ViewerProps {
   metadata: CoursewareMetadata;
   slides: SlideData[];
@@ -23,13 +21,10 @@ interface ViewerProps {
   pagerPosition: PagerPosition
   showAnimationProgress: boolean
 }
-
 type IssueFilter = 'all' | SlideIssue['kind']
-
 function collectMissingFontIssues(slides: SlideData[]): SlideIssue[] {
   const issues: SlideIssue[] = []
   const seen = new Set<string>()
-
   slides.forEach(slide => {
     slide.elements.forEach(element => {
       const textLines = (() => {
@@ -38,9 +33,7 @@ function collectMissingFontIssues(slides: SlideData[]): SlideIssue[] {
         return []
       })()
       if (textLines.length === 0) return
-
       const elementType = element.type === 'shape' ? element.geometryType || 'Shape' : element.type
-
       textLines.forEach(line => {
         const markerFont = line.textMarkerStyle?.fontFamily?.trim()
         if (markerFont && isFontFamilyMissing(markerFont)) {
@@ -57,7 +50,6 @@ function collectMissingFontIssues(slides: SlideData[]): SlideIssue[] {
             })
           }
         }
-
         line.textRuns.forEach(run => {
           const fontName = run.fontFamily?.trim()
           if (!fontName || !isFontFamilyMissing(fontName)) return
@@ -76,10 +68,8 @@ function collectMissingFontIssues(slides: SlideData[]): SlideIssue[] {
       })
     })
   })
-
   return issues
 }
-
 export function Viewer({ 
   metadata, 
   slides, 
@@ -169,18 +159,19 @@ export function Viewer({
     if (!selectedElementId) return null
     return currentSlide.elements.find(element => element.id === selectedElementId) || null
   }, [currentSlide.elements, selectedElementId])
-
-  useEffect(() => {
+  const clearSelectedElement = () => {
     setSelectedElementId(null)
     setSelectedElementXml('')
     setSelectedElementXmlError(null)
+  }
+
+  useEffect(() => {
+    clearSelectedElement()
   }, [currentSlide.id])
 
   useEffect(() => {
     if (!isEditMode) {
-      setSelectedElementId(null)
-      setSelectedElementXml('')
-      setSelectedElementXmlError(null)
+      clearSelectedElement()
     }
   }, [isEditMode])
 
@@ -224,14 +215,24 @@ export function Viewer({
   }
 
   const handleEditBackgroundClick = () => {
-    setSelectedElementId(null)
-    setSelectedElementXml('')
-    setSelectedElementXmlError(null)
+    clearSelectedElement()
+  }
+
+  const handleEditElementDrag = (elementId: string, nextX: number, nextY: number) => {
+    const targetElement = currentSlide.elements.find(element => element.id === elementId)
+    if (!targetElement) return
+    const mapKey = `${currentSlide.id}|${elementId}`
+    const rawXml = targetElement.rawXml
+      ? syncElementPositionXml(targetElement.rawXml, nextX, nextY)
+      : targetElement.rawXml
+    setEditedElements(prev => ({
+      ...prev,
+      [mapKey]: { ...targetElement, x: nextX, y: nextY, rawXml }
+    }))
   }
 
   return (
     <div style={styles.viewerContainer}>
-      {/* 顶部工具栏 */}
       <div style={styles.toolbar}>
         <div style={styles.toolbarLeft}>
           <span style={styles.coursewareName}>{metadata.name}</span>
@@ -255,7 +256,6 @@ export function Viewer({
         </div>
       </div>
 
-      {/* 主内容区 */}
       <div style={styles.mainContent}>
         {isEditMode && (
           <div style={styles.sidebar}>
@@ -289,6 +289,7 @@ export function Viewer({
           isEditMode={isEditMode}
           selectedElementId={selectedElementId}
           onEditElementSelect={handleEditElementSelect}
+          onEditElementDrag={handleEditElementDrag}
           onEditBackgroundClick={handleEditBackgroundClick}
         />
         {isEditMode && selectedElement && (

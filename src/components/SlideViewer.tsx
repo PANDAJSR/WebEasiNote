@@ -37,9 +37,9 @@ interface SlideViewerProps {
   isEditMode: boolean
   selectedElementId?: string | null
   onEditElementSelect?: (elementId: string) => void
+  onEditElementDrag?: (elementId: string, nextX: number, nextY: number) => void
   onEditBackgroundClick?: () => void
 }
-
 export function SlideViewer({
   slide,
   slides,
@@ -53,6 +53,7 @@ export function SlideViewer({
   isEditMode,
   selectedElementId = null,
   onEditElementSelect,
+  onEditElementDrag,
   onEditBackgroundClick
 }: SlideViewerProps) {
   const { containerRef, slideScaleMap } = useSlideScaleMap(slides)
@@ -79,7 +80,6 @@ export function SlideViewer({
     handleToggleSlidePanel,
     handleCloseSlidePanel
   } = useSlidePanel()
-
   const isFirstSlide = currentIndex <= 0
   const isLastSlide = currentIndex >= slides.length - 1
   const fitScale = slideScaleMap[slide.id] || 1
@@ -97,7 +97,6 @@ export function SlideViewer({
   const viewportScale = isEditMode ? currentScale : fitScale
   const currentViewportWidth = Math.max(0, slide.width * viewportScale)
   const currentViewportHeight = Math.max(0, slide.height * viewportScale)
-
   const handlePrevSlide = (source: SlideChangeSource = 'pager') => {
     clearStepDirection()
     if (!isEditMode && stepBackwardElementAnimation()) return
@@ -111,7 +110,6 @@ export function SlideViewer({
     if (isLastSlide) return
     onSlideChange(currentIndex + 1, source)
   }
-
   const handleSlideViewportClick = (event: React.MouseEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement
     if (isEditMode) {
@@ -123,7 +121,6 @@ export function SlideViewer({
     if (target.closest('[data-slide-element="true"]')) return
     handleNextSlide('click')
   }
-
   const handleSlideContainerClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!isEditMode) return
     const target = event.target as HTMLElement
@@ -131,9 +128,7 @@ export function SlideViewer({
     if (target.closest('[data-slide-viewport="true"]')) return
     onEditBackgroundClick?.()
   }
-
   useSlideKeyboardNavigation({ handlePrevSlide, handleNextSlide })
-
   const pagerSides: Array<'left' | 'right'> = pagerPosition === 'both'
     ? ['left', 'right']
     : [pagerPosition]
@@ -332,6 +327,8 @@ export function SlideViewer({
                           )
                           : undefined
                       }
+                      onEditElementDrag={isCurrent && isEditMode ? onEditElementDrag : undefined}
+                      isEditMode={isCurrent && isEditMode}
                       selectedElementId={isCurrent && isEditMode ? selectedElementId : null}
                     />
                   </div>

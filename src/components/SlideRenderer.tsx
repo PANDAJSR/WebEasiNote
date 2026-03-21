@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import type { CSSProperties } from 'react'
 import type { SlideData } from '../parser'
 import { ElementRenderer } from './slide-renderer/ElementRenderer'
@@ -11,7 +12,17 @@ interface SlideRendererProps {
   elementDisplayStyles?: Record<string, CSSProperties>
   elementRenderStates?: Record<string, boolean>
   onElementClick?: (elementId: string) => boolean
+  onEditElementDrag?: (elementId: string, nextX: number, nextY: number) => void
+  isEditMode?: boolean
   selectedElementId?: string | null
+}
+
+interface DragState {
+  elementId: string
+  originX: number
+  originY: number
+  startClientX: number
+  startClientY: number
 }
 
 /**
@@ -26,8 +37,11 @@ export function SlideRenderer({
   elementDisplayStyles = {},
   elementRenderStates = {},
   onElementClick,
+  onEditElementDrag,
+  isEditMode = false,
   selectedElementId = null
 }: SlideRendererProps) {
+  const dragStateRef = useRef<DragState | null>(null)
   const backgroundImageUrl = slide.backgroundImage ? resourceMap[slide.backgroundImage] : null
   const scaledWidth = slide.width * scale
   const scaledHeight = slide.height * scale
@@ -63,6 +77,59 @@ export function SlideRenderer({
       ? Math.max(1, element.height)
       : 1
     return { x, y, width, height }
+  }
+
+  const clearDragState = () => {
+    dragStateRef.current = null
+  }
+
+  useEffect(() => {
+    if (!isEditMode || !onEditElementDrag) {
+      clearDragState()
+      return
+    }
+
+    const handleWindowMouseMove = (event: MouseEvent) => {
+      const dragState = dragStateRef.current
+      if (!dragState) return
+      const deltaX = (event.clientX - dragState.startClientX) / scale
+      const deltaY = (event.clientY - dragState.startClientY) / scale
+      onEditElementDrag(
+        dragState.elementId,
+        dragState.originX + deltaX,
+        dragState.originY + deltaY
+      )
+    }
+
+    const handleWindowMouseUp = (event: MouseEvent) => {
+      if (event.button !== 0) return
+      clearDragState()
+    }
+
+    window.addEventListener('mousemove', handleWindowMouseMove)
+    window.addEventListener('mouseup', handleWindowMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', handleWindowMouseMove)
+      window.removeEventListener('mouseup', handleWindowMouseUp)
+    }
+  }, [isEditMode, onEditElementDrag, scale])
+
+  const handleEditElementMouseDown = (
+    element: SlideData['elements'][number],
+    event: React.MouseEvent<HTMLDivElement>
+  ) => {
+    if (!isEditMode || !onEditElementDrag || event.button !== 0) return
+    const { x, y } = resolveElementBounds(element)
+    onElementClick?.(element.id)
+    dragStateRef.current = {
+      elementId: element.id,
+      originX: x,
+      originY: y,
+      startClientX: event.clientX,
+      startClientY: event.clientY
+    }
+    event.stopPropagation()
+    event.preventDefault()
   }
 
   const handleSlideClickCapture = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -122,8 +189,10 @@ export function SlideRenderer({
                 width: bounds.width,
                 height: bounds.height,
                 overflow: 'visible',
+                cursor: isEditMode ? 'move' : undefined,
                 ...elementDisplayStyles[element.id]
               }}
+              onMouseDown={event => handleEditElementMouseDown(element, event)}
               onClick={() => onElementClick?.(element.id)}
             >
               <div

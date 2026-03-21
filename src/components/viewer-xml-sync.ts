@@ -1,5 +1,6 @@
 import type { SlideElement } from '../parser'
 import { parseSlideElements } from '../slide-elements-parser'
+import { getDirectChildElement } from '../xml-utils'
 
 export function parseSingleElementXml(xmlContent: string, slideId: string): SlideElement {
   const parser = new DOMParser()
@@ -18,4 +19,29 @@ export function parseSingleElementXml(xmlContent: string, slideId: string): Slid
   }
 
   return parseResult.elements[0]
+}
+
+function formatCoordinate(value: number): string {
+  if (!Number.isFinite(value)) return '0'
+  return Number(value.toFixed(3)).toString()
+}
+
+export function syncElementPositionXml(xmlContent: string, nextX: number, nextY: number): string {
+  const parser = new DOMParser()
+  const xmlDoc = parser.parseFromString(xmlContent, 'text/xml')
+  if (xmlDoc.querySelector('parsererror')) return xmlContent
+
+  const root = xmlDoc.documentElement
+  const xNode = getDirectChildElement(root, 'X')
+  const yNode = getDirectChildElement(root, 'Y')
+  if (xNode && yNode) {
+    xNode.textContent = formatCoordinate(nextX)
+    yNode.textContent = formatCoordinate(nextY)
+    return new XMLSerializer().serializeToString(root)
+  }
+
+  const locationNode = getDirectChildElement(root, 'Location')
+  if (!locationNode) return xmlContent
+  locationNode.textContent = `${formatCoordinate(nextX)},${formatCoordinate(nextY)}`
+  return new XMLSerializer().serializeToString(root)
 }
