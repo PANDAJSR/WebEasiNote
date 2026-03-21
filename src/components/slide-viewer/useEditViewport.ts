@@ -22,6 +22,7 @@ const MIN_EDIT_SCALE = 0.05
 const MAX_EDIT_SCALE = 8
 const WHEEL_ZOOM_IN_FACTOR = 1.1
 const WHEEL_ZOOM_OUT_FACTOR = 1 / WHEEL_ZOOM_IN_FACTOR
+const EDIT_MODE_DEFAULT_SCALE_RATIO = 0.95
 
 function clampScale(scale: number): number {
   return Math.max(MIN_EDIT_SCALE, Math.min(MAX_EDIT_SCALE, scale))
@@ -44,7 +45,8 @@ export function useEditViewport({
   const [isMiddleDragging, setMiddleDragging] = useState(false)
   const dragStateRef = useRef<DragState | null>(null)
 
-  const currentScale = scaleOverrideMap[slideId] ?? fitScale
+  const defaultScale = clampScale(fitScale * EDIT_MODE_DEFAULT_SCALE_RATIO)
+  const currentScale = scaleOverrideMap[slideId] ?? defaultScale
   const currentOffset = getSlideOffset(offsetMap, slideId)
 
   const handleEditViewportWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
