@@ -1,4 +1,5 @@
 import Editor from '@monaco-editor/react'
+import { CodeOutlined } from '@ant-design/icons'
 import { Button } from 'antd'
 import { styles } from '../styles'
 import type { SlideElement } from '../parser'
@@ -78,7 +79,10 @@ export function ElementXmlPanel({
         </div>
         <div style={styles.elementXmlPanelTabRail}>
           <Button size='small' style={{ ...styles.elementXmlPanelTabButton, ...styles.elementXmlPanelTabButtonActive }}>
-            Raw
+            <span style={styles.elementXmlPanelTabButtonInner}>
+              <CodeOutlined style={styles.elementXmlPanelTabButtonIcon} />
+              <span style={styles.elementXmlPanelTabButtonLabel}>Raw</span>
+            </span>
           </Button>
         </div>
       </div>

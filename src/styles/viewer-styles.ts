@@ -266,9 +266,9 @@ export const viewerStyles: Record<string, CSSProperties> = {
     flexShrink: 0
   },
   elementXmlPanelTabButton: {
-    width: '44px',
-    minWidth: '44px',
-    height: '44px',
+    width: '52px',
+    minWidth: '52px',
+    height: '52px',
     borderRadius: '10px',
     border: '1px solid #d1d5db',
     backgroundColor: '#ffffff',
@@ -280,6 +280,22 @@ export const viewerStyles: Record<string, CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer'
+  },
+  elementXmlPanelTabButtonInner: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '1px',
+    lineHeight: 1
+  },
+  elementXmlPanelTabButtonIcon: {
+    fontSize: '0.95rem'
+  },
+  elementXmlPanelTabButtonLabel: {
+    fontSize: '0.7rem',
+    fontWeight: '600',
+    letterSpacing: '0.2px'
   },
   elementXmlPanelTabButtonActive: {
     border: '1px solid #93c5fd',
