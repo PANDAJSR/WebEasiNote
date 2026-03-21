@@ -15,6 +15,7 @@ import type { GeometryElement, MathFormulaElement } from './geometry'
 export interface UnknownElement {
   type: 'unknown'
   id: string
+  rawXml?: string
   x: number
   y: number
   width: number

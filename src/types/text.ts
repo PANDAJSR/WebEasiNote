@@ -60,6 +60,7 @@ export interface TextLine {
 export interface TextElement {
   type: 'text'
   id: string
+  rawXml?: string
   x: number
   y: number
   width: number

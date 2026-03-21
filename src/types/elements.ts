@@ -3,6 +3,7 @@ import type { TextLine } from './text'
 export interface ShapeElement {
   type: 'shape'
   id: string
+  rawXml?: string
   x: number
   y: number
   width: number
@@ -29,6 +30,7 @@ export interface ShapeElement {
 export interface PictureElement {
   type: 'picture'
   id: string
+  rawXml?: string
   x: number
   y: number
   width: number
@@ -52,6 +54,7 @@ export interface PictureElement {
 export interface VideoElement {
   type: 'video'
   id: string
+  rawXml?: string
   x: number
   y: number
   width: number
@@ -79,6 +82,7 @@ export interface TableCell {
 export interface TableElement {
   type: 'table'
   id: string
+  rawXml?: string
   x: number
   y: number
   width: number
@@ -117,6 +121,7 @@ export interface TopicNode {
 export interface TopicElement {
   type: 'topic'
   id: string
+  rawXml?: string
   x: number
   y: number
   width: number
@@ -141,6 +146,7 @@ export interface TopicElement {
 export interface CylinderElement {
   type: 'cylinder'
   id: string
+  rawXml?: string
   x: number
   y: number
   width: number
@@ -156,6 +162,7 @@ export interface CylinderElement {
 export interface ConeElement {
   type: 'cone'
   id: string
+  rawXml?: string
   x: number
   y: number
   width: number
@@ -170,6 +177,7 @@ export interface ConeElement {
 export interface CubeElement {
   type: 'cube'
   id: string
+  rawXml?: string
   x: number
   y: number
   width: number

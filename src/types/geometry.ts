@@ -27,6 +27,7 @@ export interface GeometryMark {
 export interface GeometryElement {
   type: 'geometry'
   id: string
+  rawXml?: string
   x: number
   y: number
   width: number
@@ -40,6 +41,7 @@ export interface GeometryElement {
 export interface MathFormulaElement {
   type: 'mathFormula'
   id: string
+  rawXml?: string
   x: number
   y: number
   width: number

@@ -25,6 +25,35 @@ interface ParseSlideElementsResult {
   issues: SlideIssue[]
 }
 
+function formatXml(xml: string): string {
+  const normalized = xml
+    .replace(/>\s*</g, '><')
+    .replace(/(>)(<)(\/*)/g, '$1\n$2$3')
+    .trim()
+  const lines = normalized.split('\n')
+  let indentLevel = 0
+
+  return lines
+    .map(rawLine => {
+      const line = rawLine.trim()
+      if (!line) return ''
+      if (line.startsWith('</')) {
+        indentLevel = Math.max(0, indentLevel - 1)
+      }
+      const indentedLine = `${'  '.repeat(indentLevel)}${line}`
+      if (line.startsWith('<') && !line.startsWith('</') && !line.endsWith('/>') && !line.includes('</')) {
+        indentLevel += 1
+      }
+      return indentedLine
+    })
+    .join('\n')
+}
+
+function serializeElementXml(node: Element): string {
+  const serializer = new XMLSerializer()
+  return formatXml(serializer.serializeToString(node))
+}
+
 function parseNumber(value: string | null, fallback = 0): number {
   if (!value) return fallback
   const parsed = parseFloat(value)
@@ -75,13 +104,17 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
   allChildNodes.forEach((node, index) => {
     const tagName = node.tagName
     const elementId = getDirectChildText(node, 'Id') || `${tagName.toLowerCase()}-${index}`
+    const rawXml = serializeElementXml(node)
 
     switch (tagName) {
       case 'Text': {
         collectUnknownParameters(node, 'Text', slideId, elementId, issues)
         const textElement = parseTextElement(node)
         if (textElement) {
-          parsedElements.push(applyOffset(textElement, offsetX, offsetY))
+          parsedElements.push({
+            ...applyOffset(textElement, offsetX, offsetY),
+            rawXml
+          })
         }
         break
       }
@@ -89,7 +122,10 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         collectUnknownParameters(node, 'Shape', slideId, elementId, issues)
         const shapeElement = parseShapeElement(node)
         if (shapeElement) {
-          parsedElements.push(applyOffset(shapeElement as ShapeElement, offsetX, offsetY))
+          parsedElements.push({
+            ...applyOffset(shapeElement as ShapeElement, offsetX, offsetY),
+            rawXml
+          })
         }
         break
       }
@@ -97,7 +133,10 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         collectUnknownParameters(node, 'Picture', slideId, elementId, issues)
         const pictureElement = parsePictureElement(node)
         if (pictureElement) {
-          parsedElements.push(applyOffset(pictureElement as PictureElement, offsetX, offsetY))
+          parsedElements.push({
+            ...applyOffset(pictureElement as PictureElement, offsetX, offsetY),
+            rawXml
+          })
         }
         break
       }
@@ -105,7 +144,10 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         collectUnknownParameters(node, 'Video', slideId, elementId, issues)
         const videoElement = parseVideoElement(node)
         if (videoElement) {
-          parsedElements.push(applyOffset(videoElement as VideoElement, offsetX, offsetY))
+          parsedElements.push({
+            ...applyOffset(videoElement as VideoElement, offsetX, offsetY),
+            rawXml
+          })
         }
         break
       }
@@ -113,7 +155,10 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         collectUnknownParameters(node, 'Table', slideId, elementId, issues)
         const tableElement = parseTableElement(node)
         if (tableElement) {
-          parsedElements.push(applyOffset(tableElement, offsetX, offsetY))
+          parsedElements.push({
+            ...applyOffset(tableElement, offsetX, offsetY),
+            rawXml
+          })
         }
         break
       }
@@ -146,7 +191,10 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         collectUnknownParameters(node, 'Topic', slideId, elementId, issues)
         const topicElement = parseTopicElement(node)
         if (topicElement) {
-          parsedElements.push(applyOffset(topicElement, offsetX, offsetY))
+          parsedElements.push({
+            ...applyOffset(topicElement, offsetX, offsetY),
+            rawXml
+          })
         }
         break
       }
@@ -154,7 +202,10 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         collectUnknownParameters(node, 'Cylinder', slideId, elementId, issues)
         const cylinderElement = parseCylinderElement(node)
         if (cylinderElement) {
-          parsedElements.push(applyOffset(cylinderElement, offsetX, offsetY))
+          parsedElements.push({
+            ...applyOffset(cylinderElement, offsetX, offsetY),
+            rawXml
+          })
         }
         break
       }
@@ -162,7 +213,10 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         collectUnknownParameters(node, 'Cone', slideId, elementId, issues)
         const coneElement = parseConeElement(node)
         if (coneElement) {
-          parsedElements.push(applyOffset(coneElement, offsetX, offsetY))
+          parsedElements.push({
+            ...applyOffset(coneElement, offsetX, offsetY),
+            rawXml
+          })
         }
         break
       }
@@ -170,7 +224,10 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         collectUnknownParameters(node, 'Cube', slideId, elementId, issues)
         const cubeElement = parseCubeElement(node)
         if (cubeElement) {
-          parsedElements.push(applyOffset(cubeElement, offsetX, offsetY))
+          parsedElements.push({
+            ...applyOffset(cubeElement, offsetX, offsetY),
+            rawXml
+          })
         }
         break
       }
@@ -178,7 +235,10 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         collectUnknownParameters(node, 'GeometryElement', slideId, elementId, issues)
         const geometryElement = parseGeometryElement(node)
         if (geometryElement) {
-          parsedElements.push(applyOffset(geometryElement, offsetX, offsetY))
+          parsedElements.push({
+            ...applyOffset(geometryElement, offsetX, offsetY),
+            rawXml
+          })
         }
         break
       }
@@ -186,7 +246,10 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         collectUnknownParameters(node, 'MathFormula', slideId, elementId, issues)
         const mathFormulaElement = parseMathFormulaElement(node)
         if (mathFormulaElement) {
-          parsedElements.push(applyOffset(mathFormulaElement, offsetX, offsetY))
+          parsedElements.push({
+            ...applyOffset(mathFormulaElement, offsetX, offsetY),
+            rawXml
+          })
         }
         break
       }
@@ -194,7 +257,10 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         collectUnknownParameters(node, 'RuledPaper', slideId, elementId, issues)
         const ruledPaperElement = parseRuledPaperElement(node)
         if (ruledPaperElement) {
-          parsedElements.push(applyOffset(ruledPaperElement, offsetX, offsetY))
+          parsedElements.push({
+            ...applyOffset(ruledPaperElement, offsetX, offsetY),
+            rawXml
+          })
         }
         break
       }
@@ -226,6 +292,7 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         parsedElements.push({
           type: 'unknown',
           id: elementId,
+          rawXml,
           x,
           y,
           width,

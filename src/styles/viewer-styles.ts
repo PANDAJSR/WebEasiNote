@@ -204,5 +204,50 @@ export const viewerStyles: Record<string, CSSProperties> = {
     position: 'relative',
     width: '100%',
     height: '100%'
+  },
+  elementXmlPanel: {
+    width: '420px',
+    minWidth: '360px',
+    maxWidth: '50vw',
+    backgroundColor: '#1f2937',
+    borderLeft: '1px solid #374151',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden'
+  },
+  elementXmlPanelHeader: {
+    padding: '12px 14px',
+    borderBottom: '1px solid #374151',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '8px'
+  },
+  elementXmlPanelTitle: {
+    color: '#e5e7eb',
+    fontSize: '0.875rem',
+    fontWeight: '600'
+  },
+  elementXmlPanelCloseButton: {
+    padding: '4px 10px',
+    border: '1px solid #4b5563',
+    backgroundColor: '#111827',
+    color: '#e5e7eb',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '0.75rem'
+  },
+  elementXmlPanelMeta: {
+    padding: '8px 14px',
+    color: '#9ca3af',
+    fontSize: '0.75rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    borderBottom: '1px solid #374151'
+  },
+  elementXmlPanelEditor: {
+    flex: 1,
+    minHeight: 0
   }
 }

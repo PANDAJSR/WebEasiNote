@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { styles } from '../styles';
 import { SlideViewer } from './SlideViewer';
 import { SlideThumbnail } from './slide-viewer/SlideThumbnail'
+import { ElementXmlPanel } from './ElementXmlPanel'
 import type { CoursewareMetadata, SlideData, SlideIssue } from '../parser';
 import { isFontFamilyMissing } from '../font-utils';
 import type { PagerPosition } from '../viewer-settings'
@@ -94,6 +95,7 @@ export function Viewer({
   const [issueFilter, setIssueFilter] = useState<IssueFilter>('all');
   const [fontCheckTick, setFontCheckTick] = useState(0);
   const [viewerMode, setViewerMode] = useState<ViewerMode>('play')
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
   const currentSlide = slides[currentIndex];
 
   useEffect(() => {
@@ -147,6 +149,20 @@ export function Viewer({
   const issueCount = allIssues.length;
   const issueButtonText = issueCount > 0 ? `问题 (${issueCount})` : '问题';
   const isEditMode = viewerMode === 'edit'
+  const selectedElement = useMemo(() => {
+    if (!selectedElementId) return null
+    return currentSlide.elements.find(element => element.id === selectedElementId) || null
+  }, [currentSlide.elements, selectedElementId])
+
+  useEffect(() => {
+    setSelectedElementId(null)
+  }, [currentSlide.id])
+
+  useEffect(() => {
+    if (!isEditMode) {
+      setSelectedElementId(null)
+    }
+  }, [isEditMode])
 
   return (
     <div style={styles.viewerContainer}>
@@ -206,7 +222,16 @@ export function Viewer({
           pagerPosition={pagerPosition}
           showAnimationProgress={showAnimationProgress}
           isEditMode={isEditMode}
+          selectedElementId={selectedElementId}
+          onEditElementSelect={setSelectedElementId}
         />
+        {isEditMode && selectedElement && (
+          <ElementXmlPanel
+            element={selectedElement}
+            slideNumber={currentIndex + 1}
+            onClose={() => setSelectedElementId(null)}
+          />
+        )}
       </div>
 
       {isIssueModalOpen && (

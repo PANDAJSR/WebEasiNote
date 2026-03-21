@@ -11,6 +11,7 @@ interface SlideRendererProps {
   elementDisplayStyles?: Record<string, CSSProperties>
   elementRenderStates?: Record<string, boolean>
   onElementClick?: (elementId: string) => boolean
+  selectedElementId?: string | null
 }
 
 /**
@@ -24,7 +25,8 @@ export function SlideRenderer({
   currentIndex = 0,
   elementDisplayStyles = {},
   elementRenderStates = {},
-  onElementClick
+  onElementClick,
+  selectedElementId = null
 }: SlideRendererProps) {
   const backgroundImageUrl = slide.backgroundImage ? resourceMap[slide.backgroundImage] : null
   const scaledWidth = slide.width * scale
@@ -118,6 +120,10 @@ export function SlideRenderer({
                 width: bounds.width,
                 height: bounds.height,
                 overflow: 'visible',
+                boxSizing: 'border-box',
+                outline: selectedElementId === element.id ? '2px solid #4a90e2' : 'none',
+                outlineOffset: 0,
+                borderRadius: selectedElementId === element.id ? '2px' : undefined,
                 ...elementDisplayStyles[element.id]
               }}
               onClick={() => onElementClick?.(element.id)}

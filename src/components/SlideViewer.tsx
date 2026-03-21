@@ -34,6 +34,8 @@ interface SlideViewerProps {
   pagerPosition: PagerPosition
   showAnimationProgress: boolean
   isEditMode: boolean
+  selectedElementId?: string | null
+  onEditElementSelect?: (elementId: string) => void
 }
 
 export function SlideViewer({
@@ -46,7 +48,9 @@ export function SlideViewer({
   clickToNextEnabled,
   pagerPosition,
   showAnimationProgress,
-  isEditMode
+  isEditMode,
+  selectedElementId = null,
+  onEditElementSelect
 }: SlideViewerProps) {
   const {
     containerRef,
@@ -141,6 +145,11 @@ export function SlideViewer({
   const pagerSides: Array<'left' | 'right'> = pagerPosition === 'both'
     ? ['left', 'right']
     : [pagerPosition]
+
+  const handleEditElementClick = (elementId: string): boolean => {
+    onEditElementSelect?.(elementId)
+    return true
+  }
 
   return (
     <div style={styles.slideViewerContainer}>
@@ -311,7 +320,16 @@ export function SlideViewer({
                       currentIndex={currentIndex}
                       elementDisplayStyles={!isEditMode && isCurrent ? elementDisplayStyles : undefined}
                       elementRenderStates={!isEditMode && isCurrent ? elementRenderStates : undefined}
-                      onElementClick={!isEditMode && isCurrent ? triggerElementSourceAnimation : undefined}
+                      onElementClick={
+                        isCurrent
+                          ? (
+                            isEditMode
+                              ? handleEditElementClick
+                              : triggerElementSourceAnimation
+                          )
+                          : undefined
+                      }
+                      selectedElementId={isCurrent && isEditMode ? selectedElementId : null}
                     />
                   </div>
                 </div>
