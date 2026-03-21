@@ -53,6 +53,15 @@ export const viewerStyles: Record<string, CSSProperties> = {
     fontSize: '0.875rem',
     cursor: 'pointer'
   },
+  modeToggleButton: {
+    padding: '6px 12px',
+    background: '#ebf8ff',
+    color: '#2b6cb0',
+    border: '1px solid #bee3f8',
+    borderRadius: '4px',
+    fontSize: '0.875rem',
+    cursor: 'pointer'
+  },
   mainContent: {
     display: 'flex',
     flex: 1,

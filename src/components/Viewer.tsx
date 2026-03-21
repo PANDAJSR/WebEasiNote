@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { styles } from '../styles';
 import { SlideViewer } from './SlideViewer';
+import { SlideThumbnail } from './slide-viewer/SlideThumbnail'
 import type { CoursewareMetadata, SlideData, SlideIssue } from '../parser';
 import { isFontFamilyMissing } from '../font-utils';
 import type { PagerPosition } from '../viewer-settings'
 
 export type SlideChangeSource = 'keyboard' | 'pager' | 'thumbnail' | 'programmatic' | 'click'
+type ViewerMode = 'play' | 'edit'
 
 interface ViewerProps {
   metadata: CoursewareMetadata;
@@ -91,6 +93,7 @@ export function Viewer({
   const [isIssueModalOpen, setIssueModalOpen] = useState(false);
   const [issueFilter, setIssueFilter] = useState<IssueFilter>('all');
   const [fontCheckTick, setFontCheckTick] = useState(0);
+  const [viewerMode, setViewerMode] = useState<ViewerMode>('play')
   const currentSlide = slides[currentIndex];
 
   useEffect(() => {
@@ -143,6 +146,7 @@ export function Viewer({
   const missingFontCount = allIssues.filter(issue => issue.kind === 'missing-font').length;
   const issueCount = allIssues.length;
   const issueButtonText = issueCount > 0 ? `问题 (${issueCount})` : '问题';
+  const isEditMode = viewerMode === 'edit'
 
   return (
     <div style={styles.viewerContainer}>
@@ -155,6 +159,12 @@ export function Viewer({
           </span>
         </div>
         <div style={styles.toolbarRight}>
+          <button
+            onClick={() => setViewerMode(isEditMode ? 'play' : 'edit')}
+            style={styles.modeToggleButton}
+          >
+            {isEditMode ? '播放模式' : '编辑模式'}
+          </button>
           <button onClick={() => setIssueModalOpen(true)} style={styles.issueButton}>
             {issueButtonText}
           </button>
@@ -166,6 +176,25 @@ export function Viewer({
 
       {/* 主内容区 */}
       <div style={styles.mainContent}>
+        {isEditMode && (
+          <div style={styles.sidebar}>
+            <div style={styles.sidebarHeader}>
+              <span>幻灯片</span>
+            </div>
+            <div style={styles.slideList}>
+              {slides.map((slideItem, index) => (
+                <SlideThumbnail
+                  key={slideItem.id}
+                  slide={slideItem}
+                  index={index}
+                  isActive={index === currentIndex}
+                  resourceMap={resourceMap}
+                  onSlideChange={onSlideChange}
+                />
+              ))}
+            </div>
+          </div>
+        )}
         <SlideViewer
           slide={currentSlide}
           slides={slides}
@@ -176,6 +205,7 @@ export function Viewer({
           clickToNextEnabled={clickToNextEnabled}
           pagerPosition={pagerPosition}
           showAnimationProgress={showAnimationProgress}
+          isEditMode={isEditMode}
         />
       </div>
 

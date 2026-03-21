@@ -33,6 +33,7 @@ interface SlideViewerProps {
   clickToNextEnabled: boolean
   pagerPosition: PagerPosition
   showAnimationProgress: boolean
+  isEditMode: boolean
 }
 
 export function SlideViewer({
@@ -44,7 +45,8 @@ export function SlideViewer({
   resourceMap = {},
   clickToNextEnabled,
   pagerPosition,
-  showAnimationProgress
+  showAnimationProgress,
+  isEditMode
 }: SlideViewerProps) {
   const {
     containerRef,
@@ -140,7 +142,7 @@ export function SlideViewer({
 
   return (
     <div style={styles.slideViewerContainer}>
-      {isSlidePanelRendered && (
+      {!isEditMode && isSlidePanelRendered && (
         <div
           style={{
             ...styles.slidePanelOverlay,
@@ -317,7 +319,7 @@ export function SlideViewer({
         </div>
       </div>
 
-      {isSlidePanelRendered && (
+      {!isEditMode && isSlidePanelRendered && (
         <div
           style={{
             ...styles.slideFloatingPanel,
@@ -353,7 +355,7 @@ export function SlideViewer({
         </div>
       )}
 
-      {pagerSides.map(side => (
+      {!isEditMode && pagerSides.map(side => (
         <FloatingPager
           key={side}
           side={side}
