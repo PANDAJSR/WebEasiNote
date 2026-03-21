@@ -86,7 +86,6 @@ export function SlideViewer({
   const {
     currentScale,
     currentOffset,
-    isMiddleDragging,
     handleEditViewportWheel,
     handleEditViewportMouseDown,
     handleEditViewportAuxClick
@@ -185,8 +184,7 @@ export function SlideViewer({
               height: `${currentViewportHeight}px`,
               transform: isEditMode
                 ? `translate(${currentOffset.x}px, ${currentOffset.y}px)`
-                : undefined,
-              cursor: isEditMode ? (isMiddleDragging ? 'grabbing' : 'grab') : undefined
+                : undefined
             }}
             data-slide-viewport='true'
             onClick={handleSlideViewportClick}
