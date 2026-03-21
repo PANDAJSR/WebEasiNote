@@ -237,49 +237,59 @@ export const viewerStyles: Record<string, CSSProperties> = {
     maxWidth: '50vw',
     height: '100%',
     flexShrink: 0,
-    backgroundColor: '#1f2937',
-    borderLeft: '1px solid #374151',
+    backgroundColor: '#ffffff',
+    borderLeft: '1px solid #e5e7eb',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden'
   },
+  elementXmlPanelTabs: {
+    flex: 1,
+    minHeight: 0
+  },
+  elementXmlPanelTabContent: {
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0
+  },
   elementXmlPanelHeader: {
     padding: '12px 14px',
-    borderBottom: '1px solid #374151',
+    borderBottom: '1px solid #e5e7eb',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: '8px'
   },
   elementXmlPanelTitle: {
-    color: '#e5e7eb',
+    color: '#1f2937',
     fontSize: '0.875rem',
     fontWeight: '600'
   },
   elementXmlPanelCloseButton: {
     padding: '4px 10px',
-    border: '1px solid #4b5563',
-    backgroundColor: '#111827',
-    color: '#e5e7eb',
+    border: '1px solid #d1d5db',
+    backgroundColor: '#ffffff',
+    color: '#374151',
     borderRadius: '4px',
     cursor: 'pointer',
     fontSize: '0.75rem'
   },
   elementXmlPanelMeta: {
     padding: '8px 14px',
-    color: '#9ca3af',
+    color: '#6b7280',
     fontSize: '0.75rem',
     display: 'flex',
     flexDirection: 'column',
     gap: '4px',
-    borderBottom: '1px solid #374151'
+    borderBottom: '1px solid #e5e7eb'
   },
   elementXmlPanelError: {
     padding: '8px 14px',
-    color: '#fecaca',
+    color: '#b91c1c',
     fontSize: '0.75rem',
-    backgroundColor: '#7f1d1d',
-    borderBottom: '1px solid #991b1b'
+    backgroundColor: '#fee2e2',
+    borderBottom: '1px solid #fecaca'
   },
   elementXmlPanelEditor: {
     flex: 1,

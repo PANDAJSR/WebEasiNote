@@ -1,5 +1,5 @@
 import Editor from '@monaco-editor/react'
-import { Button } from 'antd'
+import { Button, Tabs } from 'antd'
 import { styles } from '../styles'
 import type { SlideElement } from '../parser'
 
@@ -22,8 +22,8 @@ export function ElementXmlPanel({
   onXmlChange,
   onClearSelection
 }: ElementXmlPanelProps) {
-  return (
-    <div style={styles.elementXmlPanel}>
+  const rawTabContent = (
+    <div style={styles.elementXmlPanelTabContent}>
       <div style={styles.elementXmlPanelHeader}>
         <div style={styles.elementXmlPanelTitle}>
           第 {slideNumber} 页 · {isSlideXml ? '页面 XML' : '元素 XML'}
@@ -61,7 +61,7 @@ export function ElementXmlPanel({
             if (isSlideXml) return
             onXmlChange(value || '')
           }}
-          theme='vs-dark'
+          theme='vs'
           options={{
             minimap: { enabled: false },
             automaticLayout: true,
@@ -72,6 +72,23 @@ export function ElementXmlPanel({
           }}
         />
       </div>
+    </div>
+  )
+
+  return (
+    <div style={styles.elementXmlPanel}>
+      <Tabs
+        tabPosition='right'
+        defaultActiveKey='raw'
+        style={styles.elementXmlPanelTabs}
+        items={[
+          {
+            key: 'raw',
+            label: 'Raw',
+            children: rawTabContent
+          }
+        ]}
+      />
     </div>
   )
 }
