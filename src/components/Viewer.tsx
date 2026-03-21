@@ -276,32 +276,34 @@ export function Viewer({
             </div>
           </div>
         )}
-        <SlideViewer
-          slide={currentSlide}
-          slides={resolvedSlides}
-          currentIndex={currentIndex}
-          onSlideChange={onSlideChange}
-          slideChangeSource={slideChangeSource}
-          resourceMap={resourceMap}
-          clickToNextEnabled={clickToNextEnabled}
-          pagerPosition={pagerPosition}
-          showAnimationProgress={showAnimationProgress}
-          isEditMode={isEditMode}
-          selectedElementId={selectedElementId}
-          onEditElementSelect={handleEditElementSelect}
-          onEditElementDrag={handleEditElementDrag}
-          onEditBackgroundClick={handleEditBackgroundClick}
-        />
-        {isEditMode && selectedElement && (
-          <ElementXmlPanel
-            element={selectedElement}
-            slideNumber={currentIndex + 1}
-            xmlContent={selectedElementXml}
-            xmlError={selectedElementXmlError}
-            onXmlChange={handleSelectedElementXmlChange}
-            onClose={() => setSelectedElementId(null)}
+        <div style={styles.slideCanvasArea}>
+          <SlideViewer
+            slide={currentSlide}
+            slides={resolvedSlides}
+            currentIndex={currentIndex}
+            onSlideChange={onSlideChange}
+            slideChangeSource={slideChangeSource}
+            resourceMap={resourceMap}
+            clickToNextEnabled={clickToNextEnabled}
+            pagerPosition={pagerPosition}
+            showAnimationProgress={showAnimationProgress}
+            isEditMode={isEditMode}
+            selectedElementId={selectedElementId}
+            onEditElementSelect={handleEditElementSelect}
+            onEditElementDrag={handleEditElementDrag}
+            onEditBackgroundClick={handleEditBackgroundClick}
           />
-        )}
+          {isEditMode && selectedElement && (
+            <ElementXmlPanel
+              element={selectedElement}
+              slideNumber={currentIndex + 1}
+              xmlContent={selectedElementXml}
+              xmlError={selectedElementXmlError}
+              onXmlChange={handleSelectedElementXmlChange}
+              onClose={() => setSelectedElementId(null)}
+            />
+          )}
+        </div>
       </div>
 
       {isIssueModalOpen && (

@@ -67,6 +67,12 @@ export const viewerStyles: Record<string, CSSProperties> = {
     flex: 1,
     overflow: 'hidden'
   },
+  slideCanvasArea: {
+    flex: 1,
+    minWidth: 0,
+    position: 'relative',
+    overflow: 'hidden'
+  },
   sidebar: {
     width: '240px',
     minWidth: '240px',
@@ -206,14 +212,20 @@ export const viewerStyles: Record<string, CSSProperties> = {
     height: '100%'
   },
   elementXmlPanel: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
     width: '420px',
-    minWidth: '360px',
+    minWidth: '320px',
     maxWidth: '50vw',
     backgroundColor: '#1f2937',
     borderLeft: '1px solid #374151',
+    boxShadow: '-12px 0 28px rgba(0, 0, 0, 0.35)',
     display: 'flex',
     flexDirection: 'column',
-    overflow: 'hidden'
+    overflow: 'hidden',
+    zIndex: 20
   },
   elementXmlPanelHeader: {
     padding: '12px 14px',
