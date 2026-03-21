@@ -28,19 +28,32 @@ function findElementNodeById(root: Element, elementId: string): Element | null {
 
 function replaceElementXml(slideXml: string, patches: SlideEditPatch[]): string {
   if (patches.length === 0) return slideXml
-  const slideDoc = parseXmlDocument(slideXml)
-  const slideRoot = slideDoc.documentElement
+  let nextSlideXml = slideXml
+  const serializer = new XMLSerializer()
 
   patches.forEach(patch => {
+    const slideDoc = parseXmlDocument(nextSlideXml)
+    const slideRoot = slideDoc.documentElement
     const targetNode = findElementNodeById(slideRoot, patch.elementId)
-    if (!targetNode || !targetNode.parentNode) return
+    if (!targetNode) return
 
+    const targetNodeXml = serializer.serializeToString(targetNode)
+    const targetIndex = nextSlideXml.indexOf(targetNodeXml)
+    if (targetIndex !== -1) {
+      const before = nextSlideXml.slice(0, targetIndex)
+      const after = nextSlideXml.slice(targetIndex + targetNodeXml.length)
+      nextSlideXml = `${before}${patch.rawXml}${after}`
+      return
+    }
+
+    if (!targetNode.parentNode) return
     const editedElementDoc = parseXmlDocument(patch.rawXml)
     const editedElementNode = editedElementDoc.documentElement
     targetNode.parentNode.replaceChild(slideDoc.importNode(editedElementNode, true), targetNode)
+    nextSlideXml = serializer.serializeToString(slideDoc)
   })
 
-  return new XMLSerializer().serializeToString(slideDoc)
+  return nextSlideXml
 }
 
 function collectSlideEditPatches(editedElements: Record<string, SlideElement>): Record<string, SlideEditPatch[]> {
