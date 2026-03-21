@@ -32,8 +32,8 @@ export function SlideThumbnail({
       }}
     >
       <span style={styles.slideTabNumber}>{index + 1}</span>
-      <div style={styles.slideTabPreviewViewport}>
-        <div style={styles.slideTabPreviewContent}>
+      <span style={styles.slideTabPreviewViewport}>
+        <span style={styles.slideTabPreviewContent}>
           <SlideRenderer
             slide={slide}
             scale={previewScale}
@@ -41,8 +41,8 @@ export function SlideThumbnail({
             slideIndex={index}
             currentIndex={-1}
           />
-        </div>
-      </div>
+        </span>
+      </span>
     </Button>
   )
 }

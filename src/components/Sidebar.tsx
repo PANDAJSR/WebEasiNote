@@ -26,12 +26,12 @@ export function Sidebar({ slides, currentIndex, onSlideChange }: SidebarProps) {
             }}
           >
             <span style={styles.slideTabNumber}>{index + 1}</span>
-            <div style={styles.slideTabInfo}>
+            <span style={styles.slideTabInfo}>
               <span style={styles.slideTabTitle}>幻灯片 {index + 1}</span>
               <span style={styles.slideTabSize}>
                 {slide.width} × {slide.height}
               </span>
-            </div>
+            </span>
           </Button>
         ))}
       </div>
