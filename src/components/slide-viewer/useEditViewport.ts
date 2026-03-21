@@ -57,23 +57,15 @@ export function useEditViewport({
     }))
   }, [slideId])
 
-  const handleEditViewportWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
-    if (!isEditMode) return
-    event.preventDefault()
-
-    // 触摸板捏合通常会触发 ctrlKey=true 的 wheel 事件，双指移动则为普通 wheel 事件
-    if (!event.ctrlKey) {
-      updateSlideOffset({
-        x: currentOffset.x - event.deltaX,
-        y: currentOffset.y - event.deltaY
-      })
-      return
-    }
-
+  const applyWheelZoom = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
     const pinchScaleFactor = Math.exp(-event.deltaY * TRACKPAD_PINCH_SENSITIVITY)
     const wheelScaleFactor = event.deltaY < 0 ? WHEEL_ZOOM_IN_FACTOR : WHEEL_ZOOM_OUT_FACTOR
-    const scaleFactor = Number.isFinite(pinchScaleFactor) && pinchScaleFactor > 0
-      ? pinchScaleFactor
+    const scaleFactor = event.ctrlKey
+      ? (
+        Number.isFinite(pinchScaleFactor) && pinchScaleFactor > 0
+          ? pinchScaleFactor
+          : wheelScaleFactor
+      )
       : wheelScaleFactor
     const nextScale = clampScale(currentScale * scaleFactor)
     if (Math.abs(nextScale - currentScale) < 0.0001) return
@@ -92,7 +84,29 @@ export function useEditViewport({
       [slideId]: nextScale
     }))
     updateSlideOffset(nextOffset)
-  }, [isEditMode, currentScale, currentOffset, slideId, updateSlideOffset])
+  }, [currentScale, currentOffset, slideId, updateSlideOffset])
+
+  const handleEditViewportWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
+    if (!isEditMode) return
+    event.preventDefault()
+
+    // 触摸板捏合通常会触发 ctrlKey=true 的 wheel 事件，双指移动则为普通 wheel 事件
+    if (!event.ctrlKey) {
+      updateSlideOffset({
+        x: currentOffset.x - event.deltaX,
+        y: currentOffset.y - event.deltaY
+      })
+      return
+    }
+
+    applyWheelZoom(event)
+  }, [isEditMode, currentOffset, updateSlideOffset, applyWheelZoom])
+
+  const handleEditViewportWheelZoomOnly = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
+    if (!isEditMode) return
+    event.preventDefault()
+    applyWheelZoom(event)
+  }, [isEditMode, applyWheelZoom])
 
   const handleEditViewportMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (!isEditMode || event.button !== 1) return
@@ -155,6 +169,7 @@ export function useEditViewport({
     currentOffset,
     isMiddleDragging,
     handleEditViewportWheel,
+    handleEditViewportWheelZoomOnly,
     handleEditViewportMouseDown,
     handleEditViewportAuxClick
   }

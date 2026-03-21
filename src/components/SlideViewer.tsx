@@ -87,6 +87,7 @@ export function SlideViewer({
     currentScale,
     currentOffset,
     handleEditViewportWheel,
+    handleEditViewportWheelZoomOnly,
     handleEditViewportMouseDown,
     handleEditViewportAuxClick
   } = useEditViewport({
@@ -137,6 +138,15 @@ export function SlideViewer({
     onEditElementSelect?.(elementId)
     return true
   }
+  const handleEditWrapperWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    if (!isEditMode) return
+    const target = event.target as HTMLElement
+    if (target.closest('[data-slide-viewport="true"]')) {
+      handleEditViewportWheel(event)
+      return
+    }
+    handleEditViewportWheelZoomOnly(event)
+  }
 
   return (
     <div style={styles.slideViewerContainer}>
@@ -171,6 +181,7 @@ export function SlideViewer({
             width: '100%',
             height: `calc(100% - ${slideInfoBarHeight}px)`
           }}
+          onWheel={handleEditWrapperWheel}
         >
           <div
             style={{
@@ -183,7 +194,6 @@ export function SlideViewer({
             }}
             data-slide-viewport='true'
             onClick={handleSlideViewportClick}
-            onWheel={handleEditViewportWheel}
           >
             <div style={styles.slideWhiteBackdrop} />
             {slides.map((slideItem, index) => {
