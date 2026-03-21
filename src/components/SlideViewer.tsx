@@ -162,7 +162,8 @@ export function SlideViewer({
           position: 'relative',
           alignItems: 'stretch',
           justifyContent: 'stretch',
-          overflow: isEditMode ? 'hidden' : styles.slideContainer.overflow
+          overflow: isEditMode ? 'hidden' : styles.slideContainer.overflow,
+          backgroundColor: isEditMode ? '#eceef3' : styles.slideContainer.backgroundColor
         }}
         onClick={handleSlideContainerClick}
         onMouseDown={handleEditViewportMouseDown}
