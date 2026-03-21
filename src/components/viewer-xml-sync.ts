@@ -10,6 +10,18 @@ export function parseSingleElementXml(xmlContent: string, slideId: string): Slid
   }
 
   const elementsNode = xmlDoc.documentElement
+  const elementNodes = Array.from(elementsNode.children)
+  if (elementNodes.length === 0) {
+    throw new Error('未识别到可渲染元素，请确认 XML 节点内容')
+  }
+  if (elementNodes.length > 1) {
+    throw new Error('仅支持单个元素 XML，请不要一次粘贴多个节点')
+  }
+  const [elementNode] = elementNodes
+  if (elementNode.tagName === 'Slide') {
+    throw new Error('当前是页面 XML，请先选中具体元素后再编辑')
+  }
+
   const parseResult = parseSlideElements(elementsNode, { slideId })
   if (parseResult.elements.length === 0) {
     throw new Error('未识别到可渲染元素，请确认 XML 节点内容')

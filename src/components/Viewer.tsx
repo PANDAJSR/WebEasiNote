@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Modal, Segmented } from 'antd'
 import { styles } from '../styles'
 import { SlideViewer } from './SlideViewer'
@@ -96,6 +96,8 @@ export function Viewer({
   const [selectedElementXml, setSelectedElementXml] = useState('')
   const [selectedElementXmlError, setSelectedElementXmlError] = useState<string | null>(null)
   const [editedElements, setEditedElements] = useState<Record<string, SlideElement>>({})
+  const selectedElementIdRef = useRef<string | null>(null)
+  const currentSlideIdRef = useRef<string>('')
 
   const resolvedSlides = useMemo(() => {
     return slides.map(slide => {
@@ -111,6 +113,8 @@ export function Viewer({
   }, [slides, editedElements])
 
   const currentSlide = resolvedSlides[currentIndex]
+  selectedElementIdRef.current = selectedElementId
+  currentSlideIdRef.current = currentSlide.id
 
   useEffect(() => {
     if (typeof document === 'undefined' || !document.fonts) return
@@ -210,14 +214,16 @@ export function Viewer({
 
   const handleSelectedElementXmlChange = (value: string) => {
     setSelectedElementXml(value)
-    if (!selectedElementId) return
-    const mapKey = `${currentSlide.id}|${selectedElementId}`
+    const activeElementId = selectedElementIdRef.current
+    const activeSlideId = currentSlideIdRef.current
+    if (!activeElementId || !activeSlideId) return
+    const mapKey = `${activeSlideId}|${activeElementId}`
 
     try {
-      const parsedElement = parseSingleElementXml(value, currentSlide.id)
+      const parsedElement = parseSingleElementXml(value, activeSlideId)
       const syncedElement: SlideElement = {
         ...parsedElement,
-        id: selectedElementId,
+        id: activeElementId,
         rawXml: value
       }
       setEditedElements(prev => ({
