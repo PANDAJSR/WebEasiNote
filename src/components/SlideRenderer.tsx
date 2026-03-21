@@ -155,7 +155,8 @@ export function SlideRenderer({
                 width: bounds.width,
                 height: bounds.height,
                 boxSizing: 'border-box',
-                border: '2px solid #4a90e2',
+                outline: '2px solid #4a90e2',
+                outlineOffset: '2px',
                 borderRadius: '2px',
                 pointerEvents: 'none',
                 zIndex: 2147483647
