@@ -25,11 +25,6 @@ export function ElementXmlPanel({
   return (
     <div style={styles.elementXmlPanel}>
       <div style={styles.elementXmlPanelTabContent}>
-        <div style={styles.elementXmlPanelTabRail}>
-          <Button size='small' style={{ ...styles.elementXmlPanelTabButton, ...styles.elementXmlPanelTabButtonActive }}>
-            Raw
-          </Button>
-        </div>
         <div style={styles.elementXmlPanelTabBody}>
           <div style={styles.elementXmlPanelHeader}>
             <div style={styles.elementXmlPanelTitle}>
@@ -80,6 +75,11 @@ export function ElementXmlPanel({
               }}
             />
           </div>
+        </div>
+        <div style={styles.elementXmlPanelTabRail}>
+          <Button size='small' style={{ ...styles.elementXmlPanelTabButton, ...styles.elementXmlPanelTabButtonActive }}>
+            Raw
+          </Button>
         </div>
       </div>
     </div>
