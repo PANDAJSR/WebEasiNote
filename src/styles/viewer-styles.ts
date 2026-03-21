@@ -243,15 +243,46 @@ export const viewerStyles: Record<string, CSSProperties> = {
     flexDirection: 'column',
     overflow: 'hidden'
   },
-  elementXmlPanelTabs: {
+  elementXmlPanelTabContent: {
     flex: 1,
+    display: 'flex',
     minHeight: 0
   },
-  elementXmlPanelTabContent: {
-    height: '100%',
+  elementXmlPanelTabBody: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 0,
     display: 'flex',
-    flexDirection: 'column',
-    minHeight: 0
+    flexDirection: 'column'
+  },
+  elementXmlPanelTabRail: {
+    width: '56px',
+    borderLeft: '1px solid #e5e7eb',
+    backgroundColor: '#f8fafc',
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    paddingTop: '8px',
+    flexShrink: 0
+  },
+  elementXmlPanelTabButton: {
+    writingMode: 'vertical-rl',
+    textOrientation: 'mixed',
+    minWidth: '36px',
+    height: '72px',
+    borderRadius: '8px',
+    border: '1px solid #d1d5db',
+    backgroundColor: '#ffffff',
+    color: '#374151',
+    fontSize: '0.75rem',
+    fontWeight: '500',
+    padding: '4px 2px',
+    cursor: 'pointer'
+  },
+  elementXmlPanelTabButtonActive: {
+    border: '1px solid #93c5fd',
+    backgroundColor: '#eff6ff',
+    color: '#1d4ed8'
   },
   elementXmlPanelHeader: {
     padding: '12px 14px',
