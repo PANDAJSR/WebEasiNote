@@ -70,6 +70,8 @@ export const viewerStyles: Record<string, CSSProperties> = {
   slideCanvasArea: {
     flex: 1,
     minWidth: 0,
+    display: 'flex',
+    flexDirection: 'column',
     position: 'relative',
     overflow: 'hidden'
   },
