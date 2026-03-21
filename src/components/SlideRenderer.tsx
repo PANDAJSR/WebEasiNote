@@ -86,7 +86,9 @@ export function SlideRenderer({
         width: scaledWidth,
         height: scaledHeight,
         overflow: 'hidden',
-        transformOrigin: 'top left'
+        transformOrigin: 'top left',
+        userSelect: 'none',
+        WebkitUserSelect: 'none'
       }}
       onClickCapture={handleSlideClickCapture}
     >
