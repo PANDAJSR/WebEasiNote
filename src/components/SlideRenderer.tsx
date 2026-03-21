@@ -23,6 +23,7 @@ interface DragState {
   originY: number
   startClientX: number
   startClientY: number
+  hasMoved: boolean
 }
 
 /**
@@ -42,9 +43,11 @@ export function SlideRenderer({
   selectedElementId = null
 }: SlideRendererProps) {
   const dragStateRef = useRef<DragState | null>(null)
+  const isDraggingRef = useRef(false)
   const backgroundImageUrl = slide.backgroundImage ? resourceMap[slide.backgroundImage] : null
   const scaledWidth = slide.width * scale
   const scaledHeight = slide.height * scale
+  const DRAG_START_THRESHOLD_PX = 3
 
   const resolvePointElementId = (slideX: number, slideY: number): string | null => {
     for (let index = slide.elements.length - 1; index >= 0; index -= 1) {
@@ -81,6 +84,7 @@ export function SlideRenderer({
 
   const clearDragState = () => {
     dragStateRef.current = null
+    isDraggingRef.current = false
   }
 
   useEffect(() => {
@@ -92,8 +96,17 @@ export function SlideRenderer({
     const handleWindowMouseMove = (event: MouseEvent) => {
       const dragState = dragStateRef.current
       if (!dragState) return
-      const deltaX = (event.clientX - dragState.startClientX) / scale
-      const deltaY = (event.clientY - dragState.startClientY) / scale
+      const rawDeltaX = event.clientX - dragState.startClientX
+      const rawDeltaY = event.clientY - dragState.startClientY
+      if (!dragState.hasMoved) {
+        const movedDistance = Math.hypot(rawDeltaX, rawDeltaY)
+        if (movedDistance < DRAG_START_THRESHOLD_PX) return
+        dragState.hasMoved = true
+        isDraggingRef.current = true
+        onElementClick?.(dragState.elementId)
+      }
+      const deltaX = rawDeltaX / scale
+      const deltaY = rawDeltaY / scale
       onEditElementDrag(
         dragState.elementId,
         dragState.originX + deltaX,
@@ -120,16 +133,24 @@ export function SlideRenderer({
   ) => {
     if (!isEditMode || !onEditElementDrag || event.button !== 0) return
     const { x, y } = resolveElementBounds(element)
-    onElementClick?.(element.id)
     dragStateRef.current = {
       elementId: element.id,
       originX: x,
       originY: y,
       startClientX: event.clientX,
-      startClientY: event.clientY
+      startClientY: event.clientY,
+      hasMoved: false
     }
     event.stopPropagation()
     event.preventDefault()
+  }
+
+  const handleEditElementClick = (elementId: string) => {
+    if (isDraggingRef.current) {
+      isDraggingRef.current = false
+      return
+    }
+    onElementClick?.(elementId)
   }
 
   const handleSlideClickCapture = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -193,7 +214,7 @@ export function SlideRenderer({
                 ...elementDisplayStyles[element.id]
               }}
               onMouseDown={event => handleEditElementMouseDown(element, event)}
-              onClick={() => onElementClick?.(element.id)}
+              onClick={() => handleEditElementClick(element.id)}
             >
               <div
                 style={{
