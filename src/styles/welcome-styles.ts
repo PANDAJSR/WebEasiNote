@@ -7,7 +7,7 @@ export const welcomeStyles: Record<string, CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+    background: 'linear-gradient(145deg, #f0f4f8 0%, #e6eef5 52%, #dbe6ef 100%)'
   },
   welcomeTopActions: {
     position: 'fixed',
@@ -19,9 +19,9 @@ export const welcomeStyles: Record<string, CSSProperties> = {
     height: '36px',
     padding: '0 14px',
     borderRadius: '18px',
-    border: '1px solid rgba(255, 255, 255, 0.65)',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    color: '#ffffff',
+    border: '1px solid rgba(148, 163, 184, 0.5)',
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    color: '#334155',
     fontSize: '0.875rem',
     fontWeight: '600',
     cursor: 'pointer',
