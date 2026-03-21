@@ -1,4 +1,5 @@
 import Editor from '@monaco-editor/react'
+import { Button } from 'antd'
 import { styles } from '../styles'
 import type { SlideElement } from '../parser'
 
@@ -25,9 +26,9 @@ export function ElementXmlPanel({
         <div style={styles.elementXmlPanelTitle}>
           第 {slideNumber} 页 · 元素 XML
         </div>
-        <button style={styles.elementXmlPanelCloseButton} onClick={onClose}>
+        <Button size='small' style={styles.elementXmlPanelCloseButton} onClick={onClose}>
           关闭
-        </button>
+        </Button>
       </div>
       <div style={styles.elementXmlPanelMeta}>
         <span>ID: {element.id}</span>

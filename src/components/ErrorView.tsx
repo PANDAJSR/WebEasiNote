@@ -1,8 +1,9 @@
-import { styles } from '../styles';
+import { Button } from 'antd'
+import { styles } from '../styles'
 
 interface ErrorViewProps {
-  error: string;
-  onBack: () => void;
+  error: string
+  onBack: () => void
 }
 
 export function ErrorView({ error, onBack }: ErrorViewProps) {
@@ -11,10 +12,10 @@ export function ErrorView({ error, onBack }: ErrorViewProps) {
       <div style={styles.error}>
         <strong>❌ 错误</strong>
         <p>{error}</p>
-        <button onClick={onBack} style={styles.backButton}>
+        <Button danger onClick={onBack} style={styles.backButton}>
           ← 返回
-        </button>
+        </Button>
       </div>
     </div>
-  );
+  )
 }

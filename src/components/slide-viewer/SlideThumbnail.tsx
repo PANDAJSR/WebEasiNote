@@ -1,3 +1,4 @@
+import { Button } from 'antd'
 import { styles } from '../../styles'
 import { SlideRenderer } from '../SlideRenderer'
 import type { SlideData } from '../../parser'
@@ -22,7 +23,8 @@ export function SlideThumbnail({
   const previewScale = Math.min(thumbnailWidth / slide.width, thumbnailHeight / slide.height, 1)
 
   return (
-    <button
+    <Button
+      type='text'
       onClick={() => onSlideChange(index, 'thumbnail')}
       style={{
         ...styles.slideTab,
@@ -41,6 +43,6 @@ export function SlideThumbnail({
           />
         </div>
       </div>
-    </button>
+    </Button>
   )
 }

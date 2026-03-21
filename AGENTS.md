@@ -26,6 +26,7 @@ pnpm preview
 - **语言**: TypeScript 5.x（严格模式）
 - **构建工具**: Vite 5
 - **包管理**: pnpm
+- **UI 组件库**: Ant Design（antd）
 - **依赖**: jszip（ZIP 文件解析）
 
 ## 代码风格规范
@@ -61,6 +62,8 @@ import { parseXML } from './xml-utils'
 ### 组件规范
 - 使用函数组件
 - Props 解构接收
+- 页面画布以外的交互控件（按钮、开关、弹窗、分段选择器等）统一优先使用 Ant Design 组件实现
+- 画布内部随课件内容渲染的元素（例如思维导图节点展开按钮）可保留原生实现，避免影响课件视觉还原
 - 默认导出组件使用 `export default`，具名导出使用 `export function`
 ```typescript
 interface ViewerProps {
@@ -76,6 +79,7 @@ export function Viewer({ metadata }: ViewerProps) {
 - 使用 CSS-in-JS 方式，样式对象定义在 `styles.ts`
 - 样式类型：`CSSProperties` from 'react'
 - 颜色使用 hex 格式（如 `#667eea`）
+- 使用 Ant Design 时在 `main.tsx` 引入 `antd/dist/reset.css`
 
 ### 错误处理
 - 使用 try-catch 处理异步操作

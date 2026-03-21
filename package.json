@@ -50,9 +50,9 @@
     ]
   },
   "dependencies": {
-    "@fortawesome/free-solid-svg-icons": "^6.7.2",
-    "@fortawesome/react-fontawesome": "^0.2.2",
+    "@ant-design/icons": "^6.1.0",
     "@monaco-editor/react": "^4.7.0",
+    "antd": "^6.3.3",
     "jszip": "^3.10.1",
     "monaco-editor": "^0.55.1",
     "react": "^18.2.0",

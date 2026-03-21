@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Button, Modal, Segmented, Switch } from 'antd'
 import { styles } from '../styles'
 import type { PagerPosition } from '../viewer-settings'
 
@@ -38,9 +39,9 @@ export function WelcomeView({
   return (
     <div style={styles.welcomeContainer}>
       <div style={styles.welcomeTopActions}>
-        <button style={styles.settingsButton} onClick={() => setIsSettingsOpen(true)}>
+        <Button style={styles.settingsButton} onClick={() => setIsSettingsOpen(true)}>
           设置
-        </button>
+        </Button>
       </div>
 
       <div style={styles.emptyState}>
@@ -58,118 +59,87 @@ export function WelcomeView({
         />
 
         <div style={styles.welcomeButtons}>
-          <button onClick={onFilePickerSelect} style={styles.fileButton}>
+          <Button type='primary' onClick={onFilePickerSelect} style={styles.fileButton}>
             {supportsAutoReload && autoReloadEnabled
               ? '选择 ENBX 文件（自动重载）'
               : '选择 ENBX 文件'}
-          </button>
+          </Button>
 
-          <button onClick={onFolderSelect} style={styles.folderButton}>
+          <Button onClick={onFolderSelect} style={styles.folderButton}>
             选择已解压文件夹
-          </button>
+          </Button>
         </div>
       </div>
 
-      {isSettingsOpen && (
-        <div style={styles.settingsOverlay} onClick={() => setIsSettingsOpen(false)}>
-          <div style={styles.settingsModal} onClick={event => event.stopPropagation()}>
-            <div style={styles.settingsHeader}>
-              <div style={styles.settingsTitle}>设置</div>
-              <button style={styles.settingsCloseButton} onClick={() => setIsSettingsOpen(false)}>
-                关闭
-              </button>
-            </div>
-
-            <div style={styles.settingsBody}>
-              <label style={styles.settingsRow}>
-                <div style={styles.settingsLabelGroup}>
-                  <div style={styles.settingsLabel}>自动重载 ENBX</div>
-                  <div style={styles.settingsDescription}>
-                    {supportsAutoReload
-                      ? '检测到文件变化后自动刷新内容'
-                      : '当前浏览器不支持该功能'}
-                  </div>
-                </div>
-                <input
-                  type='checkbox'
-                  checked={autoReloadEnabled}
-                  disabled={!supportsAutoReload}
-                  onChange={event => onAutoReloadChange(event.target.checked)}
-                  style={styles.settingsToggle}
-                />
-              </label>
-              <label style={styles.settingsRow}>
-                <div style={styles.settingsLabelGroup}>
-                  <div style={styles.settingsLabel}>单击背景翻页</div>
-                  <div style={styles.settingsDescription}>
-                    仅在单击幻灯片背景时触发下一页
-                  </div>
-                </div>
-                <input
-                  type='checkbox'
-                  checked={clickToNextEnabled}
-                  onChange={event => onClickToNextChange(event.target.checked)}
-                  style={styles.settingsToggle}
-                />
-              </label>
-              <label style={styles.settingsRow}>
-                <div style={styles.settingsLabelGroup}>
-                  <div style={styles.settingsLabel}>页码下方显示动画进度</div>
-                  <div style={styles.settingsDescription}>
-                    仅当前页存在点击动画时显示进度
-                  </div>
-                </div>
-                <input
-                  type='checkbox'
-                  checked={showAnimationProgress}
-                  onChange={event => onShowAnimationProgressChange(event.target.checked)}
-                  style={styles.settingsToggle}
-                />
-              </label>
-              <div style={styles.settingsRow}>
-                <div style={styles.settingsLabelGroup}>
-                  <div style={styles.settingsLabel}>翻页键和页码位置</div>
-                  <div style={styles.settingsDescription}>
-                    选择左下角、右下角或两边同时显示
-                  </div>
-                </div>
-                <div style={styles.settingsChoiceGroup}>
-                  <button
-                    type='button'
-                    style={{
-                      ...styles.settingsChoiceButton,
-                      ...(pagerPosition === 'left' ? styles.settingsChoiceButtonActive : {})
-                    }}
-                    onClick={() => onPagerPositionChange('left')}
-                  >
-                    左下角
-                  </button>
-                  <button
-                    type='button'
-                    style={{
-                      ...styles.settingsChoiceButton,
-                      ...(pagerPosition === 'right' ? styles.settingsChoiceButtonActive : {})
-                    }}
-                    onClick={() => onPagerPositionChange('right')}
-                  >
-                    右下角
-                  </button>
-                  <button
-                    type='button'
-                    style={{
-                      ...styles.settingsChoiceButton,
-                      ...(pagerPosition === 'both' ? styles.settingsChoiceButtonActive : {})
-                    }}
-                    onClick={() => onPagerPositionChange('both')}
-                  >
-                    两边都有
-                  </button>
-                </div>
+      <Modal
+        title='设置'
+        open={isSettingsOpen}
+        onCancel={() => setIsSettingsOpen(false)}
+        footer={null}
+        centered
+        width={480}
+      >
+        <div style={styles.settingsBody}>
+          <label style={styles.settingsRow}>
+            <div style={styles.settingsLabelGroup}>
+              <div style={styles.settingsLabel}>自动重载 ENBX</div>
+              <div style={styles.settingsDescription}>
+                {supportsAutoReload
+                  ? '检测到文件变化后自动刷新内容'
+                  : '当前浏览器不支持该功能'}
               </div>
+            </div>
+            <Switch
+              checked={autoReloadEnabled}
+              disabled={!supportsAutoReload}
+              onChange={onAutoReloadChange}
+            />
+          </label>
+          <label style={styles.settingsRow}>
+            <div style={styles.settingsLabelGroup}>
+              <div style={styles.settingsLabel}>单击背景翻页</div>
+              <div style={styles.settingsDescription}>
+                仅在单击幻灯片背景时触发下一页
+              </div>
+            </div>
+            <Switch
+              checked={clickToNextEnabled}
+              onChange={onClickToNextChange}
+            />
+          </label>
+          <label style={styles.settingsRow}>
+            <div style={styles.settingsLabelGroup}>
+              <div style={styles.settingsLabel}>页码下方显示动画进度</div>
+              <div style={styles.settingsDescription}>
+                仅当前页存在点击动画时显示进度
+              </div>
+            </div>
+            <Switch
+              checked={showAnimationProgress}
+              onChange={onShowAnimationProgressChange}
+            />
+          </label>
+          <div style={styles.settingsRow}>
+            <div style={styles.settingsLabelGroup}>
+              <div style={styles.settingsLabel}>翻页键和页码位置</div>
+              <div style={styles.settingsDescription}>
+                选择左下角、右下角或两边同时显示
+              </div>
+            </div>
+            <div style={styles.settingsChoiceGroup}>
+              <Segmented
+                value={pagerPosition}
+                onChange={value => onPagerPositionChange(value as PagerPosition)}
+                options={[
+                  { label: '左下角', value: 'left' },
+                  { label: '右下角', value: 'right' },
+                  { label: '两边都有', value: 'both' }
+                ]}
+              />
             </div>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   )
 }

@@ -1,5 +1,5 @@
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons'
+import { LeftOutlined, RightOutlined } from '@ant-design/icons'
+import { Button } from 'antd'
 import { styles } from '../../styles'
 
 interface FloatingPagerProps {
@@ -41,7 +41,10 @@ export function FloatingPager({
           : styles.floatingPagerContainerRight)
       }}
     >
-      <button
+      <Button
+        type='text'
+        shape='circle'
+        icon={<LeftOutlined />}
         style={{
           ...styles.floatingPagerActionButton,
           ...(isFirstSlide ? styles.floatingPagerActionButtonDisabled : {})
@@ -49,10 +52,9 @@ export function FloatingPager({
         onClick={onPrev}
         disabled={isFirstSlide}
         aria-label='上一页'
-      >
-        <FontAwesomeIcon icon={faChevronLeft} style={styles.floatingPagerActionIcon} />
-      </button>
-      <button
+      />
+      <Button
+        type='text'
         style={{
           ...styles.floatingPagerPageButton,
           ...(shouldShowAnimationProgress ? styles.floatingPagerPageButtonWithProgress : {})
@@ -67,8 +69,11 @@ export function FloatingPager({
             </span>
           )}
         </span>
-      </button>
-      <button
+      </Button>
+      <Button
+        type='text'
+        shape='circle'
+        icon={<RightOutlined />}
         style={{
           ...styles.floatingPagerActionButton,
           ...(isLastSlide ? styles.floatingPagerActionButtonDisabled : {})
@@ -76,9 +81,7 @@ export function FloatingPager({
         onClick={onNext}
         disabled={isLastSlide}
         aria-label='下一页'
-      >
-        <FontAwesomeIcon icon={faChevronRight} style={styles.floatingPagerActionIcon} />
-      </button>
+      />
     </div>
   )
 }

@@ -1,27 +1,32 @@
-import { useEffect, useMemo, useState } from 'react';
-import { styles } from '../styles';
-import { SlideViewer } from './SlideViewer';
+import { useEffect, useMemo, useState } from 'react'
+import { Button, Modal, Segmented } from 'antd'
+import { styles } from '../styles'
+import { SlideViewer } from './SlideViewer'
 import { SlideThumbnail } from './slide-viewer/SlideThumbnail'
 import { ElementXmlPanel } from './ElementXmlPanel'
-import type { CoursewareMetadata, SlideData, SlideElement, SlideIssue } from '../parser';
-import { isFontFamilyMissing } from '../font-utils';
+import type { CoursewareMetadata, SlideData, SlideElement, SlideIssue } from '../parser'
+import { isFontFamilyMissing } from '../font-utils'
 import type { PagerPosition } from '../viewer-settings'
 import { parseSingleElementXml, syncElementPositionXml } from './viewer-xml-sync'
+
 export type SlideChangeSource = 'keyboard' | 'pager' | 'thumbnail' | 'programmatic' | 'click'
+
 type ViewerMode = 'play' | 'edit'
+type IssueFilter = 'all' | SlideIssue['kind']
+
 interface ViewerProps {
-  metadata: CoursewareMetadata;
-  slides: SlideData[];
-  currentIndex: number;
-  onSlideChange: (index: number, source?: SlideChangeSource) => void;
-  slideChangeSource: SlideChangeSource;
-  onClear: () => void;
-  resourceMap?: Record<string, string>;
-  clickToNextEnabled: boolean;
+  metadata: CoursewareMetadata
+  slides: SlideData[]
+  currentIndex: number
+  onSlideChange: (index: number, source?: SlideChangeSource) => void
+  slideChangeSource: SlideChangeSource
+  onClear: () => void
+  resourceMap?: Record<string, string>
+  clickToNextEnabled: boolean
   pagerPosition: PagerPosition
   showAnimationProgress: boolean
 }
-type IssueFilter = 'all' | SlideIssue['kind']
+
 function collectMissingFontIssues(slides: SlideData[]): SlideIssue[] {
   const issues: SlideIssue[] = []
   const seen = new Set<string>()
@@ -70,11 +75,12 @@ function collectMissingFontIssues(slides: SlideData[]): SlideIssue[] {
   })
   return issues
 }
-export function Viewer({ 
-  metadata, 
-  slides, 
-  currentIndex, 
-  onSlideChange, 
+
+export function Viewer({
+  metadata,
+  slides,
+  currentIndex,
+  onSlideChange,
   slideChangeSource,
   onClear,
   resourceMap = {},
@@ -82,14 +88,15 @@ export function Viewer({
   pagerPosition,
   showAnimationProgress
 }: ViewerProps) {
-  const [isIssueModalOpen, setIssueModalOpen] = useState(false);
-  const [issueFilter, setIssueFilter] = useState<IssueFilter>('all');
-  const [fontCheckTick, setFontCheckTick] = useState(0);
+  const [isIssueModalOpen, setIssueModalOpen] = useState(false)
+  const [issueFilter, setIssueFilter] = useState<IssueFilter>('all')
+  const [fontCheckTick, setFontCheckTick] = useState(0)
   const [viewerMode, setViewerMode] = useState<ViewerMode>('play')
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
   const [selectedElementXml, setSelectedElementXml] = useState('')
   const [selectedElementXmlError, setSelectedElementXmlError] = useState<string | null>(null)
   const [editedElements, setEditedElements] = useState<Record<string, SlideElement>>({})
+
   const resolvedSlides = useMemo(() => {
     return slides.map(slide => {
       const resolvedElements = slide.elements.map(element => {
@@ -102,7 +109,8 @@ export function Viewer({
       }
     })
   }, [slides, editedElements])
-  const currentSlide = resolvedSlides[currentIndex];
+
+  const currentSlide = resolvedSlides[currentIndex]
 
   useEffect(() => {
     if (typeof document === 'undefined' || !document.fonts) return
@@ -117,20 +125,23 @@ export function Viewer({
   }, [])
 
   const slideOrderMap = useMemo(() => {
-    return new Map(resolvedSlides.map((slide, index) => [slide.id, index + 1]));
-  }, [resolvedSlides]);
+    return new Map(resolvedSlides.map((slide, index) => [slide.id, index + 1]))
+  }, [resolvedSlides])
+
   const missingFontIssues = useMemo(() => {
     return collectMissingFontIssues(resolvedSlides)
-  }, [resolvedSlides, fontCheckTick]);
+  }, [resolvedSlides, fontCheckTick])
+
   const allIssues = useMemo(() => {
-    return [...resolvedSlides.flatMap(slide => slide.issues || []), ...missingFontIssues];
-  }, [resolvedSlides, missingFontIssues]);
+    return [...resolvedSlides.flatMap(slide => slide.issues || []), ...missingFontIssues]
+  }, [resolvedSlides, missingFontIssues])
+
   const sortedIssues = useMemo(() => {
-    const ordered = [...allIssues];
+    const ordered = [...allIssues]
     ordered.sort((a, b) => {
-      const pageA = slideOrderMap.get(a.slideId) || Number.MAX_SAFE_INTEGER;
-      const pageB = slideOrderMap.get(b.slideId) || Number.MAX_SAFE_INTEGER;
-      if (pageA !== pageB) return pageA - pageB;
+      const pageA = slideOrderMap.get(a.slideId) || Number.MAX_SAFE_INTEGER
+      const pageB = slideOrderMap.get(b.slideId) || Number.MAX_SAFE_INTEGER
+      if (pageA !== pageB) return pageA - pageB
       if (a.kind !== b.kind) {
         const priority: Record<SlideIssue['kind'], number> = {
           'unknown-element': 0,
@@ -139,26 +150,30 @@ export function Viewer({
         }
         return priority[a.kind] - priority[b.kind]
       }
-      if (a.elementType !== b.elementType) return a.elementType.localeCompare(b.elementType);
-      if (a.name !== b.name) return a.name.localeCompare(b.name);
-      return a.elementId.localeCompare(b.elementId);
-    });
-    return ordered;
-  }, [allIssues, slideOrderMap]);
+      if (a.elementType !== b.elementType) return a.elementType.localeCompare(b.elementType)
+      if (a.name !== b.name) return a.name.localeCompare(b.name)
+      return a.elementId.localeCompare(b.elementId)
+    })
+    return ordered
+  }, [allIssues, slideOrderMap])
+
   const filteredIssues = useMemo(() => {
     if (issueFilter === 'all') return sortedIssues
     return sortedIssues.filter(issue => issue.kind === issueFilter)
-  }, [sortedIssues, issueFilter]);
-  const unknownElementCount = allIssues.filter(issue => issue.kind === 'unknown-element').length;
-  const unknownParameterCount = allIssues.filter(issue => issue.kind === 'unknown-parameter').length;
-  const missingFontCount = allIssues.filter(issue => issue.kind === 'missing-font').length;
-  const issueCount = allIssues.length;
-  const issueButtonText = issueCount > 0 ? `问题 (${issueCount})` : '问题';
+  }, [sortedIssues, issueFilter])
+
+  const unknownElementCount = allIssues.filter(issue => issue.kind === 'unknown-element').length
+  const unknownParameterCount = allIssues.filter(issue => issue.kind === 'unknown-parameter').length
+  const missingFontCount = allIssues.filter(issue => issue.kind === 'missing-font').length
+  const issueCount = allIssues.length
+  const issueButtonText = issueCount > 0 ? `问题 (${issueCount})` : '问题'
   const isEditMode = viewerMode === 'edit'
+
   const selectedElement = useMemo(() => {
     if (!selectedElementId) return null
     return currentSlide.elements.find(element => element.id === selectedElementId) || null
   }, [currentSlide.elements, selectedElementId])
+
   const clearSelectedElement = () => {
     setSelectedElementId(null)
     setSelectedElementXml('')
@@ -241,18 +256,18 @@ export function Viewer({
           </span>
         </div>
         <div style={styles.toolbarRight}>
-          <button
+          <Button
             onClick={() => setViewerMode(isEditMode ? 'play' : 'edit')}
             style={styles.modeToggleButton}
           >
             {isEditMode ? '播放模式' : '编辑模式'}
-          </button>
-          <button onClick={() => setIssueModalOpen(true)} style={styles.issueButton}>
+          </Button>
+          <Button onClick={() => setIssueModalOpen(true)} style={styles.issueButton}>
             {issueButtonText}
-          </button>
-          <button onClick={onClear} style={styles.clearButton}>
+          </Button>
+          <Button type='text' onClick={onClear} style={styles.clearButton}>
             关闭
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -306,92 +321,66 @@ export function Viewer({
         </div>
       </div>
 
-      {isIssueModalOpen && (
-        <div style={styles.modalOverlay} onClick={() => setIssueModalOpen(false)}>
-          <div style={styles.modalCard} onClick={event => event.stopPropagation()}>
-            <div style={styles.modalHeader}>
-              <div style={styles.modalTitle}>解析问题列表</div>
-              <button style={styles.modalCloseButton} onClick={() => setIssueModalOpen(false)}>
-                关闭
-              </button>
-            </div>
-            <div style={styles.modalSummary}>
-              <span>总计 {issueCount} 项</span>
-              <span>未识别元素 {unknownElementCount} 项</span>
-              <span>未识别参数 {unknownParameterCount} 项</span>
-              <span>缺失字体 {missingFontCount} 项</span>
-            </div>
-            <div style={styles.issueFilterBar}>
-              <button
-                style={{
-                  ...styles.issueFilterButton,
-                  ...(issueFilter === 'all' ? styles.issueFilterButtonActive : {})
-                }}
-                onClick={() => setIssueFilter('all')}
-              >
-                全部 ({issueCount})
-              </button>
-              <button
-                style={{
-                  ...styles.issueFilterButton,
-                  ...(issueFilter === 'unknown-element' ? styles.issueFilterButtonActive : {})
-                }}
-                onClick={() => setIssueFilter('unknown-element')}
-              >
-                未识别元素 ({unknownElementCount})
-              </button>
-              <button
-                style={{
-                  ...styles.issueFilterButton,
-                  ...(issueFilter === 'unknown-parameter' ? styles.issueFilterButtonActive : {})
-                }}
-                onClick={() => setIssueFilter('unknown-parameter')}
-              >
-                未识别参数 ({unknownParameterCount})
-              </button>
-              <button
-                style={{
-                  ...styles.issueFilterButton,
-                  ...(issueFilter === 'missing-font' ? styles.issueFilterButtonActive : {})
-                }}
-                onClick={() => setIssueFilter('missing-font')}
-              >
-                缺失字体 ({missingFontCount})
-              </button>
-            </div>
-            {filteredIssues.length === 0 && (
-              <div style={styles.modalEmpty}>当前筛选条件下没有问题</div>
-            )}
-            {filteredIssues.length > 0 && (
-              <div style={styles.issueList}>
-                {filteredIssues.map((issue, index) => {
-                  const pageNumber = slideOrderMap.get(issue.slideId);
-                  return (
-                    <div key={`${issue.kind}-${issue.slideId}-${issue.elementId}-${issue.name}-${index}`} style={styles.issueItem}>
-                      <div style={styles.issueItemHeader}>
-                        <span style={styles.issueBadge}>
-                          {issue.kind === 'unknown-element'
-                            ? '未识别元素'
-                            : issue.kind === 'unknown-parameter'
-                              ? '未识别参数'
-                              : '缺失字体'}
-                        </span>
-                        <span style={styles.issueMeta}>
-                          第 {pageNumber || '?'} 页 | 元素类型: {issue.elementType} | 元素ID: {issue.elementId}
-                        </span>
-                      </div>
-                      <div style={styles.issueName}>名称: {issue.name}</div>
-                      {issue.value && (
-                        <div style={styles.issueValue}>值: {issue.value}</div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+      <Modal
+        title='解析问题列表'
+        open={isIssueModalOpen}
+        onCancel={() => setIssueModalOpen(false)}
+        footer={null}
+        width={920}
+        centered
+      >
+        <div style={styles.modalSummary}>
+          <span>总计 {issueCount} 项</span>
+          <span>未识别元素 {unknownElementCount} 项</span>
+          <span>未识别参数 {unknownParameterCount} 项</span>
+          <span>缺失字体 {missingFontCount} 项</span>
         </div>
-      )}
+        <div style={styles.issueFilterBar}>
+          <Segmented
+            value={issueFilter}
+            onChange={value => setIssueFilter(value as IssueFilter)}
+            options={[
+              { label: `全部 (${issueCount})`, value: 'all' },
+              { label: `未识别元素 (${unknownElementCount})`, value: 'unknown-element' },
+              { label: `未识别参数 (${unknownParameterCount})`, value: 'unknown-parameter' },
+              { label: `缺失字体 (${missingFontCount})`, value: 'missing-font' }
+            ]}
+          />
+        </div>
+        {filteredIssues.length === 0 && (
+          <div style={styles.modalEmpty}>当前筛选条件下没有问题</div>
+        )}
+        {filteredIssues.length > 0 && (
+          <div style={styles.issueList}>
+            {filteredIssues.map((issue, index) => {
+              const pageNumber = slideOrderMap.get(issue.slideId)
+              return (
+                <div
+                  key={`${issue.kind}-${issue.slideId}-${issue.elementId}-${issue.name}-${index}`}
+                  style={styles.issueItem}
+                >
+                  <div style={styles.issueItemHeader}>
+                    <span style={styles.issueBadge}>
+                      {issue.kind === 'unknown-element'
+                        ? '未识别元素'
+                        : issue.kind === 'unknown-parameter'
+                          ? '未识别参数'
+                          : '缺失字体'}
+                    </span>
+                    <span style={styles.issueMeta}>
+                      第 {pageNumber || '?'} 页 | 元素类型: {issue.elementType} | 元素ID: {issue.elementId}
+                    </span>
+                  </div>
+                  <div style={styles.issueName}>名称: {issue.name}</div>
+                  {issue.value && (
+                    <div style={styles.issueValue}>值: {issue.value}</div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </Modal>
     </div>
-  );
+  )
 }

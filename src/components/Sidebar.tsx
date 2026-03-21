@@ -1,10 +1,11 @@
-import { styles } from '../styles';
-import type { SlideData } from '../parser';
+import { Button } from 'antd'
+import { styles } from '../styles'
+import type { SlideData } from '../parser'
 
 interface SidebarProps {
-  slides: SlideData[];
-  currentIndex: number;
-  onSlideChange: (index: number) => void;
+  slides: SlideData[]
+  currentIndex: number
+  onSlideChange: (index: number) => void
 }
 
 export function Sidebar({ slides, currentIndex, onSlideChange }: SidebarProps) {
@@ -15,8 +16,9 @@ export function Sidebar({ slides, currentIndex, onSlideChange }: SidebarProps) {
       </div>
       <div style={styles.slideList}>
         {slides.map((slide, index) => (
-          <button
+          <Button
             key={slide.id}
+            type='text'
             onClick={() => onSlideChange(index)}
             style={{
               ...styles.slideTab,
@@ -30,9 +32,9 @@ export function Sidebar({ slides, currentIndex, onSlideChange }: SidebarProps) {
                 {slide.width} × {slide.height}
               </span>
             </div>
-          </button>
+          </Button>
         ))}
       </div>
     </div>
-  );
+  )
 }
