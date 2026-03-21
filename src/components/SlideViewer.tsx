@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { styles } from '../styles'
 import { SlideRenderer } from './SlideRenderer'
 import type { SlideData } from '../parser'
@@ -57,6 +58,7 @@ export function SlideViewer({
   onEditBackgroundClick
 }: SlideViewerProps) {
   const { containerRef, slideScaleMap } = useSlideScaleMap(slides)
+  const editWheelGuardRef = useRef<HTMLDivElement | null>(null)
   const {
     elementDisplayStyles,
     elementRenderStates,
@@ -138,6 +140,25 @@ export function SlideViewer({
     onEditElementSelect?.(elementId)
     return true
   }
+
+  useEffect(() => {
+    const wrapper = editWheelGuardRef.current
+    if (!wrapper) return
+
+    const handleNativeWheel = (event: WheelEvent) => {
+      if (!isEditMode || !event.ctrlKey) return
+      event.preventDefault()
+    }
+
+    wrapper.addEventListener('wheel', handleNativeWheel, {
+      passive: false,
+      capture: true
+    })
+    return () => {
+      wrapper.removeEventListener('wheel', handleNativeWheel, true)
+    }
+  }, [isEditMode])
+
   const handleEditWrapperWheel = (event: React.WheelEvent<HTMLDivElement>) => {
     if (!isEditMode) return
     const target = event.target as HTMLElement
@@ -175,6 +196,7 @@ export function SlideViewer({
         onAuxClick={handleEditViewportAuxClick}
       >
         <div
+          ref={editWheelGuardRef}
           style={{
             ...styles.slideWrapper,
             position: 'relative',
