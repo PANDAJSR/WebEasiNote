@@ -166,7 +166,7 @@ function updateDirectChildText(root: Element, tagName: string, value: string) {
 }
 
 function getTextLinePlainText(line: TextLine): string {
-  return line.textRuns.map(run => run.text || '').join('')
+  return line.textRuns.map(run => (run.text || '').replace(/\r?\n/g, '')).join('')
 }
 
 function syncTextLineRangeMeta(lineNode: Element, lineText: string) {
@@ -297,7 +297,8 @@ export function syncTextElementContentXml(xmlContent: string, nextTextLines: Tex
   updateDirectChildText(
     richTextNode,
     'Text',
-    safeLines.map(line => line.textRuns.map(run => run.text).join('')).join('\n')
+    // 希沃 RichText/Text 的换行通常是 CRLF（序列化后常见为 &#13; + 换行）
+    safeLines.map(getTextLinePlainText).join('\r\n')
   )
 
   return new XMLSerializer().serializeToString(root)
