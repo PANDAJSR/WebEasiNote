@@ -4,6 +4,7 @@ import { SlideRenderer } from './SlideRenderer'
 import type { SlideData, TextLine } from '../parser'
 import type { SlideChangeSource } from './Viewer'
 import type { PagerPosition } from '../viewer-settings'
+import type { TextStyleCommand } from './text-style-commands'
 import { FloatingPager } from './slide-viewer/FloatingPager'
 import { SlideThumbnail } from './slide-viewer/SlideThumbnail'
 import { useElementAnimations } from './slide-viewer/useElementAnimations'
@@ -48,6 +49,7 @@ interface SlideViewerProps {
   ) => void
   onEditElementTextUpdate?: (elementId: string, nextTextLines: TextLine[]) => void
   onEditBackgroundClick?: () => void
+  textStyleCommand?: TextStyleCommand | null
 }
 export function SlideViewer({
   slide,
@@ -65,7 +67,8 @@ export function SlideViewer({
   onEditElementDrag,
   onEditElementResize,
   onEditElementTextUpdate,
-  onEditBackgroundClick
+  onEditBackgroundClick,
+  textStyleCommand = null
 }: SlideViewerProps) {
   const { containerRef, slideScaleMap } = useSlideScaleMap(slides)
   const editWheelGuardRef = useRef<HTMLDivElement | null>(null)
@@ -368,6 +371,7 @@ export function SlideViewer({
                       onEditTextUpdate={isCurrent && isEditMode ? onEditElementTextUpdate : undefined}
                       isEditMode={isCurrent && isEditMode}
                       selectedElementId={isCurrent && isEditMode ? selectedElementId : null}
+                      textStyleCommand={isCurrent && isEditMode ? textStyleCommand : null}
                     />
                   </div>
                 </div>

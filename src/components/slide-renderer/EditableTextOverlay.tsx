@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef } from 'react'
 import type { CSSProperties } from 'react'
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import type { TextLine, TextRun } from '../../parser'
 import { buildFontFamily } from '../../font-utils'
 import { convertSeewoLineSpacingToMultiplier } from '../../line-spacing'
+import type { TextSelectionRange } from '../text-style-commands'
 
 interface EditableTextOverlayProps {
   textLines: TextLine[]
@@ -11,6 +13,7 @@ interface EditableTextOverlayProps {
   onCommit: (nextTextLines: TextLine[]) => void
   onCancel: () => void
   onLiveChange?: (nextTextLines: TextLine[]) => void
+  onSelectionChange?: (range: TextSelectionRange | null) => void
 }
 
 interface TextSegment {
@@ -165,7 +168,8 @@ export function EditableTextOverlay({
   arrangingType = 'Horizontal',
   onCommit,
   onCancel,
-  onLiveChange
+  onLiveChange,
+  onSelectionChange
 }: EditableTextOverlayProps) {
   const editorRef = useRef<HTMLDivElement | null>(null)
   const hasCommittedRef = useRef(false)
@@ -203,6 +207,21 @@ export function EditableTextOverlay({
     selection.addRange(range)
   }, [])
 
+  useEffect(() => {
+    const editor = editorRef.current
+    if (!editor || !onSelectionChange) return
+
+    const emitRange = () => {
+      onSelectionChange(resolveSelectionRange(editor))
+    }
+
+    document.addEventListener('selectionchange', emitRange)
+    emitRange()
+    return () => {
+      document.removeEventListener('selectionchange', emitRange)
+    }
+  }, [onSelectionChange])
+
   const commit = () => {
     if (hasCommittedRef.current) return
     const editor = editorRef.current
@@ -221,9 +240,10 @@ export function EditableTextOverlay({
     if (!editor || !onLiveChange) return
     const nextTextLines = buildEditableTextLines(editor, textLines)
     onLiveChange(nextTextLines)
+    onSelectionChange?.(resolveSelectionRange(editor))
   }
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Escape') {
       event.preventDefault()
       hasCommittedRef.current = true
@@ -257,6 +277,16 @@ export function EditableTextOverlay({
         onBlur={handleBlur}
         onInput={handleInput}
         onKeyDown={handleKeyDown}
+        onMouseUp={() => {
+          const editor = editorRef.current
+          if (!editor) return
+          onSelectionChange?.(resolveSelectionRange(editor))
+        }}
+        onKeyUp={() => {
+          const editor = editorRef.current
+          if (!editor) return
+          onSelectionChange?.(resolveSelectionRange(editor))
+        }}
         style={{
           width: '100%',
           minHeight: '100%',
@@ -307,4 +337,30 @@ export function EditableTextOverlay({
       </div>
     </div>
   )
+}
+
+function resolveSelectionRange(editor: HTMLDivElement): TextSelectionRange | null {
+  const selection = window.getSelection()
+  if (!selection || selection.rangeCount === 0) return null
+  const range = selection.getRangeAt(0)
+  if (!editor.contains(range.startContainer) || !editor.contains(range.endContainer)) return null
+
+  const startRange = range.cloneRange()
+  startRange.selectNodeContents(editor)
+  startRange.setEnd(range.startContainer, range.startOffset)
+  const start = sanitizeRangeText(startRange.toString()).length
+
+  const endRange = range.cloneRange()
+  endRange.selectNodeContents(editor)
+  endRange.setEnd(range.endContainer, range.endOffset)
+  const end = sanitizeRangeText(endRange.toString()).length
+
+  return {
+    start: Math.min(start, end),
+    end: Math.max(start, end)
+  }
+}
+
+function sanitizeRangeText(text: string): string {
+  return text.replace(/\u200b/g, '')
 }

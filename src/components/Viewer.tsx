@@ -7,6 +7,7 @@ import { ElementXmlPanel } from './ElementXmlPanel'
 import type { CoursewareMetadata, SlideData, SlideElement, SlideIssue, TextLine } from '../parser'
 import { isFontFamilyMissing } from '../font-utils'
 import type { PagerPosition } from '../viewer-settings'
+import type { TextStyleAction, TextStyleState } from './text-style-commands'
 import {
   parseSingleElementXml,
   syncElementBoundsXml,
@@ -104,6 +105,8 @@ export function Viewer({
   const [selectedElementXmlError, setSelectedElementXmlError] = useState<string | null>(null)
   const [editedElements, setEditedElements] = useState<Record<string, SlideElement>>({})
   const [isSaving, setIsSaving] = useState(false)
+  const [textStyleCommandSeq, setTextStyleCommandSeq] = useState(0)
+  const [textStyleCommand, setTextStyleCommand] = useState<TextStyleAction & { id: number } | null>(null)
   const selectedElementIdRef = useRef<string | null>(null)
   const currentSlideIdRef = useRef<string>('')
 
@@ -185,6 +188,23 @@ export function Viewer({
     if (!selectedElementId) return null
     return currentSlide.elements.find(element => element.id === selectedElementId) || null
   }, [currentSlide.elements, selectedElementId])
+  const selectedTextStyleState = useMemo<TextStyleState | null>(() => {
+    if (!selectedElement || (selectedElement.type !== 'text' && selectedElement.type !== 'shape')) return null
+    const textLines = selectedElement.type === 'text'
+      ? selectedElement.textLines
+      : (selectedElement.inlineText || [])
+    const firstRun = textLines.flatMap(line => line.textRuns).find(run => run.text.length > 0)
+      || textLines[0]?.textRuns[0]
+    if (!firstRun) return null
+    return {
+      fontFamily: firstRun.fontFamily || 'Arial',
+      fontSize: Number.isFinite(firstRun.fontSize) ? firstRun.fontSize : 16,
+      color: firstRun.color || '#000000',
+      isBold: firstRun.fontWeight === 'bold',
+      isItalic: firstRun.fontStyle === 'italic',
+      isUnderline: firstRun.decoration === 'Underline'
+    }
+  }, [selectedElement])
   const currentSlideXml = currentSlide.rawXml || ''
 
   const clearSelectedElement = () => {
@@ -324,6 +344,13 @@ export function Viewer({
     }
   }
 
+  const handleTextStyleAction = (action: TextStyleAction) => {
+    if (!selectedElement || (selectedElement.type !== 'text' && selectedElement.type !== 'shape')) return
+    const nextId = textStyleCommandSeq + 1
+    setTextStyleCommandSeq(nextId)
+    setTextStyleCommand({ ...action, id: nextId })
+  }
+
   const slideViewerProps = {
     slide: currentSlide,
     slides: resolvedSlides,
@@ -340,7 +367,8 @@ export function Viewer({
     onEditElementDrag: handleEditElementDrag,
     onEditElementResize: handleEditElementResize,
     onEditElementTextUpdate: handleEditElementTextUpdate,
-    onEditBackgroundClick: handleEditBackgroundClick
+    onEditBackgroundClick: handleEditBackgroundClick,
+    textStyleCommand
   }
 
   return (
@@ -405,6 +433,8 @@ export function Viewer({
                 isSlideXml={!selectedElement}
                 onXmlChange={selectedElement ? handleSelectedElementXmlChange : undefined}
                 onClearSelection={selectedElement ? clearSelectedElement : undefined}
+                textStyleState={selectedTextStyleState}
+                onTextStyleAction={handleTextStyleAction}
               />
             </div>
           ) : (
