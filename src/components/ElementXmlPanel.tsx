@@ -11,6 +11,7 @@ import {
 } from '@ant-design/icons'
 import { Button, Select } from 'antd'
 import { useMemo, useState } from 'react'
+import type { MouseEvent as ReactMouseEvent } from 'react'
 import { styles } from '../styles'
 import type { SlideElement } from '../parser'
 import type { TextStyleAction, TextStyleState } from './text-style-commands'
@@ -89,13 +90,17 @@ export function ElementXmlPanel({
     }
   }, [element, isSlideXml, slideNumber, xmlError])
 
+  const preventMouseDownDefault = (event: ReactMouseEvent<HTMLElement>) => {
+    // 避免点击属性控件时让画布中的 contentEditable 失焦，从而保留文本选区
+    event.preventDefault()
+  }
+
   return (
     <div style={styles.elementXmlPanel}>
       <div style={styles.elementXmlPanelTabContent}>
         <div style={styles.elementXmlPanelTabBody}>
           {mainTab === 'properties' && (
             <>
-              <div style={styles.elementPropertyHeader}>属性</div>
               {isTextElementSelected ? (
                 <>
                   <div style={styles.elementPropertySubTabBar}>
@@ -118,6 +123,7 @@ export function ElementXmlPanel({
                           value={resolvedFontFamily}
                           style={styles.elementTextControlFontSelect}
                           options={fontFamilyOptions}
+                          onMouseDown={preventMouseDownDefault}
                           onChange={value => {
                             onTextStyleAction?.({ type: 'set-font-family', value })
                           }}
@@ -127,6 +133,7 @@ export function ElementXmlPanel({
                           value={resolvedFontSize}
                           style={styles.elementTextControlSizeSelect}
                           options={fontSizeOptions}
+                          onMouseDown={preventMouseDownDefault}
                           onChange={value => {
                             onTextStyleAction?.({ type: 'set-font-size', value })
                           }}
@@ -137,6 +144,7 @@ export function ElementXmlPanel({
                             size='small'
                             style={styles.elementTextIconButton}
                             icon={<PlusOutlined />}
+                            onMouseDown={preventMouseDownDefault}
                             onClick={() => {
                               onTextStyleAction?.({ type: 'adjust-font-size', value: 2 })
                             }}
@@ -146,6 +154,7 @@ export function ElementXmlPanel({
                             size='small'
                             style={styles.elementTextIconButton}
                             icon={<MinusOutlined />}
+                            onMouseDown={preventMouseDownDefault}
                             onClick={() => {
                               onTextStyleAction?.({ type: 'adjust-font-size', value: -2 })
                             }}
@@ -159,6 +168,7 @@ export function ElementXmlPanel({
                           style={styles.elementTextControlColorSelect}
                           options={colorOptions}
                           suffixIcon={<FontColorsOutlined />}
+                          onMouseDown={preventMouseDownDefault}
                           onChange={value => {
                             onTextStyleAction?.({ type: 'set-color', value })
                           }}
@@ -171,6 +181,7 @@ export function ElementXmlPanel({
                               ...(textStyleState?.isBold ? styles.elementTextIconButtonActive : {})
                             }}
                             icon={<BoldOutlined />}
+                            onMouseDown={preventMouseDownDefault}
                             onClick={() => {
                               onTextStyleAction?.({ type: 'toggle-bold' })
                             }}
@@ -182,6 +193,7 @@ export function ElementXmlPanel({
                               ...(textStyleState?.isItalic ? styles.elementTextIconButtonActive : {})
                             }}
                             icon={<ItalicOutlined />}
+                            onMouseDown={preventMouseDownDefault}
                             onClick={() => {
                               onTextStyleAction?.({ type: 'toggle-italic' })
                             }}
@@ -193,6 +205,7 @@ export function ElementXmlPanel({
                               ...(textStyleState?.isUnderline ? styles.elementTextIconButtonActive : {})
                             }}
                             icon={<UnderlineOutlined />}
+                            onMouseDown={preventMouseDownDefault}
                             onClick={() => {
                               onTextStyleAction?.({ type: 'toggle-underline' })
                             }}

@@ -212,7 +212,9 @@ export function EditableTextOverlay({
     if (!editor || !onSelectionChange) return
 
     const emitRange = () => {
-      onSelectionChange(resolveSelectionRange(editor))
+      const nextRange = resolveSelectionRange(editor)
+      if (!nextRange) return
+      onSelectionChange(nextRange)
     }
 
     document.addEventListener('selectionchange', emitRange)
@@ -240,7 +242,9 @@ export function EditableTextOverlay({
     if (!editor || !onLiveChange) return
     const nextTextLines = buildEditableTextLines(editor, textLines)
     onLiveChange(nextTextLines)
-    onSelectionChange?.(resolveSelectionRange(editor))
+    const nextRange = resolveSelectionRange(editor)
+    if (!nextRange) return
+    onSelectionChange?.(nextRange)
   }
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -280,12 +284,16 @@ export function EditableTextOverlay({
         onMouseUp={() => {
           const editor = editorRef.current
           if (!editor) return
-          onSelectionChange?.(resolveSelectionRange(editor))
+          const nextRange = resolveSelectionRange(editor)
+          if (!nextRange) return
+          onSelectionChange?.(nextRange)
         }}
         onKeyUp={() => {
           const editor = editorRef.current
           if (!editor) return
-          onSelectionChange?.(resolveSelectionRange(editor))
+          const nextRange = resolveSelectionRange(editor)
+          if (!nextRange) return
+          onSelectionChange?.(nextRange)
         }}
         style={{
           width: '100%',

@@ -116,17 +116,10 @@ export const elementPanelStyles: Record<string, CSSProperties> = {
     flex: 1,
     minHeight: 0
   },
-  elementPropertyHeader: {
-    padding: '16px 18px 10px',
-    fontSize: '1.25rem',
-    fontWeight: '700',
-    color: '#111827',
-    borderBottom: '1px solid #eef2f7'
-  },
   elementPropertySubTabBar: {
     display: 'flex',
     gap: '14px',
-    padding: '8px 18px 0',
+    padding: '10px 18px 0',
     borderBottom: '1px solid #eef2f7'
   },
   elementPropertySubTabButton: {
@@ -158,7 +151,7 @@ export const elementPanelStyles: Record<string, CSSProperties> = {
   elementTextControlRow: {
     display: 'flex',
     gap: '10px',
-    alignItems: 'stretch'
+    alignItems: 'flex-start'
   },
   elementTextControlFontSelect: {
     flex: 1
