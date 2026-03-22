@@ -1,4 +1,4 @@
-import type { SlideElement, TextLine } from '../parser'
+import type { SlideElement, TextLine, TextRun } from '../parser'
 import { parseSlideElements } from '../slide-elements-parser'
 import { getDirectChildElement } from '../xml-utils'
 
@@ -165,66 +165,50 @@ function updateDirectChildText(root: Element, tagName: string, value: string) {
   node.textContent = value
 }
 
-function getTextLinePlainText(line: TextLine): string {
-  return line.textRuns.map(run => (run.text || '').replace(/\r?\n/g, '')).join('')
+function stripLineBreakChars(value: string): string {
+  return value.replace(/\r\n|\r|\n/g, '')
 }
 
-function syncTextLineRangeMeta(lineNode: Element, lineText: string) {
+function getTextLinePlainText(line: TextLine): string {
+  return line.textRuns.map(run => stripLineBreakChars(run.text || '')).join('')
+}
+
+function buildLinePropertyLengths(line: TextLine): number[] {
+  if (line.textRuns.length === 0) return [0]
+  const lengths = line.textRuns.map(run => stripLineBreakChars(run.text || '').length)
+  const hasPositive = lengths.some(length => length > 0)
+  return hasPositive ? lengths : [0]
+}
+
+function syncTextLineRangeMeta(lineNode: Element, lengths: number[]) {
   const linesNode = getOrCreateDirectChild(lineNode, 'Lines')
   const existingProperties = Array.from(linesNode.querySelectorAll(':scope > LineProperty'))
   const fallbackProperty = existingProperties[existingProperties.length - 1] || lineNode.ownerDocument.createElement('LineProperty')
-  const totalLength = lineText.length
   while (linesNode.firstChild) {
     linesNode.removeChild(linesNode.firstChild)
   }
 
-  // 保留原有 LineProperty 分段数量，避免把官方多段结构压扁成单段
-  const segmentTemplates = existingProperties.length > 0 ? existingProperties : [fallbackProperty]
-  const originalLengths = segmentTemplates.map(property => {
-    const lengthNode = getDirectChildElement(property, 'Length')
-    const raw = lengthNode?.textContent?.trim() || '0'
-    const value = Number.parseInt(raw, 10)
-    return Number.isFinite(value) && value > 0 ? value : 0
-  })
-  const originalTotal = originalLengths.reduce((sum, value) => sum + value, 0)
-
-  let nextLengths: number[]
-  if (totalLength <= 0) {
-    nextLengths = new Array(segmentTemplates.length).fill(0)
-  } else if (segmentTemplates.length === 1) {
-    nextLengths = [totalLength]
-  } else if (originalTotal <= 0) {
-    // 原始长度不可用时均分，余数前置
-    const base = Math.floor(totalLength / segmentTemplates.length)
-    const remainder = totalLength % segmentTemplates.length
-    nextLengths = segmentTemplates.map((_, index) => base + (index < remainder ? 1 : 0))
-  } else {
-    // 按原分段比例分配新长度，并修正总和误差
-    nextLengths = originalLengths.map(length => Math.floor((length / originalTotal) * totalLength))
-    let assigned = nextLengths.reduce((sum, value) => sum + value, 0)
-    let remaining = totalLength - assigned
-    const sortedIndexes = originalLengths
-      .map((length, index) => ({ length, index }))
-      .sort((a, b) => b.length - a.length)
-      .map(item => item.index)
-    let pointer = 0
-    while (remaining > 0) {
-      const index = sortedIndexes[pointer % sortedIndexes.length]
-      nextLengths[index] += 1
-      remaining -= 1
-      pointer += 1
-    }
-  }
+  const safeLengths = lengths.length > 0 ? lengths : [0]
+  const segmentTemplates = existingProperties.length > 0
+    ? existingProperties
+    : safeLengths.map(() => fallbackProperty)
 
   let startOffset = 0
-  segmentTemplates.forEach((template, index) => {
+  safeLengths.forEach((length, index) => {
+    const template = segmentTemplates[index] || fallbackProperty
     const linePropertyNode = template.cloneNode(true) as Element
-    const lengthValue = Math.max(0, nextLengths[index] || 0)
+    const lengthValue = Math.max(0, length)
     updateDirectChildText(linePropertyNode, 'StartOffset', String(startOffset))
     updateDirectChildText(linePropertyNode, 'Length', String(lengthValue))
     linesNode.appendChild(linePropertyNode)
     startOffset += lengthValue
   })
+}
+
+function serializeTextRunContent(run: TextRun, hasLineBreakAfter: boolean): string {
+  const plainText = stripLineBreakChars(run.text || '')
+  if (!hasLineBreakAfter) return plainText
+  return `${plainText}\r\n`
 }
 
 export function syncTextElementContentXml(xmlContent: string, nextTextLines: TextLine[]): string {
@@ -274,23 +258,17 @@ export function syncTextElementContentXml(xmlContent: string, nextTextLines: Tex
       textRunsNode.removeChild(textRunsNode.firstChild)
     }
 
-    const safeRuns = line.textRuns.length > 0 ? line.textRuns : [{
-      text: '',
-      fontFamily: 'Arial',
-      fontSize: 16,
-      fontStyle: 'normal' as const,
-      fontWeight: 'normal' as const,
-      color: '#000000'
-    }]
+    const safeRuns = line.textRuns
 
     safeRuns.forEach((run, runIndex) => {
       const sourceRunTemplate = sourceRunNodes[runIndex] || fallbackRunTemplate
       const runNode = sourceRunTemplate.cloneNode(true) as Element
-      updateDirectChildText(runNode, 'Text', run.text)
+      const hasLineBreakAfter = lineIndex < safeLines.length - 1 && runIndex === safeRuns.length - 1
+      updateDirectChildText(runNode, 'Text', serializeTextRunContent(run, hasLineBreakAfter))
       textRunsNode.appendChild(runNode)
     })
 
-    syncTextLineRangeMeta(lineNode, getTextLinePlainText(line))
+    syncTextLineRangeMeta(lineNode, buildLinePropertyLengths(line))
     textLinesNode.appendChild(lineNode)
   })
 
