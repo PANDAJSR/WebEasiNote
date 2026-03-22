@@ -3,8 +3,8 @@ import type { CSSProperties } from 'react'
 import type { SlideData, TextLine } from '../parser'
 import { ElementRenderer } from './slide-renderer/ElementRenderer'
 import { EditableTextOverlay } from './slide-renderer/EditableTextOverlay'
-import type { TextSelectionRange, TextStyleCommand } from './text-style-commands'
-import { applyTextStyleCommand } from './text-style-editing'
+import type { TextSelectionRange, TextStyleCommand, TextStyleState } from './text-style-commands'
+import { applyTextStyleCommand, resolveTextStyleState } from './text-style-editing'
 import { useElementEditInteractions } from './slide-renderer/useElementEditInteractions'
 
 interface SlideRendererProps {
@@ -19,6 +19,7 @@ interface SlideRendererProps {
   onEditElementDrag?: (elementId: string, nextX: number, nextY: number) => void
   onEditElementResize?: (elementId: string, nextX: number, nextY: number, nextWidth: number, nextHeight: number) => void
   onEditTextUpdate?: (elementId: string, nextTextLines: TextLine[]) => void
+  onEditTextStyleStateChange?: (state: TextStyleState | null) => void
   isEditMode?: boolean
   selectedElementId?: string | null
   textStyleCommand?: TextStyleCommand | null
@@ -39,6 +40,7 @@ export function SlideRenderer({
   onEditElementDrag,
   onEditElementResize,
   onEditTextUpdate,
+  onEditTextStyleStateChange,
   isEditMode = false,
   selectedElementId = null,
   textStyleCommand = null
@@ -76,8 +78,9 @@ export function SlideRenderer({
       setDraftTextLinesMap({})
       setEditingInjectedTextLinesMap({})
       textSelectionRangeMapRef.current = {}
+      onEditTextStyleStateChange?.(null)
     }
-  }, [isEditMode, slide.id])
+  }, [isEditMode, onEditTextStyleStateChange, slide.id])
 
   useEffect(() => {
     if (!selectedElementId) {
@@ -85,6 +88,7 @@ export function SlideRenderer({
       setDraftTextLinesMap({})
       setEditingInjectedTextLinesMap({})
       textSelectionRangeMapRef.current = {}
+      onEditTextStyleStateChange?.(null)
       return
     }
     if (editingTextElementId && selectedElementId !== editingTextElementId) {
@@ -93,7 +97,27 @@ export function SlideRenderer({
       setEditingInjectedTextLinesMap({})
       textSelectionRangeMapRef.current = {}
     }
-  }, [editingTextElementId, selectedElementId])
+  }, [editingTextElementId, onEditTextStyleStateChange, selectedElementId])
+
+  useEffect(() => {
+    if (!selectedElementId) return
+    const targetElement = slide.elements.find(element => element.id === selectedElementId)
+    if (!targetElement || targetElement.type !== 'text') {
+      onEditTextStyleStateChange?.(null)
+      return
+    }
+    const currentRange = textSelectionRangeMapRef.current[selectedElementId] || null
+    const sourceLines = draftTextLinesMap[selectedElementId]
+      || editingInjectedTextLinesMap[selectedElementId]
+      || targetElement.textLines
+    onEditTextStyleStateChange?.(resolveTextStyleState(sourceLines, currentRange))
+  }, [
+    draftTextLinesMap,
+    editingInjectedTextLinesMap,
+    onEditTextStyleStateChange,
+    selectedElementId,
+    slide.elements
+  ])
 
   useEffect(() => {
     if (!textStyleCommand || !selectedElementId) return
@@ -101,10 +125,10 @@ export function SlideRenderer({
     appliedTextStyleCommandIdRef.current = textStyleCommand.id
 
     const targetElement = slide.elements.find(element => element.id === selectedElementId)
-    if (!targetElement || (targetElement.type !== 'text' && targetElement.type !== 'shape')) return
+    if (!targetElement || targetElement.type !== 'text') return
     const sourceLines = draftTextLinesMap[selectedElementId]
       || editingInjectedTextLinesMap[selectedElementId]
-      || (targetElement.type === 'text' ? targetElement.textLines : (targetElement.inlineText || []))
+      || targetElement.textLines
     if (sourceLines.length === 0) return
 
     const isEditingCurrentElement = isEditMode && editingTextElementId === selectedElementId
@@ -126,12 +150,14 @@ export function SlideRenderer({
     }
 
     onEditTextUpdate?.(selectedElementId, nextTextLines)
+    onEditTextStyleStateChange?.(resolveTextStyleState(nextTextLines, selectionRange))
   }, [
     draftTextLinesMap,
     editingInjectedTextLinesMap,
     editingTextElementId,
     isEditMode,
     onEditTextUpdate,
+    onEditTextStyleStateChange,
     selectedElementId,
     slide.elements,
     textStyleCommand
@@ -250,8 +276,15 @@ export function SlideRenderer({
                   textLines={overlayTextLines}
                   rotation={element.rotation || 0}
                   arrangingType={elementArrangingType}
+                  externalSelectionRange={textSelectionRangeMapRef.current[element.id] || null}
                   onSelectionChange={range => {
                     textSelectionRangeMapRef.current[element.id] = range
+                    if (element.type === 'text') {
+                      const nextSourceLines = draftTextLinesMap[element.id]
+                        || editingInjectedTextLinesMap[element.id]
+                        || element.textLines
+                      onEditTextStyleStateChange?.(resolveTextStyleState(nextSourceLines, range))
+                    }
                   }}
                   onCancel={() => {
                     setDraftTextLinesMap(prev => {
@@ -267,6 +300,7 @@ export function SlideRenderer({
                       return next
                     })
                     delete textSelectionRangeMapRef.current[element.id]
+                    onEditTextStyleStateChange?.(null)
                     setEditingTextElementId(null)
                   }}
                   onLiveChange={nextTextLines => {
@@ -274,6 +308,14 @@ export function SlideRenderer({
                       ...prev,
                       [element.id]: nextTextLines
                     }))
+                    if (element.type === 'text') {
+                      onEditTextStyleStateChange?.(
+                        resolveTextStyleState(
+                          nextTextLines,
+                          textSelectionRangeMapRef.current[element.id] || null
+                        )
+                      )
+                    }
                   }}
                   onCommit={nextTextLines => {
                     setDraftTextLinesMap(prev => {
@@ -290,6 +332,7 @@ export function SlideRenderer({
                     })
                     delete textSelectionRangeMapRef.current[element.id]
                     onEditTextUpdate?.(element.id, nextTextLines)
+                    onEditTextStyleStateChange?.(null)
                     setEditingTextElementId(null)
                   }}
                 />

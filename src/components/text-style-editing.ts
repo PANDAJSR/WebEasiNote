@@ -1,5 +1,5 @@
 import type { TextLine, TextRun } from '../parser'
-import type { TextSelectionRange, TextStyleCommand } from './text-style-commands'
+import type { TextSelectionRange, TextStyleCommand, TextStyleState } from './text-style-commands'
 
 const FONT_SIZE_MIN = 8
 const FONT_SIZE_MAX = 300
@@ -236,4 +236,45 @@ export function applyTextStyleCommand(
   })
 
   return nextLines
+}
+
+export function resolveTextStyleState(
+  sourceLines: TextLine[],
+  selectionRange?: TextSelectionRange | null
+): TextStyleState | null {
+  const safeSourceLines = ensureFallbackRuns(sourceLines)
+  if (safeSourceLines.length === 0) return null
+  const collapsedOffset = Number.isFinite(selectionRange?.start)
+    ? Math.max(0, selectionRange?.start || 0)
+    : 0
+  const isCollapsed = !selectionRange || selectionRange.start === selectionRange.end
+  const probeOffset = isCollapsed ? Math.max(0, collapsedOffset - 1) : collapsedOffset
+
+  let cursor = 0
+  let matchedRun: TextRun | null = null
+  safeSourceLines.forEach(line => {
+    line.textRuns.forEach(run => {
+      if (matchedRun) return
+      const runLength = normalizeRunText(run.text || '').length
+      const runStart = cursor
+      const runEnd = cursor + runLength
+      if (runLength > 0 && probeOffset >= runStart && probeOffset < runEnd) {
+        matchedRun = run
+      }
+      cursor = runEnd
+    })
+  })
+
+  const fallbackRun = safeSourceLines.flatMap(line => line.textRuns)[0]
+  const activeRun = matchedRun || fallbackRun
+  if (!activeRun) return null
+
+  return {
+    fontFamily: activeRun.fontFamily || 'Arial',
+    fontSize: Number.isFinite(activeRun.fontSize) ? activeRun.fontSize : 16,
+    color: activeRun.color || '#000000',
+    isBold: activeRun.fontWeight === 'bold',
+    isItalic: activeRun.fontStyle === 'italic',
+    isUnderline: activeRun.decoration === 'Underline'
+  }
 }

@@ -107,6 +107,7 @@ export function Viewer({
   const [isSaving, setIsSaving] = useState(false)
   const [textStyleCommandSeq, setTextStyleCommandSeq] = useState(0)
   const [textStyleCommand, setTextStyleCommand] = useState<TextStyleAction & { id: number } | null>(null)
+  const [liveTextStyleState, setLiveTextStyleState] = useState<TextStyleState | null>(null)
   const selectedElementIdRef = useRef<string | null>(null)
   const currentSlideIdRef = useRef<string>('')
 
@@ -189,10 +190,8 @@ export function Viewer({
     return currentSlide.elements.find(element => element.id === selectedElementId) || null
   }, [currentSlide.elements, selectedElementId])
   const selectedTextStyleState = useMemo<TextStyleState | null>(() => {
-    if (!selectedElement || (selectedElement.type !== 'text' && selectedElement.type !== 'shape')) return null
-    const textLines = selectedElement.type === 'text'
-      ? selectedElement.textLines
-      : (selectedElement.inlineText || [])
+    if (!selectedElement || selectedElement.type !== 'text') return null
+    const textLines = selectedElement.textLines
     const firstRun = textLines.flatMap(line => line.textRuns).find(run => run.text.length > 0)
       || textLines[0]?.textRuns[0]
     if (!firstRun) return null
@@ -206,12 +205,14 @@ export function Viewer({
     }
   }, [selectedElement])
   const currentSlideXml = currentSlide.rawXml || ''
+  const panelTextStyleState = liveTextStyleState || selectedTextStyleState
 
   const clearSelectedElement = () => {
     selectedElementIdRef.current = null
     setSelectedElementId(null)
     setSelectedElementXml('')
     setSelectedElementXmlError(null)
+    setLiveTextStyleState(null)
   }
 
   useEffect(() => {
@@ -235,6 +236,10 @@ export function Viewer({
     setSelectedElementXml(targetElement.rawXml || '')
     setSelectedElementXmlError(null)
   }, [selectedElementId, currentSlide.elements])
+
+  useEffect(() => {
+    setLiveTextStyleState(null)
+  }, [selectedElementId, currentSlide.id, isEditMode])
 
   const handleEditElementSelect = (elementId: string) => {
     selectedElementIdRef.current = elementId
@@ -345,7 +350,7 @@ export function Viewer({
   }
 
   const handleTextStyleAction = (action: TextStyleAction) => {
-    if (!selectedElement || (selectedElement.type !== 'text' && selectedElement.type !== 'shape')) return
+    if (!selectedElement || selectedElement.type !== 'text') return
     const nextId = textStyleCommandSeq + 1
     setTextStyleCommandSeq(nextId)
     setTextStyleCommand({ ...action, id: nextId })
@@ -367,6 +372,7 @@ export function Viewer({
     onEditElementDrag: handleEditElementDrag,
     onEditElementResize: handleEditElementResize,
     onEditElementTextUpdate: handleEditElementTextUpdate,
+    onEditTextStyleStateChange: setLiveTextStyleState,
     onEditBackgroundClick: handleEditBackgroundClick,
     textStyleCommand
   }
@@ -433,7 +439,7 @@ export function Viewer({
                 isSlideXml={!selectedElement}
                 onXmlChange={selectedElement ? handleSelectedElementXmlChange : undefined}
                 onClearSelection={selectedElement ? clearSelectedElement : undefined}
-                textStyleState={selectedTextStyleState}
+                textStyleState={panelTextStyleState}
                 onTextStyleAction={handleTextStyleAction}
               />
             </div>

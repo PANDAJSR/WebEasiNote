@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import type { CSSProperties } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import type { TextLine, TextRun } from '../../parser'
@@ -14,6 +14,7 @@ interface EditableTextOverlayProps {
   onCancel: () => void
   onLiveChange?: (nextTextLines: TextLine[]) => void
   onSelectionChange?: (range: TextSelectionRange | null) => void
+  externalSelectionRange?: TextSelectionRange | null
 }
 
 interface TextSegment {
@@ -169,10 +170,12 @@ export function EditableTextOverlay({
   onCommit,
   onCancel,
   onLiveChange,
-  onSelectionChange
+  onSelectionChange,
+  externalSelectionRange
 }: EditableTextOverlayProps) {
   const editorRef = useRef<HTMLDivElement | null>(null)
   const hasCommittedRef = useRef(false)
+  const suppressSelectionSyncRef = useRef(false)
 
   const containerStyle: CSSProperties = useMemo(() => {
     return {
@@ -212,6 +215,7 @@ export function EditableTextOverlay({
     if (!editor || !onSelectionChange) return
 
     const emitRange = () => {
+      if (suppressSelectionSyncRef.current) return
       const nextRange = resolveSelectionRange(editor)
       if (!nextRange) return
       onSelectionChange(nextRange)
@@ -223,6 +227,18 @@ export function EditableTextOverlay({
       document.removeEventListener('selectionchange', emitRange)
     }
   }, [onSelectionChange])
+
+  useLayoutEffect(() => {
+    const editor = editorRef.current
+    if (!editor || !externalSelectionRange) return
+    const restored = applySelectionRange(editor, externalSelectionRange)
+    if (!restored) return
+    suppressSelectionSyncRef.current = true
+    onSelectionChange?.(externalSelectionRange)
+    requestAnimationFrame(() => {
+      suppressSelectionSyncRef.current = false
+    })
+  }, [externalSelectionRange, onSelectionChange, textLines])
 
   const commit = () => {
     if (hasCommittedRef.current) return
@@ -371,4 +387,60 @@ function resolveSelectionRange(editor: HTMLDivElement): TextSelectionRange | nul
 
 function sanitizeRangeText(text: string): string {
   return text.replace(/\u200b/g, '').replace(/\r\n|\r|\n/g, '')
+}
+
+function applySelectionRange(editor: HTMLDivElement, range: TextSelectionRange): boolean {
+  const selection = window.getSelection()
+  if (!selection) return false
+
+  const startPos = locateTextPosition(editor, range.start)
+  const endPos = locateTextPosition(editor, range.end)
+  if (!startPos || !endPos) return false
+
+  const domRange = document.createRange()
+  domRange.setStart(startPos.node, startPos.offset)
+  domRange.setEnd(endPos.node, endPos.offset)
+  selection.removeAllRanges()
+  selection.addRange(domRange)
+  return true
+}
+
+function locateTextPosition(
+  editor: HTMLDivElement,
+  targetOffset: number
+): { node: Text; offset: number } | null {
+  const textNodes = collectTextNodes(editor)
+  if (textNodes.length === 0) return null
+
+  let cursor = 0
+  for (const node of textNodes) {
+    const text = sanitizeRangeText(node.textContent || '')
+    const length = text.length
+    if (targetOffset <= cursor + length) {
+      const localOffset = Math.max(0, Math.min(length, targetOffset - cursor))
+      return {
+        node,
+        offset: localOffset
+      }
+    }
+    cursor += length
+  }
+
+  const lastNode = textNodes[textNodes.length - 1]
+  const lastLength = sanitizeRangeText(lastNode.textContent || '').length
+  return {
+    node: lastNode,
+    offset: lastLength
+  }
+}
+
+function collectTextNodes(root: HTMLElement): Text[] {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  const nodes: Text[] = []
+  let current = walker.nextNode()
+  while (current) {
+    nodes.push(current as Text)
+    current = walker.nextNode()
+  }
+  return nodes
 }

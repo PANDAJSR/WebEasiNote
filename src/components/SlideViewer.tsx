@@ -4,7 +4,7 @@ import { SlideRenderer } from './SlideRenderer'
 import type { SlideData, TextLine } from '../parser'
 import type { SlideChangeSource } from './Viewer'
 import type { PagerPosition } from '../viewer-settings'
-import type { TextStyleCommand } from './text-style-commands'
+import type { TextStyleCommand, TextStyleState } from './text-style-commands'
 import { FloatingPager } from './slide-viewer/FloatingPager'
 import { SlideThumbnail } from './slide-viewer/SlideThumbnail'
 import { useElementAnimations } from './slide-viewer/useElementAnimations'
@@ -48,6 +48,7 @@ interface SlideViewerProps {
     nextHeight: number
   ) => void
   onEditElementTextUpdate?: (elementId: string, nextTextLines: TextLine[]) => void
+  onEditTextStyleStateChange?: (state: TextStyleState | null) => void
   onEditBackgroundClick?: () => void
   textStyleCommand?: TextStyleCommand | null
 }
@@ -67,6 +68,7 @@ export function SlideViewer({
   onEditElementDrag,
   onEditElementResize,
   onEditElementTextUpdate,
+  onEditTextStyleStateChange,
   onEditBackgroundClick,
   textStyleCommand = null
 }: SlideViewerProps) {
@@ -369,6 +371,7 @@ export function SlideViewer({
                       onEditElementDrag={isCurrent && isEditMode ? onEditElementDrag : undefined}
                       onEditElementResize={isCurrent && isEditMode ? onEditElementResize : undefined}
                       onEditTextUpdate={isCurrent && isEditMode ? onEditElementTextUpdate : undefined}
+                      onEditTextStyleStateChange={isCurrent && isEditMode ? onEditTextStyleStateChange : undefined}
                       isEditMode={isCurrent && isEditMode}
                       selectedElementId={isCurrent && isEditMode ? selectedElementId : null}
                       textStyleCommand={isCurrent && isEditMode ? textStyleCommand : null}
