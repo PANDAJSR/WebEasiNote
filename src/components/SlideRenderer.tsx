@@ -314,6 +314,7 @@ export function SlideRenderer({
           if (elementRenderStates[element.id] === false) return null
           const bounds = resolveElementBounds(element)
           const draftTextLines = draftTextLinesMap[element.id]
+          const isEditingCurrentElement = isEditMode && editingTextElementId === element.id
           const renderedElement = (() => {
             if (!draftTextLines) return element
             if (element.type === 'text') {
@@ -324,8 +325,16 @@ export function SlideRenderer({
             }
             return element
           })()
+          const renderedElementWithEditingState = (() => {
+            if (!isEditingCurrentElement) return renderedElement
+            // 编辑形状文本时保留形状本体，仅隐藏形状原文本，避免出现“白底遮挡”观感
+            if (renderedElement.type === 'shape') {
+              return { ...renderedElement, inlineText: [] }
+            }
+            return renderedElement
+          })()
           const hideReadOnlyTextLayer = isEditMode
-            && (element.type === 'text' || element.type === 'shape')
+            && element.type === 'text'
             && editingTextElementId === element.id
           const canEditText = element.type === 'text' || element.type === 'shape'
           const elementTextLines = element.type === 'text'
@@ -371,7 +380,7 @@ export function SlideRenderer({
                 }}
               >
                 <ElementRenderer
-                  element={renderedElement}
+                  element={renderedElementWithEditingState}
                   scale={1}
                   resourceMap={resourceMap}
                   slideIndex={slideIndex}
