@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import type { SlideData } from '../parser'
+import type { SlideData, TextLine } from '../parser'
 import { ElementRenderer } from './slide-renderer/ElementRenderer'
+import { EditableTextOverlay } from './slide-renderer/EditableTextOverlay'
 
 interface SlideRendererProps {
   slide: SlideData
@@ -14,6 +15,7 @@ interface SlideRendererProps {
   onElementClick?: (elementId: string) => boolean
   onEditElementDrag?: (elementId: string, nextX: number, nextY: number) => void
   onEditElementResize?: (elementId: string, nextX: number, nextY: number, nextWidth: number, nextHeight: number) => void
+  onEditTextUpdate?: (elementId: string, nextTextLines: TextLine[]) => void
   isEditMode?: boolean
   selectedElementId?: string | null
 }
@@ -52,6 +54,7 @@ export function SlideRenderer({
   onElementClick,
   onEditElementDrag,
   onEditElementResize,
+  onEditTextUpdate,
   isEditMode = false,
   selectedElementId = null
 }: SlideRendererProps) {
@@ -59,6 +62,7 @@ export function SlideRenderer({
   const resizeStateRef = useRef<ResizeState | null>(null)
   const isDraggingRef = useRef(false)
   const isResizingRef = useRef(false)
+  const [editingTextElementId, setEditingTextElementId] = useState<string | null>(null)
   const backgroundImageUrl = slide.backgroundImage ? resourceMap[slide.backgroundImage] : null
   const scaledWidth = slide.width * scale
   const scaledHeight = slide.height * scale
@@ -105,6 +109,22 @@ export function SlideRenderer({
     resizeStateRef.current = null
     isResizingRef.current = false
   }
+
+  useEffect(() => {
+    if (!isEditMode) {
+      setEditingTextElementId(null)
+    }
+  }, [isEditMode, slide.id])
+
+  useEffect(() => {
+    if (!selectedElementId) {
+      setEditingTextElementId(null)
+      return
+    }
+    if (editingTextElementId && selectedElementId !== editingTextElementId) {
+      setEditingTextElementId(null)
+    }
+  }, [editingTextElementId, selectedElementId])
 
   useEffect(() => {
     if (!isEditMode || (!onEditElementDrag && !onEditElementResize)) {
@@ -194,6 +214,7 @@ export function SlideRenderer({
     element: SlideData['elements'][number],
     event: React.MouseEvent<HTMLDivElement>
   ) => {
+    if (editingTextElementId && editingTextElementId === element.id) return
     if (!isEditMode || !onEditElementDrag || event.button !== 0) return
     const { x, y } = resolveElementBounds(element)
     clearResizeState()
@@ -231,6 +252,7 @@ export function SlideRenderer({
     event.preventDefault()
   }
   const handleEditElementClick = (elementId: string) => {
+    if (editingTextElementId && editingTextElementId === elementId) return
     if (isDraggingRef.current) {
       isDraggingRef.current = false
       return
@@ -242,6 +264,7 @@ export function SlideRenderer({
     onElementClick?.(elementId)
   }
   const handleSlideClickCapture = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (editingTextElementId) return
     if (!onElementClick) return
     const rect = event.currentTarget.getBoundingClientRect()
     if (rect.width <= 0 || rect.height <= 0) return
@@ -297,11 +320,22 @@ export function SlideRenderer({
                 width: bounds.width,
                 height: bounds.height,
                 overflow: 'visible',
-                cursor: isEditMode ? 'move' : undefined,
+                cursor: isEditMode
+                  ? element.type === 'text' && editingTextElementId === element.id
+                    ? 'text'
+                    : 'move'
+                  : undefined,
                 ...elementDisplayStyles[element.id]
               }}
               onMouseDown={event => handleEditElementMouseDown(element, event)}
               onClick={() => handleEditElementClick(element.id)}
+              onDoubleClick={event => {
+                if (!isEditMode || element.type !== 'text') return
+                event.stopPropagation()
+                event.preventDefault()
+                onElementClick?.(element.id)
+                setEditingTextElementId(element.id)
+              }}
             >
               <div
                 style={{
@@ -318,6 +352,18 @@ export function SlideRenderer({
                   currentIndex={currentIndex}
                 />
               </div>
+              {isEditMode && element.type === 'text' && editingTextElementId === element.id && (
+                <EditableTextOverlay
+                  element={element}
+                  onCancel={() => {
+                    setEditingTextElementId(null)
+                  }}
+                  onCommit={nextTextLines => {
+                    onEditTextUpdate?.(element.id, nextTextLines)
+                    setEditingTextElementId(null)
+                  }}
+                />
+              )}
             </div>
           )
         })}

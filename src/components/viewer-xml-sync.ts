@@ -1,4 +1,4 @@
-import type { SlideElement } from '../parser'
+import type { SlideElement, TextLine } from '../parser'
 import { parseSlideElements } from '../slide-elements-parser'
 import { getDirectChildElement } from '../xml-utils'
 
@@ -150,4 +150,91 @@ export function syncElementBoundsXml(
     return new XMLSerializer().serializeToString(root)
   }
   return patchedXml
+}
+
+function getOrCreateDirectChild(root: Element, tagName: string): Element {
+  const current = getDirectChildElement(root, tagName)
+  if (current) return current
+  const created = root.ownerDocument.createElement(tagName)
+  root.appendChild(created)
+  return created
+}
+
+function updateDirectChildText(root: Element, tagName: string, value: string) {
+  const node = getOrCreateDirectChild(root, tagName)
+  node.textContent = value
+}
+
+export function syncTextElementContentXml(xmlContent: string, nextTextLines: TextLine[]): string {
+  const parser = new DOMParser()
+  const xmlDoc = parser.parseFromString(xmlContent, 'text/xml')
+  if (xmlDoc.querySelector('parsererror')) return xmlContent
+
+  const root = xmlDoc.documentElement
+  const richTextNode = getDirectChildElement(root, 'RichText') || root.querySelector('RichText')
+  if (!richTextNode) return xmlContent
+
+  const textLinesNode = getOrCreateDirectChild(richTextNode, 'TextLines')
+  const currentLineNodes = Array.from(textLinesNode.querySelectorAll(':scope > TextLine'))
+  const fallbackLineTemplate = currentLineNodes[currentLineNodes.length - 1] || xmlDoc.createElement('TextLine')
+
+  while (textLinesNode.firstChild) {
+    textLinesNode.removeChild(textLinesNode.firstChild)
+  }
+
+  const safeLines = nextTextLines.length > 0 ? nextTextLines : [{
+    textRuns: [{
+      text: '',
+      fontFamily: 'Arial',
+      fontSize: 16,
+      fontStyle: 'normal',
+      fontWeight: 'normal',
+      color: '#000000'
+    }],
+    textAlignment: 'Left',
+    textMarker: 'None'
+  }]
+
+  safeLines.forEach((line, lineIndex) => {
+    const sourceLineTemplate = currentLineNodes[lineIndex] || fallbackLineTemplate
+    const lineNode = sourceLineTemplate.cloneNode(true) as Element
+    const sourceRunNodes = Array.from(lineNode.querySelectorAll(':scope > TextRuns > TextRun'))
+    const fallbackRunTemplate = sourceRunNodes[sourceRunNodes.length - 1] || xmlDoc.createElement('TextRun')
+    const textRunsNode = getOrCreateDirectChild(lineNode, 'TextRuns')
+
+    updateDirectChildText(lineNode, 'TextAlignment', line.textAlignment || 'Left')
+    if (line.textMarker) {
+      updateDirectChildText(lineNode, 'TextMarker', line.textMarker)
+    }
+
+    while (textRunsNode.firstChild) {
+      textRunsNode.removeChild(textRunsNode.firstChild)
+    }
+
+    const safeRuns = line.textRuns.length > 0 ? line.textRuns : [{
+      text: '',
+      fontFamily: 'Arial',
+      fontSize: 16,
+      fontStyle: 'normal' as const,
+      fontWeight: 'normal' as const,
+      color: '#000000'
+    }]
+
+    safeRuns.forEach((run, runIndex) => {
+      const sourceRunTemplate = sourceRunNodes[runIndex] || fallbackRunTemplate
+      const runNode = sourceRunTemplate.cloneNode(true) as Element
+      updateDirectChildText(runNode, 'Text', run.text)
+      textRunsNode.appendChild(runNode)
+    })
+
+    textLinesNode.appendChild(lineNode)
+  })
+
+  updateDirectChildText(
+    richTextNode,
+    'Text',
+    safeLines.map(line => line.textRuns.map(run => run.text).join('')).join('\n')
+  )
+
+  return new XMLSerializer().serializeToString(root)
 }

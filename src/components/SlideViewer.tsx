@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { styles } from '../styles'
 import { SlideRenderer } from './SlideRenderer'
-import type { SlideData } from '../parser'
+import type { SlideData, TextLine } from '../parser'
 import type { SlideChangeSource } from './Viewer'
 import type { PagerPosition } from '../viewer-settings'
 import { FloatingPager } from './slide-viewer/FloatingPager'
@@ -46,6 +46,7 @@ interface SlideViewerProps {
     nextWidth: number,
     nextHeight: number
   ) => void
+  onEditElementTextUpdate?: (elementId: string, nextTextLines: TextLine[]) => void
   onEditBackgroundClick?: () => void
 }
 export function SlideViewer({
@@ -63,6 +64,7 @@ export function SlideViewer({
   onEditElementSelect,
   onEditElementDrag,
   onEditElementResize,
+  onEditElementTextUpdate,
   onEditBackgroundClick
 }: SlideViewerProps) {
   const { containerRef, slideScaleMap } = useSlideScaleMap(slides)
@@ -363,6 +365,7 @@ export function SlideViewer({
                       }
                       onEditElementDrag={isCurrent && isEditMode ? onEditElementDrag : undefined}
                       onEditElementResize={isCurrent && isEditMode ? onEditElementResize : undefined}
+                      onEditTextUpdate={isCurrent && isEditMode ? onEditElementTextUpdate : undefined}
                       isEditMode={isCurrent && isEditMode}
                       selectedElementId={isCurrent && isEditMode ? selectedElementId : null}
                     />

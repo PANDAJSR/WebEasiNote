@@ -4,10 +4,15 @@ import { styles } from '../styles'
 import { SlideViewer } from './SlideViewer'
 import { SlideThumbnail } from './slide-viewer/SlideThumbnail'
 import { ElementXmlPanel } from './ElementXmlPanel'
-import type { CoursewareMetadata, SlideData, SlideElement, SlideIssue } from '../parser'
+import type { CoursewareMetadata, SlideData, SlideElement, SlideIssue, TextLine } from '../parser'
 import { isFontFamilyMissing } from '../font-utils'
 import type { PagerPosition } from '../viewer-settings'
-import { parseSingleElementXml, syncElementBoundsXml, syncElementPositionXml } from './viewer-xml-sync'
+import {
+  parseSingleElementXml,
+  syncElementBoundsXml,
+  syncElementPositionXml,
+  syncTextElementContentXml
+} from './viewer-xml-sync'
 
 export type SlideChangeSource = 'keyboard' | 'pager' | 'thumbnail' | 'programmatic' | 'click'
 
@@ -284,6 +289,23 @@ export function Viewer({
     }))
   }
 
+  const handleEditElementTextUpdate = (elementId: string, nextTextLines: TextLine[]) => {
+    const targetElement = currentSlide.elements.find(element => element.id === elementId)
+    if (!targetElement || targetElement.type !== 'text') return
+    const mapKey = `${currentSlide.id}|${elementId}`
+    const rawXml = targetElement.rawXml
+      ? syncTextElementContentXml(targetElement.rawXml, nextTextLines)
+      : targetElement.rawXml
+    setEditedElements(prev => ({
+      ...prev,
+      [mapKey]: {
+        ...targetElement,
+        textLines: nextTextLines,
+        rawXml
+      }
+    }))
+  }
+
   const handleSaveAs = async () => {
     if (isSaving) return
     setIsSaving(true)
@@ -318,6 +340,7 @@ export function Viewer({
     onEditElementSelect: handleEditElementSelect,
     onEditElementDrag: handleEditElementDrag,
     onEditElementResize: handleEditElementResize,
+    onEditElementTextUpdate: handleEditElementTextUpdate,
     onEditBackgroundClick: handleEditBackgroundClick
   }
 
