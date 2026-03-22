@@ -183,6 +183,7 @@ export function Viewer({
   const currentSlideXml = currentSlide.rawXml || ''
 
   const clearSelectedElement = () => {
+    selectedElementIdRef.current = null
     setSelectedElementId(null)
     setSelectedElementXml('')
     setSelectedElementXmlError(null)
@@ -211,15 +212,16 @@ export function Viewer({
   }, [selectedElementId, currentSlide.elements])
 
   const handleEditElementSelect = (elementId: string) => {
+    selectedElementIdRef.current = elementId
     setSelectedElementId(elementId)
     setSelectedElementXmlError(null)
   }
 
   const handleSelectedElementXmlChange = (value: string) => {
-    setSelectedElementXml(value)
     const activeElementId = selectedElementIdRef.current
     const activeSlideId = currentSlideIdRef.current
     if (!activeElementId || !activeSlideId) return
+    setSelectedElementXml(value)
     const mapKey = `${activeSlideId}|${activeElementId}`
 
     try {
@@ -352,7 +354,7 @@ export function Viewer({
                 xmlContent={selectedElement ? selectedElementXml : currentSlideXml}
                 xmlError={selectedElement ? selectedElementXmlError : null}
                 isSlideXml={!selectedElement}
-                onXmlChange={handleSelectedElementXmlChange}
+                onXmlChange={selectedElement ? handleSelectedElementXmlChange : undefined}
                 onClearSelection={selectedElement ? clearSelectedElement : undefined}
               />
             </div>

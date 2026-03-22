@@ -10,7 +10,7 @@ interface ElementXmlPanelProps {
   xmlContent: string
   xmlError: string | null
   isSlideXml: boolean
-  onXmlChange: (value: string) => void
+  onXmlChange?: (value: string) => void
   onClearSelection?: () => void
 }
 
@@ -58,12 +58,13 @@ export function ElementXmlPanel({
           )}
           <div style={styles.elementXmlPanelEditor}>
             <Editor
+              key={isSlideXml ? `slide-${slideNumber}` : `element-${element?.id || 'unknown'}`}
               language='xml'
               height='100%'
               value={xmlContent}
               onChange={value => {
                 if (isSlideXml) return
-                onXmlChange(value || '')
+                onXmlChange?.(value || '')
               }}
               theme='vs'
               options={{
