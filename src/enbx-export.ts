@@ -5,6 +5,7 @@ import { getDirectChildText } from './xml-utils'
 interface SlideEditPatch {
   slideId: string
   elementId: string
+  sourceRawXml?: string
   rawXml: string
 }
 
@@ -26,12 +27,26 @@ function findElementNodeById(root: Element, elementId: string): Element | null {
   return null
 }
 
+function replaceFirstFragment(source: string, target: string, replacement: string): string | null {
+  const index = source.indexOf(target)
+  if (index === -1) return null
+  return `${source.slice(0, index)}${replacement}${source.slice(index + target.length)}`
+}
+
 function replaceElementXml(slideXml: string, patches: SlideEditPatch[]): string {
   if (patches.length === 0) return slideXml
   let nextSlideXml = slideXml
   const serializer = new XMLSerializer()
 
   patches.forEach(patch => {
+    if (patch.sourceRawXml) {
+      const replacedBySource = replaceFirstFragment(nextSlideXml, patch.sourceRawXml, patch.rawXml)
+      if (replacedBySource) {
+        nextSlideXml = replacedBySource
+        return
+      }
+    }
+
     const slideDoc = parseXmlDocument(nextSlideXml)
     const slideRoot = slideDoc.documentElement
     const targetNode = findElementNodeById(slideRoot, patch.elementId)
@@ -56,7 +71,10 @@ function replaceElementXml(slideXml: string, patches: SlideEditPatch[]): string 
   return nextSlideXml
 }
 
-function collectSlideEditPatches(editedElements: Record<string, SlideElement>): Record<string, SlideEditPatch[]> {
+function collectSlideEditPatchesWithSource(
+  editedElements: Record<string, SlideElement>,
+  sourceRawXmlMap: Record<string, string>
+): Record<string, SlideEditPatch[]> {
   const patchMap: Record<string, SlideEditPatch[]> = {}
 
   Object.entries(editedElements).forEach(([mapKey, element]) => {
@@ -74,11 +92,23 @@ function collectSlideEditPatches(editedElements: Record<string, SlideElement>): 
     patchMap[slideId].push({
       slideId,
       elementId,
+      sourceRawXml: sourceRawXmlMap[mapKey],
       rawXml: element.rawXml
     })
   })
 
   return patchMap
+}
+
+function buildSourceRawXmlMap(slides: SlideData[]): Record<string, string> {
+  const sourceMap: Record<string, string> = {}
+  slides.forEach(slide => {
+    slide.elements.forEach(element => {
+      if (!element.rawXml) return
+      sourceMap[`${slide.id}|${element.id}`] = element.rawXml
+    })
+  })
+  return sourceMap
 }
 
 function readSlideIdFromXml(xmlContent: string): string {
@@ -99,7 +129,8 @@ export async function exportSlidesToEnbx(options: {
 }): Promise<{ fileName: string; blob: Blob }> {
   const { sourceFile, slides, editedElements, coursewareName } = options
   const zip = await JSZip.loadAsync(sourceFile)
-  const patchMap = collectSlideEditPatches(editedElements)
+  const sourceRawXmlMap = buildSourceRawXmlMap(slides)
+  const patchMap = collectSlideEditPatchesWithSource(editedElements, sourceRawXmlMap)
   const slideXmlMap = new Map<string, string>()
 
   slides.forEach(slide => {

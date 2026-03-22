@@ -18,6 +18,7 @@ interface ParseElementsOptions {
   slideId: string
   offsetX?: number
   offsetY?: number
+  rawXmlByIndex?: string[]
 }
 
 interface ParseSlideElementsResult {
@@ -96,7 +97,7 @@ function applyOffset<T extends SlideElement>(element: T, offsetX: number, offset
 }
 
 export function parseSlideElements(elementsNode: Element, options: ParseElementsOptions): ParseSlideElementsResult {
-  const { slideId, offsetX = 0, offsetY = 0 } = options
+  const { slideId, offsetX = 0, offsetY = 0, rawXmlByIndex } = options
   const parsedElements: SlideElement[] = []
   const issues: SlideIssue[] = []
   const allChildNodes = Array.from(elementsNode.children)
@@ -104,7 +105,7 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
   allChildNodes.forEach((node, index) => {
     const tagName = node.tagName
     const elementId = getDirectChildText(node, 'Id') || `${tagName.toLowerCase()}-${index}`
-    const rawXml = serializeElementXml(node)
+    const rawXml = rawXmlByIndex?.[index] || serializeElementXml(node)
 
     switch (tagName) {
       case 'Text': {
