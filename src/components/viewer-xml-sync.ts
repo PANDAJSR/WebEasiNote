@@ -38,22 +38,49 @@ function formatCoordinate(value: number): string {
   return Number(value.toFixed(3)).toString()
 }
 
+function replaceFirstFragment(source: string, target: string, replacement: string): string | null {
+  const targetIndex = source.indexOf(target)
+  if (targetIndex === -1) return null
+  return `${source.slice(0, targetIndex)}${replacement}${source.slice(targetIndex + target.length)}`
+}
+
+function patchNodeTextByFragment(xmlContent: string, node: Element, nextValue: string): string | null {
+  const serializer = new XMLSerializer()
+  const previousNodeXml = serializer.serializeToString(node)
+  node.textContent = nextValue
+  const nextNodeXml = serializer.serializeToString(node)
+  return replaceFirstFragment(xmlContent, previousNodeXml, nextNodeXml)
+}
+
 export function syncElementPositionXml(xmlContent: string, nextX: number, nextY: number): string {
   const parser = new DOMParser()
   const xmlDoc = parser.parseFromString(xmlContent, 'text/xml')
   if (xmlDoc.querySelector('parsererror')) return xmlContent
 
   const root = xmlDoc.documentElement
+  const formattedX = formatCoordinate(nextX)
+  const formattedY = formatCoordinate(nextY)
   const xNode = getDirectChildElement(root, 'X')
   const yNode = getDirectChildElement(root, 'Y')
   if (xNode && yNode) {
-    xNode.textContent = formatCoordinate(nextX)
-    yNode.textContent = formatCoordinate(nextY)
+    const xPatchedXml = patchNodeTextByFragment(xmlContent, xNode, formattedX)
+    if (xPatchedXml) {
+      const yPatchedXml = patchNodeTextByFragment(xPatchedXml, yNode, formattedY)
+      if (yPatchedXml) return yPatchedXml
+    }
+
+    // 片段替换失败时回退到整节点序列化，确保坐标仍可写回
+    xNode.textContent = formattedX
+    yNode.textContent = formattedY
     return new XMLSerializer().serializeToString(root)
   }
 
   const locationNode = getDirectChildElement(root, 'Location')
   if (!locationNode) return xmlContent
-  locationNode.textContent = `${formatCoordinate(nextX)},${formatCoordinate(nextY)}`
+  const nextLocation = `${formattedX},${formattedY}`
+  const locationPatchedXml = patchNodeTextByFragment(xmlContent, locationNode, nextLocation)
+  if (locationPatchedXml) return locationPatchedXml
+
+  locationNode.textContent = nextLocation
   return new XMLSerializer().serializeToString(root)
 }
