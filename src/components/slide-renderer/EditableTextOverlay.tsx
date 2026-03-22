@@ -183,7 +183,7 @@ export function EditableTextOverlay({
       overflow: 'hidden',
       boxSizing: 'border-box',
       padding: '10px',
-      backgroundColor: 'rgba(255, 255, 255, 0.01)',
+      backgroundColor: 'transparent',
       writingMode: arrangingType === 'Vertical' ? 'vertical-rl' : 'horizontal-tb',
       transform: rotation ? `rotate(${rotation}deg)` : undefined,
       transformOrigin: 'center center'
