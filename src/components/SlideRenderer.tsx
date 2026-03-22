@@ -63,6 +63,7 @@ export function SlideRenderer({
   const isDraggingRef = useRef(false)
   const isResizingRef = useRef(false)
   const [editingTextElementId, setEditingTextElementId] = useState<string | null>(null)
+  const [draftTextLinesMap, setDraftTextLinesMap] = useState<Record<string, TextLine[]>>({})
   const backgroundImageUrl = slide.backgroundImage ? resourceMap[slide.backgroundImage] : null
   const scaledWidth = slide.width * scale
   const scaledHeight = slide.height * scale
@@ -113,16 +114,19 @@ export function SlideRenderer({
   useEffect(() => {
     if (!isEditMode) {
       setEditingTextElementId(null)
+      setDraftTextLinesMap({})
     }
   }, [isEditMode, slide.id])
 
   useEffect(() => {
     if (!selectedElementId) {
       setEditingTextElementId(null)
+      setDraftTextLinesMap({})
       return
     }
     if (editingTextElementId && selectedElementId !== editingTextElementId) {
       setEditingTextElementId(null)
+      setDraftTextLinesMap({})
     }
   }, [editingTextElementId, selectedElementId])
 
@@ -309,6 +313,9 @@ export function SlideRenderer({
         {slide.elements.map(element => {
           if (elementRenderStates[element.id] === false) return null
           const bounds = resolveElementBounds(element)
+          const renderedElement = element.type === 'text' && draftTextLinesMap[element.id]
+            ? { ...element, textLines: draftTextLinesMap[element.id] }
+            : element
           return (
             <div
               key={element.id}
@@ -345,7 +352,7 @@ export function SlideRenderer({
                 }}
               >
                 <ElementRenderer
-                  element={element}
+                  element={renderedElement}
                   scale={1}
                   resourceMap={resourceMap}
                   slideIndex={slideIndex}
@@ -356,9 +363,27 @@ export function SlideRenderer({
                 <EditableTextOverlay
                   element={element}
                   onCancel={() => {
+                    setDraftTextLinesMap(prev => {
+                      if (!prev[element.id]) return prev
+                      const next = { ...prev }
+                      delete next[element.id]
+                      return next
+                    })
                     setEditingTextElementId(null)
                   }}
+                  onLiveChange={nextTextLines => {
+                    setDraftTextLinesMap(prev => ({
+                      ...prev,
+                      [element.id]: nextTextLines
+                    }))
+                  }}
                   onCommit={nextTextLines => {
+                    setDraftTextLinesMap(prev => {
+                      if (!prev[element.id]) return prev
+                      const next = { ...prev }
+                      delete next[element.id]
+                      return next
+                    })
                     onEditTextUpdate?.(element.id, nextTextLines)
                     setEditingTextElementId(null)
                   }}

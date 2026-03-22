@@ -8,6 +8,7 @@ interface EditableTextOverlayProps {
   element: TextElement
   onCommit: (nextTextLines: TextLine[]) => void
   onCancel: () => void
+  onLiveChange?: (nextTextLines: TextLine[]) => void
 }
 
 interface TextSegment {
@@ -156,7 +157,7 @@ function buildEditableTextLines(root: HTMLDivElement, sourceLines: TextLine[]): 
   return nextLines
 }
 
-export function EditableTextOverlay({ element, onCommit, onCancel }: EditableTextOverlayProps) {
+export function EditableTextOverlay({ element, onCommit, onCancel, onLiveChange }: EditableTextOverlayProps) {
   const editorRef = useRef<HTMLDivElement | null>(null)
   const hasCommittedRef = useRef(false)
 
@@ -206,6 +207,13 @@ export function EditableTextOverlay({ element, onCommit, onCancel }: EditableTex
     commit()
   }
 
+  const handleInput = () => {
+    const editor = editorRef.current
+    if (!editor || !onLiveChange) return
+    const nextTextLines = buildEditableTextLines(editor, element.textLines)
+    onLiveChange(nextTextLines)
+  }
+
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Escape') {
       event.preventDefault()
@@ -238,6 +246,7 @@ export function EditableTextOverlay({ element, onCommit, onCancel }: EditableTex
         suppressContentEditableWarning
         spellCheck={false}
         onBlur={handleBlur}
+        onInput={handleInput}
         onKeyDown={handleKeyDown}
         style={{
           width: '100%',
