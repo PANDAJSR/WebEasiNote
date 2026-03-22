@@ -7,7 +7,7 @@ import { ElementXmlPanel } from './ElementXmlPanel'
 import type { CoursewareMetadata, SlideData, SlideElement, SlideIssue } from '../parser'
 import { isFontFamilyMissing } from '../font-utils'
 import type { PagerPosition } from '../viewer-settings'
-import { parseSingleElementXml, syncElementPositionXml } from './viewer-xml-sync'
+import { parseSingleElementXml, syncElementBoundsXml, syncElementPositionXml } from './viewer-xml-sync'
 
 export type SlideChangeSource = 'keyboard' | 'pager' | 'thumbnail' | 'programmatic' | 'click'
 
@@ -258,6 +258,32 @@ export function Viewer({
     }))
   }
 
+  const handleEditElementResize = (
+    elementId: string,
+    nextX: number,
+    nextY: number,
+    nextWidth: number,
+    nextHeight: number
+  ) => {
+    const targetElement = currentSlide.elements.find(element => element.id === elementId)
+    if (!targetElement) return
+    const mapKey = `${currentSlide.id}|${elementId}`
+    const rawXml = targetElement.rawXml
+      ? syncElementBoundsXml(targetElement.rawXml, nextX, nextY, nextWidth, nextHeight)
+      : targetElement.rawXml
+    setEditedElements(prev => ({
+      ...prev,
+      [mapKey]: {
+        ...targetElement,
+        x: nextX,
+        y: nextY,
+        width: nextWidth,
+        height: nextHeight,
+        rawXml
+      }
+    }))
+  }
+
   const handleSaveAs = async () => {
     if (isSaving) return
     setIsSaving(true)
@@ -291,6 +317,7 @@ export function Viewer({
     selectedElementId,
     onEditElementSelect: handleEditElementSelect,
     onEditElementDrag: handleEditElementDrag,
+    onEditElementResize: handleEditElementResize,
     onEditBackgroundClick: handleEditBackgroundClick
   }
 

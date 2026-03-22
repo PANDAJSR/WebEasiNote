@@ -39,6 +39,13 @@ interface SlideViewerProps {
   selectedElementId?: string | null
   onEditElementSelect?: (elementId: string) => void
   onEditElementDrag?: (elementId: string, nextX: number, nextY: number) => void
+  onEditElementResize?: (
+    elementId: string,
+    nextX: number,
+    nextY: number,
+    nextWidth: number,
+    nextHeight: number
+  ) => void
   onEditBackgroundClick?: () => void
 }
 export function SlideViewer({
@@ -55,6 +62,7 @@ export function SlideViewer({
   selectedElementId = null,
   onEditElementSelect,
   onEditElementDrag,
+  onEditElementResize,
   onEditBackgroundClick
 }: SlideViewerProps) {
   const { containerRef, slideScaleMap } = useSlideScaleMap(slides)
@@ -354,6 +362,7 @@ export function SlideViewer({
                           : undefined
                       }
                       onEditElementDrag={isCurrent && isEditMode ? onEditElementDrag : undefined}
+                      onEditElementResize={isCurrent && isEditMode ? onEditElementResize : undefined}
                       isEditMode={isCurrent && isEditMode}
                       selectedElementId={isCurrent && isEditMode ? selectedElementId : null}
                     />

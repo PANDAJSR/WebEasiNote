@@ -84,3 +84,70 @@ export function syncElementPositionXml(xmlContent: string, nextX: number, nextY:
   locationNode.textContent = nextLocation
   return new XMLSerializer().serializeToString(root)
 }
+
+export function syncElementBoundsXml(
+  xmlContent: string,
+  nextX: number,
+  nextY: number,
+  nextWidth: number,
+  nextHeight: number
+): string {
+  const parser = new DOMParser()
+  const xmlDoc = parser.parseFromString(xmlContent, 'text/xml')
+  if (xmlDoc.querySelector('parsererror')) return xmlContent
+
+  const root = xmlDoc.documentElement
+  const formattedX = formatCoordinate(nextX)
+  const formattedY = formatCoordinate(nextY)
+  const formattedWidth = formatCoordinate(nextWidth)
+  const formattedHeight = formatCoordinate(nextHeight)
+  let patchedXml = xmlContent
+
+  const xNode = getDirectChildElement(root, 'X')
+  const yNode = getDirectChildElement(root, 'Y')
+  const widthNode = getDirectChildElement(root, 'Width')
+  const heightNode = getDirectChildElement(root, 'Height')
+
+  if (xNode) {
+    const nextXml = patchNodeTextByFragment(patchedXml, xNode, formattedX)
+    if (nextXml) patchedXml = nextXml
+    else xNode.textContent = formattedX
+  }
+  if (yNode) {
+    const nextXml = patchNodeTextByFragment(patchedXml, yNode, formattedY)
+    if (nextXml) patchedXml = nextXml
+    else yNode.textContent = formattedY
+  }
+  if (widthNode) {
+    const nextXml = patchNodeTextByFragment(patchedXml, widthNode, formattedWidth)
+    if (nextXml) patchedXml = nextXml
+    else widthNode.textContent = formattedWidth
+  }
+  if (heightNode) {
+    const nextXml = patchNodeTextByFragment(patchedXml, heightNode, formattedHeight)
+    if (nextXml) patchedXml = nextXml
+    else heightNode.textContent = formattedHeight
+  }
+
+  const locationNode = getDirectChildElement(root, 'Location')
+  if (locationNode) {
+    const nextLocation = `${formattedX},${formattedY}`
+    const locationPatchedXml = patchNodeTextByFragment(patchedXml, locationNode, nextLocation)
+    if (locationPatchedXml) patchedXml = locationPatchedXml
+    else locationNode.textContent = nextLocation
+  }
+
+  const sizeNode = getDirectChildElement(root, 'Size')
+  if (sizeNode) {
+    const nextSize = `${formattedWidth},${formattedHeight}`
+    const sizePatchedXml = patchNodeTextByFragment(patchedXml, sizeNode, nextSize)
+    if (sizePatchedXml) patchedXml = sizePatchedXml
+    else sizeNode.textContent = nextSize
+  }
+
+  // 任一片段替换失败后，至少确保更新后的 DOM 可被序列化写回
+  if (patchedXml === xmlContent) {
+    return new XMLSerializer().serializeToString(root)
+  }
+  return patchedXml
+}
