@@ -101,7 +101,14 @@ export function ShapeRenderer({ element, scale }: ShapeRendererProps) {
       style={{ display: 'block' }}
     >
       <g transform={`translate(${visualPadding + pathTranslateX} ${visualPadding + pathTranslateY}) scale(${pathScaleX} ${pathScaleY})`}>
-        <path d={path} fill={backgroundColor} fillRule={resolvedFillRule} stroke={borderColor} strokeWidth={borderWidth} />
+        <path
+          d={path}
+          fill={backgroundColor}
+          fillRule={resolvedFillRule}
+          stroke={borderColor}
+          strokeWidth={borderWidth}
+          vectorEffect='non-scaling-stroke'
+        />
       </g>
     </svg>
   )
