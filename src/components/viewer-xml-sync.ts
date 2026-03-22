@@ -165,6 +165,24 @@ function updateDirectChildText(root: Element, tagName: string, value: string) {
   node.textContent = value
 }
 
+function getTextLinePlainText(line: TextLine): string {
+  return line.textRuns.map(run => run.text || '').join('')
+}
+
+function syncTextLineRangeMeta(lineNode: Element, lineText: string) {
+  const linesNode = getOrCreateDirectChild(lineNode, 'Lines')
+  const existingProperties = Array.from(linesNode.querySelectorAll(':scope > LineProperty'))
+  const fallbackProperty = existingProperties[existingProperties.length - 1] || lineNode.ownerDocument.createElement('LineProperty')
+  while (linesNode.firstChild) {
+    linesNode.removeChild(linesNode.firstChild)
+  }
+
+  const linePropertyNode = fallbackProperty.cloneNode(true) as Element
+  updateDirectChildText(linePropertyNode, 'StartOffset', '0')
+  updateDirectChildText(linePropertyNode, 'Length', String(lineText.length))
+  linesNode.appendChild(linePropertyNode)
+}
+
 export function syncTextElementContentXml(xmlContent: string, nextTextLines: TextLine[]): string {
   const parser = new DOMParser()
   const xmlDoc = parser.parseFromString(xmlContent, 'text/xml')
@@ -182,7 +200,7 @@ export function syncTextElementContentXml(xmlContent: string, nextTextLines: Tex
     textLinesNode.removeChild(textLinesNode.firstChild)
   }
 
-  const safeLines = nextTextLines.length > 0 ? nextTextLines : [{
+  const fallbackLine: TextLine = {
     textRuns: [{
       text: '',
       fontFamily: 'Arial',
@@ -193,7 +211,8 @@ export function syncTextElementContentXml(xmlContent: string, nextTextLines: Tex
     }],
     textAlignment: 'Left',
     textMarker: 'None'
-  }]
+  }
+  const safeLines: TextLine[] = nextTextLines.length > 0 ? nextTextLines : [fallbackLine]
 
   safeLines.forEach((line, lineIndex) => {
     const sourceLineTemplate = currentLineNodes[lineIndex] || fallbackLineTemplate
@@ -227,6 +246,7 @@ export function syncTextElementContentXml(xmlContent: string, nextTextLines: Tex
       textRunsNode.appendChild(runNode)
     })
 
+    syncTextLineRangeMeta(lineNode, getTextLinePlainText(line))
     textLinesNode.appendChild(lineNode)
   })
 
