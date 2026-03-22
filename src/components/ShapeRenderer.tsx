@@ -30,14 +30,16 @@ export function ShapeRenderer({ element, scale }: ShapeRendererProps) {
   const markerCounters: Record<string, number> = {}
   const pathBounds = estimatePathBounds(path)
   const resolvedFillRule = fillRule || inferFillRule(path) || 'nonzero'
-  const contentMinX = pathBounds ? Math.min(0, pathBounds.minX) : 0
-  const contentMinY = pathBounds ? Math.min(0, pathBounds.minY) : 0
-  const contentMaxX = pathBounds ? Math.max(width, pathBounds.maxX) : width
-  const contentMaxY = pathBounds ? Math.max(height, pathBounds.maxY) : height
-  const renderWidth = Math.max(1, contentMaxX - contentMinX)
-  const renderHeight = Math.max(1, contentMaxY - contentMinY)
-  const textOffsetX = -contentMinX
-  const textOffsetY = -contentMinY
+  const basePathMinX = pathBounds ? pathBounds.minX : 0
+  const basePathMinY = pathBounds ? pathBounds.minY : 0
+  const basePathWidth = pathBounds ? Math.max(1, pathBounds.maxX - pathBounds.minX) : Math.max(1, width)
+  const basePathHeight = pathBounds ? Math.max(1, pathBounds.maxY - pathBounds.minY) : Math.max(1, height)
+  const renderWidth = Math.max(1, width)
+  const renderHeight = Math.max(1, height)
+  const pathScaleX = renderWidth / basePathWidth
+  const pathScaleY = renderHeight / basePathHeight
+  const pathTranslateX = -basePathMinX * pathScaleX
+  const pathTranslateY = -basePathMinY * pathScaleY
   const strokePadding = borderWidth && borderWidth > 0
     ? borderWidth / 2 + 1
     : 0
@@ -95,10 +97,12 @@ export function ShapeRenderer({ element, scale }: ShapeRendererProps) {
     <svg
       width={mainWidth}
       height={mainHeight}
-      viewBox={`${contentMinX - visualPadding} ${contentMinY - visualPadding} ${renderWidth + visualPadding * 2} ${renderHeight + visualPadding * 2}`}
+      viewBox={`0 0 ${renderWidth + visualPadding * 2} ${renderHeight + visualPadding * 2}`}
       style={{ display: 'block' }}
     >
-      <path d={path} fill={backgroundColor} fillRule={resolvedFillRule} stroke={borderColor} strokeWidth={borderWidth} />
+      <g transform={`translate(${visualPadding + pathTranslateX} ${visualPadding + pathTranslateY}) scale(${pathScaleX} ${pathScaleY})`}>
+        <path d={path} fill={backgroundColor} fillRule={resolvedFillRule} stroke={borderColor} strokeWidth={borderWidth} />
+      </g>
     </svg>
   )
 
@@ -174,8 +178,8 @@ export function ShapeRenderer({ element, scale }: ShapeRendererProps) {
       <div
         style={{
           position: 'absolute',
-          top: (textOffsetY + visualPadding) * scale,
-          left: (textOffsetX + visualPadding) * scale,
+          top: visualPadding * scale,
+          left: visualPadding * scale,
           width: width * scale,
           height: height * scale,
           display: 'flex',
@@ -326,8 +330,8 @@ export function ShapeRenderer({ element, scale }: ShapeRendererProps) {
     <div
       style={{
         position: 'absolute',
-        left: (x + contentMinX - visualPadding) * scale,
-        top: (y + contentMinY - visualPadding) * scale,
+        left: (x - visualPadding) * scale,
+        top: (y - visualPadding) * scale,
         width: mainWidth,
         height: mainHeight + (hasReflection ? reflectionVisibleHeight + reflectionOffset : 0),
         overflow: 'visible',
