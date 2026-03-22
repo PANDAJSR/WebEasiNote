@@ -15,6 +15,8 @@ interface TextSegment {
   styleKey: string
 }
 
+const BLOCK_LINE_TAGS = new Set(['DIV', 'P', 'LI'])
+
 const defaultRunTemplate: TextRun = {
   text: '',
   fontFamily: 'Arial',
@@ -66,6 +68,12 @@ function extractTextRunsFromLineNode(
     if (node.nodeType !== Node.ELEMENT_NODE) return
     const element = node as HTMLElement
     if (element.tagName === 'BR') {
+      pushSegment('\n', activeStyleKey)
+      return
+    }
+
+    // contentEditable 在换行编辑后可能出现嵌套块级节点，跳过它们可避免跨行文本重复采集
+    if (element !== lineNode && BLOCK_LINE_TAGS.has(element.tagName)) {
       return
     }
 
