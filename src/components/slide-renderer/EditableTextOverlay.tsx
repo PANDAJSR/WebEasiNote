@@ -370,5 +370,5 @@ function resolveSelectionRange(editor: HTMLDivElement): TextSelectionRange | nul
 }
 
 function sanitizeRangeText(text: string): string {
-  return text.replace(/\u200b/g, '')
+  return text.replace(/\u200b/g, '').replace(/\r\n|\r|\n/g, '')
 }

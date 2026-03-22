@@ -11,11 +11,10 @@ function normalizeRunText(value: string): string {
 function getTotalTextLength(lines: TextLine[]): number {
   if (lines.length === 0) return 0
   let total = 0
-  lines.forEach((line, index) => {
+  lines.forEach(line => {
     line.textRuns.forEach(run => {
       total += normalizeRunText(run.text || '').length
     })
-    if (index < lines.length - 1) total += 1
   })
   return total
 }
@@ -94,7 +93,7 @@ function collectTargetRuns(
   const matches: TextRun[] = []
   const applyWholeLine = !targetRange.isPartialRange
   let cursor = 0
-  lines.forEach((line, lineIndex) => {
+  lines.forEach(line => {
     line.textRuns.forEach(run => {
       const plainText = normalizeRunText(run.text || '')
       const runLength = plainText.length
@@ -106,7 +105,6 @@ function collectTargetRuns(
       }
       cursor = runEnd
     })
-    if (lineIndex < lines.length - 1) cursor += 1
   })
   return matches
 }
@@ -191,7 +189,7 @@ export function applyTextStyleCommand(
   const toggleValue = resolveToggleValue(command, targetRuns)
 
   let cursor = 0
-  const nextLines = safeSourceLines.map((line, lineIndex) => {
+  const nextLines = safeSourceLines.map(line => {
     const nextRuns: TextRun[] = []
     line.textRuns.forEach(run => {
       const plainText = normalizeRunText(run.text || '')
@@ -230,10 +228,6 @@ export function applyTextStyleCommand(
 
       cursor = runEnd
     })
-
-    if (lineIndex < safeSourceLines.length - 1) {
-      cursor += 1
-    }
 
     return {
       ...line,
