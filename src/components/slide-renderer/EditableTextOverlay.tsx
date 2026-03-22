@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef } from 'react'
 import type { CSSProperties } from 'react'
-import type { TextElement, TextLine, TextRun } from '../../parser'
+import type { TextLine, TextRun } from '../../parser'
 import { buildFontFamily } from '../../font-utils'
 import { convertSeewoLineSpacingToMultiplier } from '../../line-spacing'
 
 interface EditableTextOverlayProps {
-  element: TextElement
+  textLines: TextLine[]
+  rotation?: number
+  arrangingType?: 'Horizontal' | 'Vertical'
   onCommit: (nextTextLines: TextLine[]) => void
   onCancel: () => void
   onLiveChange?: (nextTextLines: TextLine[]) => void
@@ -157,7 +159,14 @@ function buildEditableTextLines(root: HTMLDivElement, sourceLines: TextLine[]): 
   return nextLines
 }
 
-export function EditableTextOverlay({ element, onCommit, onCancel, onLiveChange }: EditableTextOverlayProps) {
+export function EditableTextOverlay({
+  textLines,
+  rotation = 0,
+  arrangingType = 'Horizontal',
+  onCommit,
+  onCancel,
+  onLiveChange
+}: EditableTextOverlayProps) {
   const editorRef = useRef<HTMLDivElement | null>(null)
   const hasCommittedRef = useRef(false)
 
@@ -175,11 +184,11 @@ export function EditableTextOverlay({ element, onCommit, onCancel, onLiveChange 
       boxSizing: 'border-box',
       padding: '10px',
       backgroundColor: 'rgba(255, 255, 255, 0.01)',
-      writingMode: element.arrangingType === 'Vertical' ? 'vertical-rl' : 'horizontal-tb',
-      transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
+      writingMode: arrangingType === 'Vertical' ? 'vertical-rl' : 'horizontal-tb',
+      transform: rotation ? `rotate(${rotation}deg)` : undefined,
       transformOrigin: 'center center'
     }
-  }, [element.arrangingType, element.rotation])
+  }, [arrangingType, rotation])
 
   useEffect(() => {
     const editor = editorRef.current
@@ -199,7 +208,7 @@ export function EditableTextOverlay({ element, onCommit, onCancel, onLiveChange 
     const editor = editorRef.current
     if (!editor) return
     hasCommittedRef.current = true
-    const nextTextLines = buildEditableTextLines(editor, element.textLines)
+    const nextTextLines = buildEditableTextLines(editor, textLines)
     onCommit(nextTextLines)
   }
 
@@ -210,7 +219,7 @@ export function EditableTextOverlay({ element, onCommit, onCancel, onLiveChange 
   const handleInput = () => {
     const editor = editorRef.current
     if (!editor || !onLiveChange) return
-    const nextTextLines = buildEditableTextLines(editor, element.textLines)
+    const nextTextLines = buildEditableTextLines(editor, textLines)
     onLiveChange(nextTextLines)
   }
 
@@ -256,7 +265,7 @@ export function EditableTextOverlay({ element, onCommit, onCancel, onLiveChange 
           WebkitUserSelect: 'text'
         }}
       >
-        {element.textLines.map((line, lineIndex) => {
+        {textLines.map((line, lineIndex) => {
           const alignment = (line.textAlignment || 'Left').toLowerCase() as 'left' | 'center' | 'right'
           return (
             <div

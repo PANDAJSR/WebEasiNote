@@ -313,12 +313,27 @@ export function SlideRenderer({
         {slide.elements.map(element => {
           if (elementRenderStates[element.id] === false) return null
           const bounds = resolveElementBounds(element)
-          const renderedElement = element.type === 'text' && draftTextLinesMap[element.id]
-            ? { ...element, textLines: draftTextLinesMap[element.id] }
-            : element
+          const draftTextLines = draftTextLinesMap[element.id]
+          const renderedElement = (() => {
+            if (!draftTextLines) return element
+            if (element.type === 'text') {
+              return { ...element, textLines: draftTextLines }
+            }
+            if (element.type === 'shape') {
+              return { ...element, inlineText: draftTextLines }
+            }
+            return element
+          })()
           const hideReadOnlyTextLayer = isEditMode
-            && element.type === 'text'
+            && (element.type === 'text' || element.type === 'shape')
             && editingTextElementId === element.id
+          const canEditText = element.type === 'text' || element.type === 'shape'
+          const elementTextLines = element.type === 'text'
+            ? element.textLines
+            : (element.type === 'shape' ? (element.inlineText || []) : [])
+          const elementArrangingType = element.type === 'text'
+            ? element.arrangingType
+            : 'Horizontal'
           return (
             <div
               key={element.id}
@@ -331,7 +346,7 @@ export function SlideRenderer({
                 height: bounds.height,
                 overflow: 'visible',
                 cursor: isEditMode
-                  ? element.type === 'text' && editingTextElementId === element.id
+                  ? canEditText && editingTextElementId === element.id
                     ? 'text'
                     : 'move'
                   : undefined,
@@ -340,7 +355,7 @@ export function SlideRenderer({
               onMouseDown={event => handleEditElementMouseDown(element, event)}
               onClick={() => handleEditElementClick(element.id)}
               onDoubleClick={event => {
-                if (!isEditMode || element.type !== 'text') return
+                if (!isEditMode || !canEditText) return
                 event.stopPropagation()
                 event.preventDefault()
                 onElementClick?.(element.id)
@@ -363,9 +378,11 @@ export function SlideRenderer({
                   currentIndex={currentIndex}
                 />
               </div>
-              {isEditMode && element.type === 'text' && editingTextElementId === element.id && (
+              {isEditMode && canEditText && editingTextElementId === element.id && (
                 <EditableTextOverlay
-                  element={element}
+                  textLines={elementTextLines}
+                  rotation={element.rotation || 0}
+                  arrangingType={elementArrangingType}
                   onCancel={() => {
                     setDraftTextLinesMap(prev => {
                       if (!prev[element.id]) return prev

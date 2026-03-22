@@ -291,18 +291,17 @@ export function Viewer({
 
   const handleEditElementTextUpdate = (elementId: string, nextTextLines: TextLine[]) => {
     const targetElement = currentSlide.elements.find(element => element.id === elementId)
-    if (!targetElement || targetElement.type !== 'text') return
+    if (!targetElement || (targetElement.type !== 'text' && targetElement.type !== 'shape')) return
     const mapKey = `${currentSlide.id}|${elementId}`
     const rawXml = targetElement.rawXml
       ? syncTextElementContentXml(targetElement.rawXml, nextTextLines)
       : targetElement.rawXml
+    const updatedElement = targetElement.type === 'text'
+      ? { ...targetElement, textLines: nextTextLines, rawXml }
+      : { ...targetElement, inlineText: nextTextLines, rawXml }
     setEditedElements(prev => ({
       ...prev,
-      [mapKey]: {
-        ...targetElement,
-        textLines: nextTextLines,
-        rawXml
-      }
+      [mapKey]: updatedElement
     }))
   }
 
