@@ -316,6 +316,9 @@ export function SlideRenderer({
           const renderedElement = element.type === 'text' && draftTextLinesMap[element.id]
             ? { ...element, textLines: draftTextLinesMap[element.id] }
             : element
+          const hideReadOnlyTextLayer = isEditMode
+            && element.type === 'text'
+            && editingTextElementId === element.id
           return (
             <div
               key={element.id}
@@ -348,7 +351,8 @@ export function SlideRenderer({
                 style={{
                   position: 'absolute',
                   left: -bounds.x,
-                  top: -bounds.y
+                  top: -bounds.y,
+                  visibility: hideReadOnlyTextLayer ? 'hidden' : 'visible'
                 }}
               >
                 <ElementRenderer
