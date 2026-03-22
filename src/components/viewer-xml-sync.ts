@@ -173,14 +173,58 @@ function syncTextLineRangeMeta(lineNode: Element, lineText: string) {
   const linesNode = getOrCreateDirectChild(lineNode, 'Lines')
   const existingProperties = Array.from(linesNode.querySelectorAll(':scope > LineProperty'))
   const fallbackProperty = existingProperties[existingProperties.length - 1] || lineNode.ownerDocument.createElement('LineProperty')
+  const totalLength = lineText.length
   while (linesNode.firstChild) {
     linesNode.removeChild(linesNode.firstChild)
   }
 
-  const linePropertyNode = fallbackProperty.cloneNode(true) as Element
-  updateDirectChildText(linePropertyNode, 'StartOffset', '0')
-  updateDirectChildText(linePropertyNode, 'Length', String(lineText.length))
-  linesNode.appendChild(linePropertyNode)
+  // 保留原有 LineProperty 分段数量，避免把官方多段结构压扁成单段
+  const segmentTemplates = existingProperties.length > 0 ? existingProperties : [fallbackProperty]
+  const originalLengths = segmentTemplates.map(property => {
+    const lengthNode = getDirectChildElement(property, 'Length')
+    const raw = lengthNode?.textContent?.trim() || '0'
+    const value = Number.parseInt(raw, 10)
+    return Number.isFinite(value) && value > 0 ? value : 0
+  })
+  const originalTotal = originalLengths.reduce((sum, value) => sum + value, 0)
+
+  let nextLengths: number[]
+  if (totalLength <= 0) {
+    nextLengths = new Array(segmentTemplates.length).fill(0)
+  } else if (segmentTemplates.length === 1) {
+    nextLengths = [totalLength]
+  } else if (originalTotal <= 0) {
+    // 原始长度不可用时均分，余数前置
+    const base = Math.floor(totalLength / segmentTemplates.length)
+    const remainder = totalLength % segmentTemplates.length
+    nextLengths = segmentTemplates.map((_, index) => base + (index < remainder ? 1 : 0))
+  } else {
+    // 按原分段比例分配新长度，并修正总和误差
+    nextLengths = originalLengths.map(length => Math.floor((length / originalTotal) * totalLength))
+    let assigned = nextLengths.reduce((sum, value) => sum + value, 0)
+    let remaining = totalLength - assigned
+    const sortedIndexes = originalLengths
+      .map((length, index) => ({ length, index }))
+      .sort((a, b) => b.length - a.length)
+      .map(item => item.index)
+    let pointer = 0
+    while (remaining > 0) {
+      const index = sortedIndexes[pointer % sortedIndexes.length]
+      nextLengths[index] += 1
+      remaining -= 1
+      pointer += 1
+    }
+  }
+
+  let startOffset = 0
+  segmentTemplates.forEach((template, index) => {
+    const linePropertyNode = template.cloneNode(true) as Element
+    const lengthValue = Math.max(0, nextLengths[index] || 0)
+    updateDirectChildText(linePropertyNode, 'StartOffset', String(startOffset))
+    updateDirectChildText(linePropertyNode, 'Length', String(lengthValue))
+    linesNode.appendChild(linePropertyNode)
+    startOffset += lengthValue
+  })
 }
 
 export function syncTextElementContentXml(xmlContent: string, nextTextLines: TextLine[]): string {
