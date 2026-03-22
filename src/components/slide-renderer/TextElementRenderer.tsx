@@ -38,6 +38,7 @@ function measureRunWidth(
 
 export function TextElementRenderer({ element, scale }: { element: TextElement; scale: number }) {
   const { x, y, width, height, textLines } = element
+  const enableAutoWrap = !element.ruledPaper && element.arrangingType !== 'Vertical'
   const markerCounters: Record<string, number> = {}
   const textOuterPadding = 10 * scale
   const ruledPaper = element.ruledPaper
@@ -266,8 +267,9 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
               transform: ruledPaper ? `translateY(${ruledTextVerticalOffset}px)` : undefined,
               textAlign: alignment,
               lineHeight: getLineHeight(line),
-              whiteSpace: 'nowrap',
-              wordBreak: 'keep-all',
+              whiteSpace: enableAutoWrap ? 'pre-wrap' : 'nowrap',
+              wordBreak: enableAutoWrap ? 'break-word' : 'keep-all',
+              overflowWrap: enableAutoWrap ? 'anywhere' : undefined,
               marginTop: ruledPaper ? 0 : (line.spaceBefore || 0) * scale,
               marginBottom: ruledPaper ? 0 : (line.spaceAfter || 0) * scale,
               direction: line.direction === 'RightToLeft' ? 'rtl' : 'ltr',
@@ -322,8 +324,8 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
                         textShadow: getShadowStyle(run, scale),
                         WebkitTextStrokeWidth: textStrokeStyle.WebkitTextStrokeWidth,
                         WebkitTextStrokeColor: textStrokeStyle.WebkitTextStrokeColor,
-                        whiteSpace: 'pre',
-                        wordBreak: 'keep-all'
+                        whiteSpace: enableAutoWrap ? 'inherit' : 'pre',
+                        wordBreak: enableAutoWrap ? 'inherit' : 'keep-all'
                       }}
                     >
                       {run.text}
@@ -349,8 +351,8 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
                         textShadow: line.textRuns[0] ? getShadowStyle(line.textRuns[0], scale) : undefined,
                         WebkitTextStrokeWidth: textStrokeStyle.WebkitTextStrokeWidth,
                         WebkitTextStrokeColor: textStrokeStyle.WebkitTextStrokeColor,
-                        whiteSpace: 'pre',
-                        wordBreak: 'keep-all'
+                        whiteSpace: enableAutoWrap ? 'inherit' : 'pre',
+                        wordBreak: enableAutoWrap ? 'inherit' : 'keep-all'
                       }}
                     >
                       {'\u00A0'}
