@@ -24,6 +24,12 @@ import {
 import type { PagerPosition } from './viewer-settings'
 import { styles } from './styles'
 import {
+  isEnbxHostRuntime,
+  postToEnbxHost,
+  subscribeToEnbxHost,
+  type EnbxHostMessage
+} from './host-bridge'
+import {
   AUTO_RELOAD_STORAGE_KEY,
   CLICK_TO_NEXT_STORAGE_KEY,
   ensureSpinKeyframes,
@@ -34,7 +40,8 @@ import {
 } from './app-utils'
 ensureSpinKeyframes()
 function App() {
-  const [viewMode, setViewMode] = useState<ViewMode>('welcome')
+  const hostRuntime = isEnbxHostRuntime()
+  const [viewMode, setViewMode] = useState<ViewMode>(hostRuntime ? 'loading' : 'welcome')
   const [metadata, setMetadata] = useState<CoursewareMetadata | null>(null)
   const [slides, setSlides] = useState<SlideData[]>([])
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0)
@@ -49,6 +56,10 @@ function App() {
   const [sourceEnbxFile, setSourceEnbxFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const autoReloadingRef = useRef(false)
+  const currentSlideIndexRef = useRef(0)
+  const slideCountRef = useRef(0)
+  const loadENBXUrlRef = useRef<(url: string, fileName: string) => Promise<boolean>>(async () => false)
+  const lastOpenUrlRef = useRef('')
   const pickerWindow = window as PickerWindow
   const supportsOpenFilePicker = typeof pickerWindow.showOpenFilePicker === 'function'
   const supportsSaveFilePicker = typeof pickerWindow.showSaveFilePicker === 'function'
@@ -188,6 +199,12 @@ function App() {
         return Math.min(previousIndex, slideData.length - 1)
       })
       setViewMode('viewer')
+      postToEnbxHost({
+        type: 'enbx:document-loaded',
+        fileName: file.name,
+        pageCount: slideData.length,
+        currentPage: isAutoReload ? currentSlideIndexRef.current + 1 : 1
+      })
       return true
     } catch (err) {
       revokeObjectUrls(loadedMap)
@@ -200,6 +217,59 @@ function App() {
       return false
     }
   }
+  const loadENBXUrl = async (url: string, fileName: string) => {
+    if (lastOpenUrlRef.current === url) {
+      console.log('[App] 忽略重复的 enbx:open 请求')
+      return true
+    }
+    lastOpenUrlRef.current = url
+    const response = await fetch(url)
+    if (!response.ok) throw new Error(`无法读取 ENBX 文件 (${response.status})`)
+    const blob = await response.blob()
+    return loadENBXFile(new File([blob], fileName, { type: 'application/octet-stream' }))
+  }
+  loadENBXUrlRef.current = loadENBXUrl
+
+  useEffect(() => {
+    currentSlideIndexRef.current = currentSlideIndex
+    slideCountRef.current = slides.length
+  }, [currentSlideIndex, slides.length])
+
+  useEffect(() => {
+    if (!isEnbxHostRuntime()) return
+
+    const handleHostMessage = async (message: EnbxHostMessage) => {
+      try {
+        if (message.type === 'enbx:open') {
+          const url = typeof message.url === 'string' ? message.url : ''
+          const fileName = typeof message.fileName === 'string' ? message.fileName : 'courseware.enbx'
+          if (url) await loadENBXUrlRef.current(url, fileName)
+          return
+        }
+
+        if (message.type === 'enbx:navigate') {
+          const requestId = typeof message.requestId === 'string' ? message.requestId : ''
+          const direction = message.direction === 'previous' ? -1 : 1
+          const nextIndex = currentSlideIndexRef.current + direction
+          const canNavigate = nextIndex >= 0 && nextIndex < slideCountRef.current
+          const page = canNavigate ? nextIndex + 1 : 0
+          if (canNavigate) {
+            setSlideChangeSource('pager')
+            setCurrentSlideIndex(nextIndex)
+            postToEnbxHost({ type: 'enbx:page-changed', page })
+          }
+          postToEnbxHost({ type: 'enbx:navigation-complete', requestId, page })
+        }
+      } catch (error) {
+        postToEnbxHost({
+          type: 'enbx:error',
+          message: error instanceof Error ? error.message : String(error)
+        })
+      }
+    }
+
+    return subscribeToEnbxHost(handleHostMessage)
+  }, [])
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -212,6 +282,10 @@ function App() {
     await loadENBXFile(file)
   }
   const handleFilePickerSelect = async () => {
+    if (isEnbxHostRuntime()) {
+      postToEnbxHost({ type: 'enbx:request-open' })
+      return
+    }
     if (!supportsOpenFilePicker) {
       fileInputRef.current?.click()
       return
@@ -328,6 +402,8 @@ function App() {
     setWatchedENBX(null)
     setSourceEnbxFile(null)
     setViewMode('welcome')
+    lastOpenUrlRef.current = ''
+    postToEnbxHost({ type: 'enbx:close' })
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -335,6 +411,7 @@ function App() {
   const handleSlideChange = (index: number, source: SlideChangeSource = 'programmatic') => {
     setSlideChangeSource(source)
     setCurrentSlideIndex(index)
+    postToEnbxHost({ type: 'enbx:page-changed', page: index + 1 })
   }
 
   const handleSaveAs = async (editedElements: Record<string, SlideData['elements'][number]>) => {
@@ -417,6 +494,7 @@ function App() {
           clickToNextEnabled={clickToNextEnabled}
           pagerPosition={pagerPosition}
           showAnimationProgress={showAnimationProgress}
+          hidePager={hostRuntime}
         />
       )}
     </div>

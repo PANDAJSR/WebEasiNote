@@ -36,6 +36,7 @@ interface SlideViewerProps {
   clickToNextEnabled: boolean
   pagerPosition: PagerPosition
   showAnimationProgress: boolean
+  hidePager?: boolean
   isEditMode: boolean
   selectedElementId?: string | null
   onEditElementSelect?: (elementId: string) => void
@@ -62,6 +63,7 @@ export function SlideViewer({
   clickToNextEnabled,
   pagerPosition,
   showAnimationProgress,
+  hidePager = false,
   isEditMode,
   selectedElementId = null,
   onEditElementSelect,
@@ -420,7 +422,7 @@ export function SlideViewer({
         </div>
       )}
 
-      {!isEditMode && pagerSides.map(side => (
+      {!isEditMode && !hidePager && pagerSides.map(side => (
         <FloatingPager
           key={side}
           side={side}

@@ -32,6 +32,7 @@ interface ViewerProps {
   clickToNextEnabled: boolean
   pagerPosition: PagerPosition
   showAnimationProgress: boolean
+  hidePager?: boolean
 }
 
 function collectMissingFontIssues(slides: SlideData[]): SlideIssue[] {
@@ -94,6 +95,7 @@ export function Viewer({
   clickToNextEnabled,
   pagerPosition,
   showAnimationProgress,
+  hidePager = false,
   onSaveAs
 }: ViewerProps) {
   const [isIssueModalOpen, setIssueModalOpen] = useState(false)
@@ -366,6 +368,7 @@ export function Viewer({
     clickToNextEnabled,
     pagerPosition,
     showAnimationProgress,
+    hidePager,
     isEditMode,
     selectedElementId,
     onEditElementSelect: handleEditElementSelect,
