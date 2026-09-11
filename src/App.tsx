@@ -214,6 +214,10 @@ function App() {
       }
       setError((err as Error).message)
       setViewMode('error')
+      postToEnbxHost({
+        type: 'enbx:error',
+        error: err instanceof Error ? err.stack || err.message : String(err)
+      })
       return false
     }
   }
@@ -263,7 +267,7 @@ function App() {
       } catch (error) {
         postToEnbxHost({
           type: 'enbx:error',
-          message: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? error.message : String(error)
         })
       }
     }
