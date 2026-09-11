@@ -33,6 +33,10 @@ interface ViewerProps {
   pagerPosition: PagerPosition
   showAnimationProgress: boolean
   hidePager?: boolean
+  /** 宿主内嵌全屏播放时隐藏顶部工具栏。 */
+  hideToolbar?: boolean
+  /** 底部信息条预留高度；宿主内嵌全屏播放传 0，让画面铺满整屏。 */
+  infoBarHeight?: number
 }
 
 function collectMissingFontIssues(slides: SlideData[]): SlideIssue[] {
@@ -96,6 +100,8 @@ export function Viewer({
   pagerPosition,
   showAnimationProgress,
   hidePager = false,
+  hideToolbar = false,
+  infoBarHeight,
   onSaveAs
 }: ViewerProps) {
   const [isIssueModalOpen, setIssueModalOpen] = useState(false)
@@ -369,6 +375,7 @@ export function Viewer({
     pagerPosition,
     showAnimationProgress,
     hidePager,
+    infoBarHeight,
     isEditMode,
     selectedElementId,
     onEditElementSelect: handleEditElementSelect,
@@ -382,6 +389,7 @@ export function Viewer({
 
   return (
     <div style={styles.viewerContainer}>
+      {!hideToolbar && (
       <div style={styles.toolbar}>
         <div style={styles.toolbarLeft}>
           <span style={styles.coursewareName}>{metadata.name}</span>
@@ -407,6 +415,7 @@ export function Viewer({
           </Button>
         </div>
       </div>
+      )}
 
       <div style={styles.mainContent}>
         {isEditMode && (

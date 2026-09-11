@@ -495,6 +495,8 @@ function App() {
           pagerPosition={pagerPosition}
           showAnimationProgress={showAnimationProgress}
           hidePager={hostRuntime}
+          hideToolbar={hostRuntime}
+          infoBarHeight={hostRuntime ? 0 : undefined}
         />
       )}
     </div>

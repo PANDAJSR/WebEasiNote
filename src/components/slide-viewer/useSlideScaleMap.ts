@@ -2,7 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SlideData } from '../../parser'
 import { slideInfoBarHeight } from './constants'
 
-export function useSlideScaleMap(slides: SlideData[]) {
+/**
+ * 计算每页幻灯片的适配缩放。
+ * reservedHeight 为底部信息条预留的高度；宿主内嵌全屏播放时传 0，
+ * 让画面按窗口完整铺满，避免比例一致时仍出现四周黑边。
+ */
+export function useSlideScaleMap(slides: SlideData[], reservedHeight = slideInfoBarHeight) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [slideScaleMap, setSlideScaleMap] = useState<Record<string, number>>({})
 
@@ -18,7 +23,7 @@ export function useSlideScaleMap(slides: SlideData[]) {
     const containerWidth = Math.max(0, container.clientWidth - paddingLeft - paddingRight)
     const containerHeight = Math.max(
       0,
-      container.clientHeight - paddingTop - paddingBottom - slideInfoBarHeight
+      container.clientHeight - paddingTop - paddingBottom - reservedHeight
     )
 
     const nextScaleMap: Record<string, number> = {}
@@ -28,7 +33,7 @@ export function useSlideScaleMap(slides: SlideData[]) {
       nextScaleMap[slideItem.id] = Math.max(0, Math.min(scaleX, scaleY))
     })
     setSlideScaleMap(nextScaleMap)
-  }, [slides])
+  }, [slides, reservedHeight])
 
   useEffect(() => {
     calculateSlideScaleMap()

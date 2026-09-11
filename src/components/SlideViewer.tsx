@@ -37,6 +37,8 @@ interface SlideViewerProps {
   pagerPosition: PagerPosition
   showAnimationProgress: boolean
   hidePager?: boolean
+  /** 底部信息条预留高度；宿主内嵌全屏播放传 0，避免比例一致时出现四周黑边。 */
+  infoBarHeight?: number
   isEditMode: boolean
   selectedElementId?: string | null
   onEditElementSelect?: (elementId: string) => void
@@ -64,6 +66,7 @@ export function SlideViewer({
   pagerPosition,
   showAnimationProgress,
   hidePager = false,
+  infoBarHeight = slideInfoBarHeight,
   isEditMode,
   selectedElementId = null,
   onEditElementSelect,
@@ -74,7 +77,7 @@ export function SlideViewer({
   onEditBackgroundClick,
   textStyleCommand = null
 }: SlideViewerProps) {
-  const { containerRef, slideScaleMap } = useSlideScaleMap(slides)
+  const { containerRef, slideScaleMap } = useSlideScaleMap(slides, infoBarHeight)
   const editWheelGuardRef = useRef<HTMLDivElement | null>(null)
   const {
     elementDisplayStyles,
@@ -212,7 +215,7 @@ export function SlideViewer({
             ...styles.slideWrapper,
             position: 'relative',
             width: '100%',
-            height: `calc(100% - ${slideInfoBarHeight}px)`
+            height: `calc(100% - ${infoBarHeight}px)`
           }}
           onWheel={handleEditWrapperWheel}
         >
