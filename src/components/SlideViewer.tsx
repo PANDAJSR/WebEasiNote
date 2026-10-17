@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
 import { styles } from '../styles'
-import { SlideRenderer } from './SlideRenderer'
 import type { SlideData, TextLine } from '../parser'
 import type { SlideChangeSource } from './Viewer'
 import type { PagerPosition } from '../viewer-settings'
@@ -13,18 +12,9 @@ import { useSlideKeyboardNavigation } from './slide-viewer/useSlideKeyboardNavig
 import { useSlidePanel } from './slide-viewer/useSlidePanel'
 import { useSlideScaleMap } from './slide-viewer/useSlideScaleMap'
 import { useSlideTransitions } from './slide-viewer/useSlideTransitions'
-import {
-  buildLineRevealClipPath,
-  CIRCLE_IN_END_CLIP_PATH,
-  CIRCLE_IN_START_CLIP_PATH,
-  CIRCLE_IN_TRANSITION_KEY,
-  DEFAULT_TRANSFORM,
-  FADE_TRANSITION_KEY,
-  LINE_REVEAL_TRANSITION_KEY,
-  resolveEnteringStartTransform,
-  resolveLeavingTargetTransform,
-  slideInfoBarHeight
-} from './slide-viewer/constants'
+import { useSlideSwipeNavigation } from './slide-viewer/useSlideSwipeNavigation'
+import { SlideViewerLayer } from './slide-viewer/SlideViewerLayer'
+import { slideInfoBarHeight } from './slide-viewer/constants'
 
 interface SlideViewerProps {
   slide: SlideData
@@ -55,7 +45,9 @@ interface SlideViewerProps {
   onEditBackgroundClick?: () => void
   textStyleCommand?: TextStyleCommand | null
   toggleThumbnailsCommand?: { side: 'left' | 'right'; id: number } | null
+  swipeNavigationEnabled?: boolean
 }
+
 export function SlideViewer({
   slide,
   slides,
@@ -77,7 +69,8 @@ export function SlideViewer({
   onEditTextStyleStateChange,
   onEditBackgroundClick,
   textStyleCommand = null,
-  toggleThumbnailsCommand = null
+  toggleThumbnailsCommand = null,
+  swipeNavigationEnabled = true
 }: SlideViewerProps) {
   const { containerRef, slideScaleMap } = useSlideScaleMap(slides, infoBarHeight)
   const editWheelGuardRef = useRef<HTMLDivElement | null>(null)
@@ -109,6 +102,7 @@ export function SlideViewer({
     if (!toggleThumbnailsCommand) return
     handleToggleSlidePanel(toggleThumbnailsCommand.side)
   }, [toggleThumbnailsCommand?.id])
+
   const isFirstSlide = currentIndex <= 0
   const isLastSlide = currentIndex >= slides.length - 1
   const fitScale = slideScaleMap[slide.id] || 1
@@ -126,6 +120,7 @@ export function SlideViewer({
   const viewportScale = isEditMode ? currentScale : fitScale
   const currentViewportWidth = Math.max(0, slide.width * viewportScale)
   const currentViewportHeight = Math.max(0, slide.height * viewportScale)
+
   const handlePrevSlide = (source: SlideChangeSource = 'pager') => {
     clearStepDirection()
     if (!isEditMode && stepBackwardElementAnimation()) return
@@ -139,6 +134,7 @@ export function SlideViewer({
     if (isLastSlide) return
     onSlideChange(currentIndex + 1, source)
   }
+
   const handleSlideViewportClick = (event: React.MouseEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement
     if (isEditMode) {
@@ -150,6 +146,7 @@ export function SlideViewer({
     if (target.closest('[data-slide-element="true"]')) return
     handleNextSlide('click')
   }
+
   const handleSlideContainerClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!isEditMode) return
     const target = event.target as HTMLElement
@@ -157,12 +154,23 @@ export function SlideViewer({
     if (target.closest('[data-slide-viewport="true"]')) return
     onEditBackgroundClick?.()
   }
+
   useSlideKeyboardNavigation({
     handlePrevSlide,
     handleNextSlide,
     isSlidePanelActive,
     handleCloseSlidePanel
   })
+
+  useSlideSwipeNavigation({
+    containerRef,
+    isEditMode,
+    isSlidePanelActive,
+    enabled: swipeNavigationEnabled,
+    handlePrevSlide,
+    handleNextSlide
+  })
+
   const pagerSides: Array<'left' | 'right'> = pagerPosition === 'both'
     ? ['left', 'right']
     : [pagerPosition]
@@ -215,7 +223,10 @@ export function SlideViewer({
           alignItems: 'stretch',
           justifyContent: 'stretch',
           overflow: isEditMode ? 'hidden' : styles.slideContainer.overflow,
-          backgroundColor: isEditMode ? '#eceef3' : styles.slideContainer.backgroundColor
+          backgroundColor: isEditMode ? '#eceef3' : styles.slideContainer.backgroundColor,
+          touchAction: isEditMode ? 'auto' : 'none',
+          userSelect: 'none',
+          WebkitUserSelect: 'none'
         }}
         onClick={handleSlideContainerClick}
         onMouseDown={handleEditViewportMouseDown}
@@ -247,154 +258,37 @@ export function SlideViewer({
             {slides.map((slideItem, index) => {
               const isCurrent = index === currentIndex
               const slideScale = isEditMode && isCurrent ? currentScale : slideScaleMap[slideItem.id] || 1
-              const isEntering = transitionState?.enteringIndex === index
-              const isLeaving = transitionState?.leavingIndex === index
-              const isAnimating = Boolean(isEntering || isLeaving)
-              const isTransitionRunning = transitionState?.phase === 'running'
-              const snapshot = layerSnapshots[index]
-              const transitionKey = transitionState?.key || 'None'
-              const isReverseBackTransition = Boolean(transitionState?.isReverseBackTransition)
-              const shouldUseMaskTopLayer =
-                transitionKey === CIRCLE_IN_TRANSITION_KEY || transitionKey === LINE_REVEAL_TRANSITION_KEY
-              const zIndex = shouldUseMaskTopLayer
-                ? transitionKey === LINE_REVEAL_TRANSITION_KEY
-                  ? isLeaving ? 2 : isCurrent ? 1 : 0
-                  : isReverseBackTransition
-                    ? isEntering ? 2 : isCurrent ? 1 : 0
-                    : isLeaving ? 2 : isCurrent ? 1 : 0
-                : isCurrent ? 2 : isLeaving ? 1 : 0
-              const isFadeTransition = transitionKey === FADE_TRANSITION_KEY
-              const isCircleIn = transitionKey === CIRCLE_IN_TRANSITION_KEY
-              const isLineReveal = transitionKey === LINE_REVEAL_TRANSITION_KEY
-              const isCircleInReverse = isCircleIn && isReverseBackTransition
-              const currentLineRevealProgress = isTransitionRunning ? lineRevealProgress : 0
-              const lineRevealClipPath = buildLineRevealClipPath(
-                currentLineRevealProgress,
-                isReverseBackTransition
-              )
-              const enteringStartTransform = resolveEnteringStartTransform(
-                transitionKey,
-                isReverseBackTransition
-              )
-              const leavingTargetTransform = resolveLeavingTargetTransform(
-                transitionKey,
-                isReverseBackTransition
-              )
-              const layerOpacity = isEntering
-                ? isFadeTransition
-                  ? isTransitionRunning ? 1 : snapshot?.opacity ?? 0
-                  : snapshot?.opacity ?? 1
-                : isLeaving
-                  ? isFadeTransition
-                    ? isTransitionRunning ? 0 : snapshot?.opacity ?? 1
-                    : snapshot?.opacity ?? 1
-                  : 1
-              const layerTransform = isEntering
-                ? isTransitionRunning
-                  ? DEFAULT_TRANSFORM
-                  : isFadeTransition
-                    ? snapshot?.transform ?? DEFAULT_TRANSFORM
-                    : enteringStartTransform
-                : isLeaving
-                  ? isTransitionRunning
-                    ? leavingTargetTransform
-                    : isFadeTransition
-                      ? snapshot?.transform ?? DEFAULT_TRANSFORM
-                      : DEFAULT_TRANSFORM
-                  : DEFAULT_TRANSFORM
-              const layerClipPath = isCircleIn
-                ? isCircleInReverse
-                  ? isEntering
-                    ? isTransitionRunning ? CIRCLE_IN_START_CLIP_PATH : CIRCLE_IN_END_CLIP_PATH
-                    : undefined
-                  : isLeaving
-                    ? isTransitionRunning ? CIRCLE_IN_END_CLIP_PATH : CIRCLE_IN_START_CLIP_PATH
-                    : undefined
-                : isLineReveal
-                  ? isLeaving
-                    ? lineRevealClipPath
-                    : undefined
-                  : undefined
-              const layerTransition = isAnimating && isTransitionRunning
-                ? isCircleIn
-                  ? `clip-path ${transitionState?.durationMs || 0}ms ease`
-                  : isLineReveal
-                    ? 'none'
-                    : `transform ${transitionState?.durationMs || 0}ms ease, opacity ${transitionState?.durationMs || 0}ms ease`
-                : 'none'
-              const currentSlideNumber = currentIndex + 1
-              const sourceSlideNumber = index + 1
-              const shouldKeepAliveForCrossPlay = slideItem.elements.some(
-                element => element.type === 'video'
-                  && element.isCrossSlidePlay
-                  && currentSlideNumber > sourceSlideNumber
-                  && (
-                    element.stopPlayPageNumber <= 0
-                    || currentSlideNumber < element.stopPlayPageNumber
-                  )
-              )
-
               return (
-              <div
-                key={`${slideItem.id}-${index}`}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    zIndex,
-                    visibility: isCurrent || isLeaving || shouldKeepAliveForCrossPlay ? 'visible' : 'hidden',
-                    opacity: isCurrent || isLeaving ? 1 : 0,
-                    pointerEvents: isCurrent ? 'auto' : 'none'
-                  }}
-                >
-                  <div
-                    ref={node => {
-                      setLayerRef(index, node)
-                    }}
-                    style={{
-                      ...styles.slideLayerContainer,
-                      transform: layerTransform,
-                      opacity: layerOpacity,
-                      clipPath: layerClipPath,
-                      transition: layerTransition,
-                      willChange: isAnimating
-                        ? isCircleIn
-                          ? 'clip-path'
-                          : isLineReveal
-                            ? 'clip-path'
-                            : 'transform, opacity'
-                        : undefined
-                    }}
-                  >
-                    <SlideRenderer
-                      slide={slideItem}
-                      scale={slideScale}
-                      resourceMap={resourceMap}
-                      slideIndex={index}
-                      currentIndex={currentIndex}
-                      elementDisplayStyles={!isEditMode && isCurrent ? elementDisplayStyles : undefined}
-                      elementRenderStates={!isEditMode && isCurrent ? elementRenderStates : undefined}
-                      onElementClick={
-                        isCurrent
-                          ? (
-                            isEditMode
-                              ? handleEditElementClick
-                              : triggerElementSourceAnimation
-                          )
-                          : undefined
-                      }
-                      onEditElementDrag={isCurrent && isEditMode ? onEditElementDrag : undefined}
-                      onEditElementResize={isCurrent && isEditMode ? onEditElementResize : undefined}
-                      onEditTextUpdate={isCurrent && isEditMode ? onEditElementTextUpdate : undefined}
-                      onEditTextStyleStateChange={isCurrent && isEditMode ? onEditTextStyleStateChange : undefined}
-                      isEditMode={isCurrent && isEditMode}
-                      selectedElementId={isCurrent && isEditMode ? selectedElementId : null}
-                      textStyleCommand={isCurrent && isEditMode ? textStyleCommand : null}
-                    />
-                  </div>
-                </div>
+                <SlideViewerLayer
+                  key={`${slideItem.id}-${index}`}
+                  slideItem={slideItem}
+                  index={index}
+                  currentIndex={currentIndex}
+                  slideScale={slideScale}
+                  resourceMap={resourceMap}
+                  transitionState={transitionState}
+                  snapshot={layerSnapshots[index]}
+                  lineRevealProgress={lineRevealProgress}
+                  setLayerRef={setLayerRef}
+                  isEditMode={isEditMode}
+                  elementDisplayStyles={!isEditMode && isCurrent ? elementDisplayStyles : undefined}
+                  elementRenderStates={!isEditMode && isCurrent ? elementRenderStates : undefined}
+                  onElementClick={
+                    isCurrent
+                      ? (
+                        isEditMode
+                          ? handleEditElementClick
+                          : triggerElementSourceAnimation
+                      )
+                      : undefined
+                  }
+                  onEditElementDrag={isCurrent && isEditMode ? onEditElementDrag : undefined}
+                  onEditElementResize={isCurrent && isEditMode ? onEditElementResize : undefined}
+                  onEditTextUpdate={isCurrent && isEditMode ? onEditElementTextUpdate : undefined}
+                  onEditTextStyleStateChange={isCurrent && isEditMode ? onEditTextStyleStateChange : undefined}
+                  selectedElementId={isCurrent && isEditMode ? selectedElementId : null}
+                  textStyleCommand={isCurrent && isEditMode ? textStyleCommand : null}
+                />
               )
             })}
           </div>

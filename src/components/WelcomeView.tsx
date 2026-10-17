@@ -17,6 +17,8 @@ interface WelcomeViewProps {
   onPagerPositionChange: (position: PagerPosition) => void
   showAnimationProgress: boolean
   onShowAnimationProgressChange: (enabled: boolean) => void
+  swipeNavigationEnabled: boolean
+  onSwipeNavigationChange: (enabled: boolean) => void
 }
 
 export function WelcomeView({
@@ -32,7 +34,9 @@ export function WelcomeView({
   pagerPosition,
   onPagerPositionChange,
   showAnimationProgress,
-  onShowAnimationProgressChange
+  onShowAnimationProgressChange,
+  swipeNavigationEnabled,
+  onSwipeNavigationChange
 }: WelcomeViewProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
@@ -117,6 +121,18 @@ export function WelcomeView({
             <Switch
               checked={showAnimationProgress}
               onChange={onShowAnimationProgressChange}
+            />
+          </label>
+          <label style={styles.settingsRow}>
+            <div style={styles.settingsLabelGroup}>
+              <div style={styles.settingsLabel}>滑动翻页</div>
+              <div style={styles.settingsDescription}>
+                鼠标或触屏左右滑动达到一定速度时翻页（类似 PowerPoint）
+              </div>
+            </div>
+            <Switch
+              checked={swipeNavigationEnabled}
+              onChange={onSwipeNavigationChange}
             />
           </label>
           <div style={styles.settingsRow}>

@@ -19,7 +19,8 @@ import {
   DEFAULT_PAGER_POSITION,
   isPagerPosition,
   PAGER_POSITION_STORAGE_KEY,
-  SHOW_ANIMATION_PROGRESS_STORAGE_KEY
+  SHOW_ANIMATION_PROGRESS_STORAGE_KEY,
+  SWIPE_NAVIGATION_STORAGE_KEY
 } from './viewer-settings'
 import type { PagerPosition } from './viewer-settings'
 import { styles } from './styles'
@@ -53,6 +54,7 @@ function App() {
   const [clickToNextEnabled, setClickToNextEnabled] = useState(true)
   const [pagerPosition, setPagerPosition] = useState<PagerPosition>(DEFAULT_PAGER_POSITION)
   const [showAnimationProgress, setShowAnimationProgress] = useState(false)
+  const [swipeNavigationEnabled, setSwipeNavigationEnabled] = useState(true)
   const [toggleThumbnailsCommand, setToggleThumbnailsCommand] = useState<{
     side: 'left' | 'right'
     id: number
@@ -113,6 +115,10 @@ function App() {
       if (savedShowAnimationProgress === '1') {
         setShowAnimationProgress(true)
       }
+      const savedSwipeNavigation = localStorage.getItem(SWIPE_NAVIGATION_STORAGE_KEY)
+      if (savedSwipeNavigation === '0') {
+        setSwipeNavigationEnabled(false)
+      }
     } catch (error) {
       console.warn('[App] 读取本地配置失败', error)
     }
@@ -148,6 +154,13 @@ function App() {
       console.warn('[App] 保存动画进度显示配置失败', error)
     }
   }, [showAnimationProgress])
+  useEffect(() => {
+    try {
+      localStorage.setItem(SWIPE_NAVIGATION_STORAGE_KEY, swipeNavigationEnabled ? '1' : '0')
+    } catch (error) {
+      console.warn('[App] 保存滑动翻页配置失败', error)
+    }
+  }, [swipeNavigationEnabled])
   const loadENBXFile = async (file: File, options?: { autoReload?: boolean }) => {
     const isAutoReload = options?.autoReload === true
     let loadedMap: Record<string, string> = {}
@@ -493,6 +506,8 @@ function App() {
           onPagerPositionChange={setPagerPosition}
           showAnimationProgress={showAnimationProgress}
           onShowAnimationProgressChange={setShowAnimationProgress}
+          swipeNavigationEnabled={swipeNavigationEnabled}
+          onSwipeNavigationChange={setSwipeNavigationEnabled}
           fileInputRef={fileInputRef}
           supportsAutoReload={supportsOpenFilePicker}
         />
@@ -516,6 +531,7 @@ function App() {
           hideToolbar={hostRuntime}
           infoBarHeight={hostRuntime ? 0 : undefined}
           toggleThumbnailsCommand={toggleThumbnailsCommand}
+          swipeNavigationEnabled={swipeNavigationEnabled}
         />
       )}
     </div>
