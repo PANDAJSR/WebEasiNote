@@ -30,6 +30,10 @@ export function FloatingPager({
   animationTotalSteps
 }: FloatingPagerProps) {
   const shouldShowAnimationProgress = showAnimationProgress && animationTotalSteps > 0
+  const canPlayNextAnimation = animationCurrentStep < animationTotalSteps
+  const canPlayPrevAnimation = animationCurrentStep > 0
+  const canGoNext = !isLastSlide || canPlayNextAnimation
+  const canGoPrev = !isFirstSlide || canPlayPrevAnimation
 
   return (
     <div
@@ -47,10 +51,10 @@ export function FloatingPager({
         icon={<LeftOutlined />}
         style={{
           ...styles.floatingPagerActionButton,
-          ...(isFirstSlide ? styles.floatingPagerActionButtonDisabled : {})
+          ...(!canGoPrev ? styles.floatingPagerActionButtonDisabled : {})
         }}
         onClick={onPrev}
-        disabled={isFirstSlide}
+        disabled={!canGoPrev}
         aria-label='上一页'
       />
       <Button
@@ -76,10 +80,10 @@ export function FloatingPager({
         icon={<RightOutlined />}
         style={{
           ...styles.floatingPagerActionButton,
-          ...(isLastSlide ? styles.floatingPagerActionButtonDisabled : {})
+          ...(!canGoNext ? styles.floatingPagerActionButtonDisabled : {})
         }}
         onClick={onNext}
-        disabled={isLastSlide}
+        disabled={!canGoNext}
         aria-label='下一页'
       />
     </div>

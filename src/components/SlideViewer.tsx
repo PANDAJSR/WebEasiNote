@@ -45,6 +45,8 @@ interface SlideViewerProps {
   onEditBackgroundClick?: () => void
   textStyleCommand?: TextStyleCommand | null
   toggleThumbnailsCommand?: { side: 'left' | 'right'; id: number } | null
+  navigationCommand?: { id: number; direction: 'previous' | 'next'; requestId: string } | null
+  onNavigationResult?: (requestId: string, page: number) => void
   swipeNavigationEnabled?: boolean
 }
 
@@ -70,6 +72,8 @@ export function SlideViewer({
   onEditBackgroundClick,
   textStyleCommand = null,
   toggleThumbnailsCommand = null,
+  navigationCommand = null,
+  onNavigationResult,
   swipeNavigationEnabled = true
 }: SlideViewerProps) {
   const { containerRef, slideScaleMap } = useSlideScaleMap(slides, infoBarHeight)
@@ -134,6 +138,37 @@ export function SlideViewer({
     if (isLastSlide) return
     onSlideChange(currentIndex + 1, source)
   }
+
+  useEffect(() => {
+    if (!navigationCommand) return
+    if (navigationCommand.direction === 'next') {
+      clearStepDirection()
+      const stepped = !isEditMode && stepForwardElementAnimation()
+      if (stepped) {
+        onNavigationResult?.(navigationCommand.requestId, currentIndex + 1)
+        return
+      }
+      if (isLastSlide) {
+        onNavigationResult?.(navigationCommand.requestId, 0)
+        return
+      }
+      onSlideChange(currentIndex + 1, 'pager')
+      onNavigationResult?.(navigationCommand.requestId, currentIndex + 2)
+    } else {
+      clearStepDirection()
+      const stepped = !isEditMode && stepBackwardElementAnimation()
+      if (stepped) {
+        onNavigationResult?.(navigationCommand.requestId, currentIndex + 1)
+        return
+      }
+      if (isFirstSlide) {
+        onNavigationResult?.(navigationCommand.requestId, 0)
+        return
+      }
+      onSlideChange(currentIndex - 1, 'pager')
+      onNavigationResult?.(navigationCommand.requestId, currentIndex)
+    }
+  }, [navigationCommand?.id])
 
   const handleSlideViewportClick = (event: React.MouseEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement

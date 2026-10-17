@@ -36,6 +36,59 @@ function measureRunWidth(
   return ctx.measureText(content).width
 }
 
+interface VisualLine {
+  runs: TextElement['textLines'][number]['textRuns']
+}
+
+function sliceLineRunsByLineProperties(
+  textRuns: TextElement['textLines'][number]['textRuns'],
+  lineProperties?: Array<{ startOffset: number; length: number }>
+): VisualLine[] {
+  if (!lineProperties || lineProperties.length <= 1) {
+    return [{ runs: textRuns }]
+  }
+
+  const breakOffsets = lineProperties.slice(1).map(p => p.startOffset)
+  const visualLines: VisualLine[] = []
+  let currentRuns: TextElement['textLines'][number]['textRuns'] = []
+  let currentOffset = 0
+  let breakIndex = 0
+
+  for (const run of textRuns) {
+    let runText = run.text
+    let runStart = currentOffset
+
+    while (breakIndex < breakOffsets.length && runStart + runText.length > breakOffsets[breakIndex]) {
+      const splitAt = breakOffsets[breakIndex] - runStart
+      if (splitAt > 0) {
+        currentRuns.push({
+          ...run,
+          text: runText.slice(0, splitAt)
+        })
+      }
+      visualLines.push({ runs: currentRuns })
+      currentRuns = []
+      runText = runText.slice(splitAt)
+      runStart = breakOffsets[breakIndex]
+      breakIndex += 1
+    }
+
+    if (runText.length > 0) {
+      currentRuns.push({
+        ...run,
+        text: runText
+      })
+    }
+    currentOffset += run.text.length
+  }
+
+  if (currentRuns.length > 0 || visualLines.length === 0) {
+    visualLines.push({ runs: currentRuns })
+  }
+
+  return visualLines
+}
+
 export function TextElementRenderer({ element, scale }: { element: TextElement; scale: number }) {
   const { x, y, width, height, textLines } = element
   const enableAutoWrap = !element.ruledPaper && element.arrangingType !== 'Vertical'
@@ -52,11 +105,16 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
   const ruledTextVerticalOffset = ruledPaper ? ruledRowHeight * RULED_PAPER_TEXT_VERTICAL_OFFSET_RATIO : 0
   const getMarkerText = (lineIndex: number): string | null => {
     const line = textLines[lineIndex]
-    if (!line?.textMarker || line.textMarker === 'None') return null
+    if (!line) return null
     const style = line.textMarkerStyle
     if (style?.char) {
+      const code = style.char.charCodeAt(0)
+      if (style.fontFamily?.toLowerCase().includes('wingdings') || code === 0xF0D8 || code === 0xD8 || style.char === '') {
+        return '➤'
+      }
       return style.char
     }
+    if (!line.textMarker || line.textMarker === 'None') return null
     const counterKey = `${line.textMarker}-${style?.autoNumberType || ''}-${style?.startAt || 1}`
     if (!(counterKey in markerCounters)) {
       markerCounters[counterKey] = (style?.startAt || 1) - 1
@@ -184,10 +242,10 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
     display: 'flex',
     flexDirection: 'column',
     justifyContent,
-    border: element.borderType && element.borderType !== 'None' && (element.borderThickness || 0) > 0
-      ? `${(element.borderThickness || 0) * scale}px solid #000000`
+    border: element.borderType && element.borderType !== 'None' && (element.borderThickness || 0) > 0 && element.borderColor && element.borderColor !== 'transparent' && element.borderColor !== 'rgba(0, 0, 0, 0)'
+      ? `${(element.borderThickness || 0) * scale}px solid ${element.borderColor}`
       : undefined,
-    backgroundColor: ruledPaper?.backgroundColor,
+    backgroundColor: element.backgroundColor || ruledPaper?.backgroundColor,
     boxShadow: ruledPaper ? `0 ${(10 * scale).toFixed(2)}px ${(24 * scale).toFixed(2)}px rgba(0, 0, 0, 0.18)` : undefined,
     transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
     transformOrigin: 'center center',
@@ -281,18 +339,37 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
             {(() => {
               const markerText = getMarkerText(lineIndex)
               if (!markerText) return null
+              const markerFontSize = (line.textMarkerStyle?.fontSize || line.textRuns[0]?.fontSize || 16) * scale
+              const hasIndent = (line.indent || line.marginLeft || 0) > 0
+              if (hasIndent) {
+                return (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      left: alignmentPaddingLeft,
+                      top: 0,
+                      minWidth: (line.indent || line.marginLeft || 0) * scale,
+                      fontFamily: buildFontFamily(line.textMarkerStyle?.fontFamily),
+                      fontSize: markerFontSize,
+                      fontSynthesis: 'style weight',
+                      lineHeight: 'inherit',
+                      whiteSpace: 'pre'
+                    }}
+                  >
+                    {markerText}
+                  </span>
+                )
+              }
               return (
                 <span
                   style={{
-                    position: 'absolute',
-                    left: alignmentPaddingLeft,
-                    top: 0,
-                    minWidth: (line.indent || line.marginLeft || 0) * scale,
+                    display: 'inline-block',
+                    marginRight: `${8 * scale}px`,
                     fontFamily: buildFontFamily(line.textMarkerStyle?.fontFamily),
-                    fontSize: (line.textRuns[0]?.fontSize || 16) * scale,
+                    fontSize: markerFontSize,
                     fontSynthesis: 'style weight',
                     lineHeight: 'inherit',
-                    whiteSpace: 'pre'
+                    verticalAlign: 'baseline'
                   }}
                 >
                   {markerText}
@@ -300,51 +377,56 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
               )
             })()}
             {hasRenderableText
-              ? line.textRuns.map((run, runIndex) => (
-                (() => {
-                  const gradient = buildTextGradient(run)
-                  const opacity = (run.opacity ?? 1) * (run.gradient?.opacity ?? 1)
-                  const textStrokeStyle = getTextStrokeStyle(run, scale)
-                  const isSub = run.variants === 'Subscript'
-                  const isSuper = run.variants === 'Superscript'
-                  const fontSize = (isSub || isSuper ? run.fontSize * 0.7 : run.fontSize) * scale
-                  const textDecorations: string[] = []
-                  if (run.decoration === 'Underline') textDecorations.push('underline')
-                  if (run.strikethrough) textDecorations.push('line-through')
-
-                  return (
-                    <span
-                      key={runIndex}
-                      style={{
-                        fontFamily: buildFontFamily(run.fontFamily),
-                        fontSize,
-                        fontStyle: run.fontStyle,
-                        fontWeight: run.fontWeight,
-                        fontSynthesis: 'style weight',
-                        color: gradient ? 'transparent' : run.color,
-                        backgroundImage: gradient,
-                        backgroundClip: gradient ? 'text' : undefined,
-                        WebkitBackgroundClip: gradient ? 'text' : undefined,
-                        WebkitTextFillColor: gradient ? 'transparent' : undefined,
-                        opacity,
-                        textDecoration: textDecorations.length > 0 ? textDecorations.join(' ') : 'none',
-                        textDecorationStyle: run.underlineStyle || 'solid',
-                        textDecorationColor: run.underlineColor,
-                        textEmphasis: run.emphasisMark ? 'filled circle' : undefined,
-                        WebkitTextEmphasis: run.emphasisMark ? 'filled circle' : undefined,
-                        verticalAlign: isSub ? 'sub' : isSuper ? 'super' : undefined,
-                        textShadow: getShadowStyle(run, scale),
-                        WebkitTextStrokeWidth: textStrokeStyle.WebkitTextStrokeWidth,
-                        WebkitTextStrokeColor: textStrokeStyle.WebkitTextStrokeColor,
-                        whiteSpace: enableAutoWrap ? 'inherit' : 'pre',
-                        wordBreak: enableAutoWrap ? 'inherit' : 'keep-all'
-                      }}
-                    >
-                      {run.text}
-                    </span>
-                  )
-                })()
-              ))
+              ? (() => {
+                const visualLines = sliceLineRunsByLineProperties(line.textRuns, line.lines)
+                const isMultiLineProperty = Boolean(line.lines && line.lines.length > 1)
+                return visualLines.map((vLine, vLineIdx) => (
+                  <span
+                    key={vLineIdx}
+                    style={{
+                      display: isMultiLineProperty ? 'block' : 'inline',
+                      whiteSpace: isMultiLineProperty ? 'pre' : (enableAutoWrap ? 'pre-wrap' : 'nowrap')
+                    }}
+                  >
+                    {vLine.runs.map((run, runIndex) => (
+                      <span
+                        key={runIndex}
+                        style={{
+                          fontFamily: buildFontFamily(run.fontFamily),
+                          fontSize: (run.variants === 'Subscript' || run.variants === 'Superscript' ? run.fontSize * 0.7 : run.fontSize) * scale,
+                          fontStyle: run.fontStyle,
+                          fontWeight: run.fontWeight,
+                          fontSynthesis: 'style weight',
+                          color: buildTextGradient(run) ? 'transparent' : run.color,
+                          backgroundImage: buildTextGradient(run),
+                          backgroundClip: buildTextGradient(run) ? 'text' : undefined,
+                          WebkitBackgroundClip: buildTextGradient(run) ? 'text' : undefined,
+                          WebkitTextFillColor: buildTextGradient(run) ? 'transparent' : undefined,
+                          opacity: (run.opacity ?? 1) * (run.gradient?.opacity ?? 1),
+                          textDecoration: (() => {
+                            const decs: string[] = []
+                            if (run.decoration === 'Underline') decs.push('underline')
+                            if (run.strikethrough) decs.push('line-through')
+                            return decs.length > 0 ? decs.join(' ') : 'none'
+                          })(),
+                          textDecorationStyle: run.underlineStyle || 'solid',
+                          textDecorationColor: run.underlineColor,
+                          textEmphasis: run.emphasisMark ? 'filled circle' : undefined,
+                          WebkitTextEmphasis: run.emphasisMark ? 'filled circle' : undefined,
+                          verticalAlign: run.variants === 'Subscript' ? 'sub' : run.variants === 'Superscript' ? 'super' : undefined,
+                          textShadow: getShadowStyle(run, scale),
+                          WebkitTextStrokeWidth: getTextStrokeStyle(run, scale).WebkitTextStrokeWidth,
+                          WebkitTextStrokeColor: getTextStrokeStyle(run, scale).WebkitTextStrokeColor,
+                          whiteSpace: 'inherit',
+                          wordBreak: enableAutoWrap ? 'inherit' : 'keep-all'
+                        }}
+                      >
+                        {run.text}
+                      </span>
+                    ))}
+                  </span>
+                ))
+              })()
               : (
                 (() => {
                   const fallbackRun = line.textRuns[0]

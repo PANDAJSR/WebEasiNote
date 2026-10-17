@@ -1,3 +1,5 @@
+import type { Brush } from '../brushes'
+
 export interface TextRun {
   text: string
   fontFamily: string
@@ -42,8 +44,14 @@ export interface TextRun {
 export interface TextMarkerStyle {
   char?: string
   fontFamily?: string
+  fontSize?: number
   autoNumberType?: string
   startAt?: number
+}
+
+export interface TextLineProperty {
+  startOffset: number
+  length: number
 }
 
 export interface TextLine {
@@ -51,6 +59,7 @@ export interface TextLine {
   textAlignment: 'Left' | 'Center' | 'Right'
   textMarker?: string
   textMarkerStyle?: TextMarkerStyle
+  lines?: TextLineProperty[]
   indent?: number
   indentLevel?: number
   indentType?: string
@@ -73,6 +82,10 @@ export interface TextElement {
   rotation?: number
   borderThickness?: number
   borderType?: string
+  borderColor?: string
+  borderBrush?: Brush
+  backgroundColor?: string
+  backgroundBrush?: Brush
   arrangingType?: 'Horizontal' | 'Vertical'
   sizeToContent?: 'Manual' | 'Height' | 'WidthAndHeight'
   verticalTextAlignment?: 'Top' | 'Center' | 'Bottom'
@@ -83,3 +96,4 @@ export interface TextElement {
     opacity: number
   }
 }
+

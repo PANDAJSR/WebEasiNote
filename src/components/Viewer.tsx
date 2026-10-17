@@ -38,6 +38,8 @@ interface ViewerProps {
   /** 底部信息条预留高度；宿主内嵌全屏播放传 0，让画面铺满整屏。 */
   infoBarHeight?: number
   toggleThumbnailsCommand?: { side: 'left' | 'right'; id: number } | null
+  navigationCommand?: { id: number; direction: 'previous' | 'next'; requestId: string } | null
+  onNavigationResult?: (requestId: string, page: number) => void
   swipeNavigationEnabled?: boolean
 }
 
@@ -106,6 +108,8 @@ export function Viewer({
   infoBarHeight,
   onSaveAs,
   toggleThumbnailsCommand = null,
+  navigationCommand = null,
+  onNavigationResult,
   swipeNavigationEnabled = true
 }: ViewerProps) {
   const [isIssueModalOpen, setIssueModalOpen] = useState(false)
@@ -390,6 +394,8 @@ export function Viewer({
     onEditBackgroundClick: handleEditBackgroundClick,
     textStyleCommand,
     toggleThumbnailsCommand,
+    navigationCommand,
+    onNavigationResult,
     swipeNavigationEnabled
   }
 

@@ -3,6 +3,7 @@ import type { TextElement, TextLine, TextRun } from './types';
 import { getElementText, parseColor } from './xml-utils';
 import { getDirectChildElement, getDirectChildText } from './xml-utils'
 import { convertSeewoFontSizeToCssPx } from './font-utils'
+import { parseBrush, brushToCss } from './brushes'
 
 export interface ParsedRichText {
   arrangingType: 'Horizontal' | 'Vertical'
@@ -132,6 +133,14 @@ export function parseTextElement(textNode: Element): TextElement | null {
     
     console.log(`  [Text] ✓ 解析完成, 共 ${parsedRichText.textLines.length} 行文本`);
 
+    const borderBrushNode = getDirectChildElement(textNode, 'BorderBrush') || textNode.querySelector(':scope > BorderBrush');
+    const borderBrush = borderBrushNode ? (parseBrush(borderBrushNode) || undefined) : undefined;
+    const borderColor = borderBrush ? brushToCss(borderBrush, undefined, undefined) : undefined;
+
+    const fillNode = getDirectChildElement(textNode, 'Fill') || textNode.querySelector(':scope > Fill');
+    const backgroundBrush = fillNode ? (parseBrush(fillNode) || undefined) : undefined;
+    const backgroundColor = backgroundBrush ? brushToCss(backgroundBrush, undefined, undefined) : undefined;
+
     return {
       type: 'text',
       id,
@@ -142,6 +151,10 @@ export function parseTextElement(textNode: Element): TextElement | null {
       rotation,
       borderThickness,
       borderType,
+      borderColor,
+      borderBrush,
+      backgroundColor,
+      backgroundBrush,
       arrangingType: parsedRichText.arrangingType,
       sizeToContent: parsedRichText.sizeToContent,
       verticalTextAlignment: parsedRichText.verticalTextAlignment,
@@ -172,14 +185,33 @@ function parseTextLine(lineNode: Element): TextLine | null {
     const spaceAfter = parseFloat(getElementText(lineNode, 'SpaceAfter') || '0');
 
     const textMarkerStyleNode = lineNode.querySelector('TextMarkerStyle');
+    let markerFontSize: number | undefined;
+    if (textMarkerStyleNode) {
+      const rawMarkerFontSize = parseFloat(getElementText(textMarkerStyleNode, 'FontSize') || 'NaN');
+      if (Number.isFinite(rawMarkerFontSize) && rawMarkerFontSize > 0) {
+        markerFontSize = convertSeewoFontSizeToCssPx(rawMarkerFontSize);
+      }
+    }
     const textMarkerStyle = textMarkerStyleNode
       ? {
           char: getElementText(textMarkerStyleNode, 'Char') || undefined,
           fontFamily: getElementText(textMarkerStyleNode, 'Source') || undefined,
+          fontSize: markerFontSize,
           autoNumberType: getElementText(textMarkerStyleNode, 'AutoNumberType') || undefined,
           startAt: parseInt(getElementText(textMarkerStyleNode, 'StartAt') || '1', 10),
         }
       : undefined;
+
+    const linesNode = lineNode.querySelector('Lines');
+    const lines: Array<{ startOffset: number; length: number }> = [];
+    if (linesNode) {
+      const propNodes = linesNode.querySelectorAll('LineProperty');
+      propNodes.forEach(pn => {
+        const startOffset = parseInt(getElementText(pn, 'StartOffset') || '0', 10);
+        const length = parseInt(getElementText(pn, 'Length') || '0', 10);
+        lines.push({ startOffset, length });
+      });
+    }
 
     const textRuns: TextRun[] = [];
 
@@ -208,6 +240,7 @@ function parseTextLine(lineNode: Element): TextLine | null {
       textAlignment,
       textMarker,
       textMarkerStyle,
+      lines: lines.length > 0 ? lines : undefined,
       indent,
       indentLevel,
       indentType,

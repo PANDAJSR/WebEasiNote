@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import JSZip from 'jszip'
 import {
   parseENBXFile,
@@ -59,11 +59,18 @@ function App() {
     side: 'left' | 'right'
     id: number
   } | null>(null)
+  const [navigationCommand, setNavigationCommand] = useState<{
+    id: number
+    direction: 'previous' | 'next'
+    requestId: string
+  } | null>(null)
   const [sourceEnbxFile, setSourceEnbxFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const autoReloadingRef = useRef(false)
   const currentSlideIndexRef = useRef(0)
   const slideCountRef = useRef(0)
+  const viewModeRef = useRef(viewMode)
+  viewModeRef.current = viewMode
   const loadENBXUrlRef = useRef<(url: string, fileName: string) => Promise<boolean>>(async () => false)
   const lastOpenUrlRef = useRef('')
   const pickerWindow = window as PickerWindow
@@ -270,16 +277,16 @@ function App() {
 
         if (message.type === 'enbx:navigate') {
           const requestId = typeof message.requestId === 'string' ? message.requestId : ''
-          const direction = message.direction === 'previous' ? -1 : 1
-          const nextIndex = currentSlideIndexRef.current + direction
-          const canNavigate = nextIndex >= 0 && nextIndex < slideCountRef.current
-          const page = canNavigate ? nextIndex + 1 : 0
-          if (canNavigate) {
-            setSlideChangeSource('pager')
-            setCurrentSlideIndex(nextIndex)
-            postToEnbxHost({ type: 'enbx:page-changed', page })
+          const direction = message.direction === 'previous' ? 'previous' : 'next'
+          if (viewModeRef.current === 'viewer') {
+            setNavigationCommand({
+              id: Date.now() + Math.random(),
+              direction,
+              requestId
+            })
+          } else {
+            postToEnbxHost({ type: 'enbx:navigation-complete', requestId, page: 0 })
           }
-          postToEnbxHost({ type: 'enbx:navigation-complete', requestId, page })
           return
         }
 
@@ -501,6 +508,14 @@ function App() {
       window.clearInterval(timerId)
     }
   }, [autoReloadEnabled, watchedENBX, viewMode])
+
+  const handleNavigationResult = useCallback((requestId: string, page: number) => {
+    if (page > 0) {
+      postToEnbxHost({ type: 'enbx:page-changed', page })
+    }
+    postToEnbxHost({ type: 'enbx:navigation-complete', requestId, page })
+  }, [])
+
   return (
     <div style={styles.container}>
       {viewMode === 'welcome' && (
@@ -541,6 +556,8 @@ function App() {
           hideToolbar={hostRuntime}
           infoBarHeight={hostRuntime ? 0 : undefined}
           toggleThumbnailsCommand={toggleThumbnailsCommand}
+          navigationCommand={navigationCommand}
+          onNavigationResult={handleNavigationResult}
           swipeNavigationEnabled={swipeNavigationEnabled}
         />
       )}
@@ -548,3 +565,4 @@ function App() {
   )
 }
 export default App
+

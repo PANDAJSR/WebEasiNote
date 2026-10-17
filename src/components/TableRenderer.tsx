@@ -44,7 +44,8 @@ function renderCellContent(element: TableElement, rowIndex: number, cellIndex: n
           style={{
             lineHeight: '1.2',
             marginBottom: lineIndex === cell.textLines.length - 1 ? 0 : 2 * scale,
-            textAlign: getTextAlign(line.textAlignment)
+            textAlign: getTextAlign(line.textAlignment),
+            whiteSpace: 'nowrap'
           }}
         >
           {line.textRuns.map((run, runIndex) => (
@@ -57,7 +58,7 @@ function renderCellContent(element: TableElement, rowIndex: number, cellIndex: n
                 fontWeight: run.fontWeight,
                 color: getRunColor(run),
                 textDecoration: run.decoration === 'Underline' ? 'underline' : 'none',
-                whiteSpace: 'pre-wrap'
+                whiteSpace: 'nowrap'
               }}
             >
               {run.text}
@@ -75,8 +76,9 @@ function renderCellContent(element: TableElement, rowIndex: number, cellIndex: n
 export function TableRenderer({ element, scale }: TableRendererProps) {
   const totalColumnWidth = element.columnWidths.reduce((sum, width) => sum + width, 0)
 
-  const hPadding = Math.max(2, (element.cellHPadding || 14) * scale)
-  const vPadding = Math.max(2, (element.cellVPadding || 10) * scale)
+  // 希沃表格内边距为全量属性，CSS 左右分别填充需除以 4 或使用上限保护避免挤压单元格文本导致折行
+  const hPadding = Math.min(8 * scale, Math.max(2, ((element.cellHPadding || 14) / 4) * scale))
+  const vPadding = Math.min(8 * scale, Math.max(2, ((element.cellVPadding || 10) / 4) * scale))
 
   return (
     <div
@@ -85,10 +87,11 @@ export function TableRenderer({ element, scale }: TableRendererProps) {
         left: element.x * scale,
         top: element.y * scale,
         width: element.width * scale,
+        minHeight: element.height * scale,
         height: element.height * scale,
         transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
         transformOrigin: 'center center',
-        overflow: 'hidden'
+        overflow: 'visible'
       }}
     >
       <table
@@ -137,7 +140,7 @@ export function TableRenderer({ element, scale }: TableRendererProps) {
                         padding: `${vPadding}px ${hPadding}px`,
                         backgroundColor: cellBg,
                         verticalAlign: vertAlign,
-                        overflowWrap: 'break-word'
+                        whiteSpace: 'nowrap'
                       }}
                     >
                       {renderCellContent(element, rowIndex, cellIndex, scale)}
