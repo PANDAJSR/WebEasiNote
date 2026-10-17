@@ -291,6 +291,16 @@ function App() {
           }))
           return
         }
+
+        if (message.type === 'enbx:update-settings') {
+          if (typeof message.clickToNextEnabled === 'boolean') {
+            setClickToNextEnabled(message.clickToNextEnabled)
+          }
+          if (typeof message.swipeNavigationEnabled === 'boolean') {
+            setSwipeNavigationEnabled(message.swipeNavigationEnabled)
+          }
+          return
+        }
       } catch (error) {
         postToEnbxHost({
           type: 'enbx:error',
