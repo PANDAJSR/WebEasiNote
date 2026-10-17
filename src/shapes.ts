@@ -66,6 +66,15 @@ export function resolveStrokeDashArray(
   }
 }
 
+export interface ShapePathItem {
+  path: string
+  isFilled: boolean
+  isStroke: boolean
+  fillRule?: 'nonzero' | 'evenodd'
+  width?: number
+  height?: number
+}
+
 export interface ShapeElement {
   type: 'shape'
   id: string
@@ -81,6 +90,7 @@ export interface ShapeElement {
   foregroundBrush?: Brush
   path: string
   fillRule?: 'nonzero' | 'evenodd'
+  shapePaths?: ShapePathItem[]
   geometryType: string
   adjusts?: number[]
   inlineText?: TextLine[]
@@ -125,21 +135,15 @@ export function parseShapeElement(shapeNode: Element): ShapeElement | null {
       ? Math.max(0, Math.min(1, parsedOpacity))
       : 1
 
-    // 解析背景色与画刷体系
+    // 解析背景色与画刷体系（保留透明背景）
     const backgroundNode = shapeNode.querySelector('Background')
     const backgroundBrush = parseBrush(backgroundNode)
-    let backgroundColor = brushToCss(backgroundBrush, undefined, '#ffffff')
-    if (backgroundColor === 'transparent' || !backgroundColor) {
-      backgroundColor = '#ffffff'
-    }
+    let backgroundColor = brushToCss(backgroundBrush, undefined, 'transparent')
 
     // 解析前景色与画刷体系
     const foregroundNode = shapeNode.querySelector('Foreground')
     const foregroundBrush = parseBrush(foregroundNode)
     let foregroundColor = brushToCss(foregroundBrush, undefined, '#000000')
-    if (foregroundColor === 'transparent' || !foregroundColor) {
-      foregroundColor = '#000000'
-    }
 
     // 解析几何类型与调节参数
     let geometryType = 'Rectangle'
@@ -199,6 +203,31 @@ export function parseShapeElement(shapeNode: Element): ShapeElement | null {
     }
     if (!fillRule) {
       fillRule = normalizedPathResult.fillRule
+    }
+
+    // 解析多路径描述 ShapePaths（如果存在，用于高精度线框与分层填充/描边）
+    const shapePaths: ShapePathItem[] = []
+    const shapePathsNode = shapeNode.querySelector('ShapePaths')
+    if (shapePathsNode) {
+      Array.from(shapePathsNode.children).forEach(spNode => {
+        if (spNode.tagName !== 'ShapePath') return
+        const spPathRaw = getDirectChildText(spNode, 'Path') || ''
+        const { path: normSpPath, fillRule: spFillRule } = normalizeSeewoPath(spPathRaw)
+        if (!normSpPath) return
+        const isFilled = (getDirectChildText(spNode, 'IsFilled') || '').toLowerCase() === 'true'
+        const isStroke = (getDirectChildText(spNode, 'IsStroke') || '').toLowerCase() === 'true'
+        const fillModeRaw = getDirectChildText(spNode, 'FillMode')
+        const widthVal = parseFloat(getDirectChildText(spNode, 'Width') || '')
+        const heightVal = parseFloat(getDirectChildText(spNode, 'Height') || '')
+        shapePaths.push({
+          path: normSpPath,
+          isFilled,
+          isStroke,
+          fillRule: normalizeFillRule(fillModeRaw) || spFillRule,
+          width: Number.isFinite(widthVal) && widthVal > 0 ? widthVal : undefined,
+          height: Number.isFinite(heightVal) && heightVal > 0 ? heightVal : undefined
+        })
+      })
     }
 
     // 解析边框粗细、线型、箭头
@@ -316,6 +345,7 @@ export function parseShapeElement(shapeNode: Element): ShapeElement | null {
       foregroundBrush: foregroundBrush || undefined,
       path,
       fillRule,
+      shapePaths: shapePaths.length > 0 ? shapePaths : undefined,
       geometryType,
       adjusts,
       inlineText,

@@ -56,7 +56,7 @@ export interface ElementAnimation {
   sourceElementId: string
 }
 
-export type SlideElement =
+export type SlideElement = (
   | TextElement
   | ShapeElement
   | PictureElement
@@ -69,6 +69,10 @@ export type SlideElement =
   | GeometryElement
   | MathFormulaElement
   | UnknownElement
+) & {
+  groupId?: string
+  groupAncestorIds?: string[]
+}
 
 export interface SlideData {
   id: string

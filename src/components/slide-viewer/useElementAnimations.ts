@@ -67,7 +67,25 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
   const autoStartedSlideIdsRef = useRef(new Set<string>())
   const timerIdsRef = useRef<number[]>([])
   const lastStepChangeDirectionRef = useRef<'forward' | 'backward' | 'none'>('none')
-  const elementIdSet = useMemo(() => new Set(slide.elements.map(element => element.id)), [slide.elements])
+  const elementIdSet = useMemo(() => {
+    const ids = new Set<string>()
+    slide.elements.forEach(element => {
+      ids.add(element.id)
+      if (element.groupId) ids.add(element.groupId)
+      element.groupAncestorIds?.forEach(gid => ids.add(gid))
+    })
+    return ids
+  }, [slide.elements])
+
+  const resolveTargetElementIds = useCallback((targetId: string): string[] => {
+    const matching: string[] = []
+    slide.elements.forEach(element => {
+      if (element.id === targetId || element.groupId === targetId || element.groupAncestorIds?.includes(targetId)) {
+        matching.push(element.id)
+      }
+    })
+    return matching.length > 0 ? matching : [targetId]
+  }, [slide.elements])
 
   const logElementAnimationDebug = useCallback((message: string, payload?: Record<string, unknown>) => {
     if (!ENABLE_ELEMENT_ANIMATION_DEBUG_LOG) return
@@ -109,10 +127,13 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
   const currentTriggeredAnimationByElementId = useMemo(() => {
     const animationByElementId = new Map<string, TimelineAnimation>()
     currentTriggeredAnimations.forEach(animation => {
-      animationByElementId.set(animation.targetId, animation)
+      const targetIds = resolveTargetElementIds(animation.targetId)
+      targetIds.forEach(id => {
+        animationByElementId.set(id, animation)
+      })
     })
     return animationByElementId
-  }, [currentTriggeredAnimations])
+  }, [currentTriggeredAnimations, resolveTargetElementIds])
   const executedAnimations = useMemo(() => {
     if (currentExecutedCount <= 0) return []
     if (skippedGroupIndexSet.size === 0) {
@@ -136,40 +157,56 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     const firstAppearanceAnimationByElement = new Map<string, TimelineAnimation>()
     const appearedElementIds = new Set<string>()
     timelineAnimations.forEach(animation => {
-      if (
-        !firstAppearanceAnimationByElement.has(animation.targetId)
-        && isAppearanceAnimation(animation.type, animation.category)
-      ) {
-        firstAppearanceAnimationByElement.set(animation.targetId, animation)
+      if (isAppearanceAnimation(animation.type, animation.category)) {
+        const targetIds = resolveTargetElementIds(animation.targetId)
+        targetIds.forEach(id => {
+          if (!firstAppearanceAnimationByElement.has(id)) {
+            firstAppearanceAnimationByElement.set(id, animation)
+          }
+        })
       }
     })
     executedAnimations.forEach(animation => {
       if (isAppearanceAnimation(animation.type, animation.category)) {
-        appearedElementIds.add(animation.targetId)
+        const targetIds = resolveTargetElementIds(animation.targetId)
+        targetIds.forEach(id => {
+          appearedElementIds.add(id)
+        })
       }
     })
     firstAppearanceAnimationByElement.forEach((_, elementId) => {
       result[elementId] = appearedElementIds.has(elementId) || stickyVisibleElementIdSet.has(elementId)
     })
     return result
-  }, [timelineAnimations, executedAnimations, stickyVisibleElementIdSet])
+  }, [timelineAnimations, executedAnimations, stickyVisibleElementIdSet, resolveTargetElementIds])
   const elementDisplayStyles = useMemo(() => {
-    const allAnimatedElementIds = new Set(timelineAnimations.map(animation => animation.targetId))
-    if (allAnimatedElementIds.size === 0) return {}
+    const allAnimatedElementIds = new Set<string>()
     const firstAppearanceAnimationByElement = new Map<string, TimelineAnimation>()
     const latestAnimationByElement = new Map<string, TimelineAnimation>()
     const shouldInstantApply = lastStepChangeDirectionRef.current === 'backward'
+
     timelineAnimations.forEach(animation => {
-      if (
-        !firstAppearanceAnimationByElement.has(animation.targetId)
-        && isAppearanceAnimation(animation.type, animation.category)
-      ) {
-        firstAppearanceAnimationByElement.set(animation.targetId, animation)
-      }
+      const targetIds = resolveTargetElementIds(animation.targetId)
+      targetIds.forEach(id => {
+        allAnimatedElementIds.add(id)
+        if (
+          !firstAppearanceAnimationByElement.has(id)
+          && isAppearanceAnimation(animation.type, animation.category)
+        ) {
+          firstAppearanceAnimationByElement.set(id, animation)
+        }
+      })
     })
+
+    if (allAnimatedElementIds.size === 0) return {}
+
     executedAnimations.forEach(animation => {
-      latestAnimationByElement.set(animation.targetId, animation)
+      const targetIds = resolveTargetElementIds(animation.targetId)
+      targetIds.forEach(id => {
+        latestAnimationByElement.set(id, animation)
+      })
     })
+
     const result: Record<string, CSSProperties> = {}
     allAnimatedElementIds.forEach(elementId => {
       const firstAppearanceAnimation = firstAppearanceAnimationByElement.get(elementId)
@@ -178,7 +215,10 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
       let opacity = startHidden ? 0 : 1
       let durationMs = 0
       if (latestAnimation) {
-        durationMs = Math.max(0, latestAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS)
+        const rawDur = typeof latestAnimation.durationMs === 'number'
+          ? latestAnimation.durationMs
+          : DEFAULT_ELEMENT_ANIMATION_DURATION_MS
+        durationMs = rawDur <= 10 ? 0 : rawDur
         if (isAppearanceAnimation(latestAnimation.type, latestAnimation.category)) {
           opacity = 1
         } else if (isDisappearanceAnimation(latestAnimation.type, latestAnimation.category)) {
@@ -292,7 +332,7 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
       result[elementId] = style
     })
     return result
-  }, [timelineAnimations, executedAnimations, currentTriggeredAnimationByElementId, stickyVisibleElementIdSet])
+  }, [timelineAnimations, executedAnimations, currentTriggeredAnimationByElementId, stickyVisibleElementIdSet, resolveTargetElementIds])
   const playClickAnimationGroup = useCallback((groupIndex: number, options: PlayClickAnimationGroupOptions = {}) => {
     const shouldAdvanceStep = options.advanceStep !== false
     const group = clickAnimationGroups[groupIndex]

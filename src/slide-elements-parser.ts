@@ -231,7 +231,9 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
             ...child,
             x: newX,
             y: newY,
-            rotation: newRotation
+            rotation: newRotation,
+            groupId: child.groupId || elementId,
+            groupAncestorIds: [elementId, ...(child.groupAncestorIds || [])]
           }
         })
 

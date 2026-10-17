@@ -1,6 +1,15 @@
 import type { Brush } from '../brushes'
 import type { TextLine } from './text'
 
+export interface ShapePathItem {
+  path: string
+  isFilled: boolean
+  isStroke: boolean
+  fillRule?: 'nonzero' | 'evenodd'
+  width?: number
+  height?: number
+}
+
 export interface ShapeElement {
   type: 'shape'
   id: string
@@ -17,6 +26,7 @@ export interface ShapeElement {
   foregroundBrush?: Brush
   path: string
   fillRule?: 'nonzero' | 'evenodd'
+  shapePaths?: ShapePathItem[]
   geometryType: string
   adjusts?: number[]
   inlineText?: TextLine[]

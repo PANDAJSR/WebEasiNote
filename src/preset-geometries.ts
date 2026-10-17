@@ -271,11 +271,21 @@ export function generatePresetGeometryPath(
       return `M 0 0 H ${w} L ${w * 0.8} ${h / 2} L ${w} ${h} H 0 Z`
     }
 
-    case 'brace': {
-      // 大括号
+    case 'brace':
+    case 'leftbrace':
+    case 'custom_pptx_leftbrace': {
+      // 大括号 (左大括号，尖端朝左，开口向右包围右侧文字)
       const halfH = h / 2
       const tipW = Math.min(w * 0.5, 20)
       return `M ${w} 0 Q ${w - tipW} 0 ${w - tipW} ${halfH * 0.5} Q ${w - tipW} ${halfH} 0 ${halfH} Q ${w - tipW} ${halfH} ${w - tipW} ${halfH * 1.5} Q ${w - tipW} ${h} ${w} ${h}`
+    }
+
+    case 'rightbrace':
+    case 'custom_pptx_rightbrace': {
+      // 右大括号，尖端朝右，开口向左
+      const halfH = h / 2
+      const tipW = Math.min(w * 0.5, 20)
+      return `M 0 0 Q ${tipW} 0 ${tipW} ${halfH * 0.5} Q ${tipW} ${halfH} ${w} ${halfH} Q ${tipW} ${halfH} ${tipW} ${halfH * 1.5} Q ${tipW} ${h} 0 ${h}`
     }
 
     case 'bracket': {

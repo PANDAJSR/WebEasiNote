@@ -360,6 +360,9 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
                   </span>
                 )
               }
+              if (hasRenderableText) {
+                return null
+              }
               return (
                 <span
                   style={{
@@ -380,6 +383,11 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
               ? (() => {
                 const visualLines = sliceLineRunsByLineProperties(line.textRuns, line.lines)
                 const isMultiLineProperty = Boolean(line.lines && line.lines.length > 1)
+                const markerText = getMarkerText(lineIndex)
+                const hasIndent = (line.indent || line.marginLeft || 0) > 0
+                const shouldRenderMarkerInFirstLine = Boolean(markerText && !hasIndent)
+                const markerFontSize = (line.textMarkerStyle?.fontSize || line.textRuns[0]?.fontSize || 16) * scale
+
                 return visualLines.map((vLine, vLineIdx) => (
                   <span
                     key={vLineIdx}
@@ -388,6 +396,21 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
                       whiteSpace: isMultiLineProperty ? 'pre' : (enableAutoWrap ? 'pre-wrap' : 'nowrap')
                     }}
                   >
+                    {vLineIdx === 0 && shouldRenderMarkerInFirstLine && (
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          marginRight: `${8 * scale}px`,
+                          fontFamily: buildFontFamily(line.textMarkerStyle?.fontFamily),
+                          fontSize: markerFontSize,
+                          fontSynthesis: 'style weight',
+                          lineHeight: 'inherit',
+                          verticalAlign: 'baseline'
+                        }}
+                      >
+                        {markerText}
+                      </span>
+                    )}
                     {vLine.runs.map((run, runIndex) => (
                       <span
                         key={runIndex}

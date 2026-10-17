@@ -28,12 +28,25 @@ export function ShapeRenderer({ element, scale }: ShapeRendererProps) {
   const { x, y, width, height, rotation = 0, opacity = 1, backgroundColor, backgroundBrush, path, fillRule, inlineText, borderWidth, borderColor, shadow, reflection } = element
   const extraHorizontalPadding = 10 * scale
   const markerCounters: Record<string, number> = {}
+  const hasShapePaths = Boolean(element.shapePaths && element.shapePaths.length > 0)
+  let refWidth = width
+  let refHeight = height
+  if (hasShapePaths) {
+    const firstWithDims = element.shapePaths?.find(sp => sp.width && sp.height)
+    if (firstWithDims) {
+      refWidth = firstWithDims.width!
+      refHeight = firstWithDims.height!
+    }
+  }
+
   const pathBounds = estimatePathBounds(path)
   const resolvedFillRule = fillRule || inferFillRule(path) || 'nonzero'
   const basePathMinX = pathBounds ? pathBounds.minX : 0
   const basePathMinY = pathBounds ? pathBounds.minY : 0
-  const basePathWidth = pathBounds ? Math.max(1, pathBounds.maxX - pathBounds.minX) : Math.max(1, width)
-  const basePathHeight = pathBounds ? Math.max(1, pathBounds.maxY - pathBounds.minY) : Math.max(1, height)
+  const boundsW = pathBounds ? Math.abs(pathBounds.maxX - pathBounds.minX) : 0
+  const boundsH = pathBounds ? Math.abs(pathBounds.maxY - pathBounds.minY) : 0
+  const basePathWidth = boundsW > 0.000001 ? boundsW : (refWidth > 0 ? refWidth : Math.max(1, width))
+  const basePathHeight = boundsH > 0.000001 ? boundsH : (refHeight > 0 ? refHeight : Math.max(1, height))
   const renderWidth = Math.max(1, width)
   const renderHeight = Math.max(1, height)
   const pathScaleX = renderWidth / basePathWidth
@@ -139,16 +152,37 @@ export function ShapeRenderer({ element, scale }: ShapeRendererProps) {
         </defs>
       )}
       <g transform={`translate(${visualPadding + pathTranslateX} ${visualPadding + pathTranslateY}) scale(${pathScaleX} ${pathScaleY})`}>
-        <path
-          d={path}
-          fill={resolvedFill}
-          fillRule={resolvedFillRule}
-          stroke={borderColor}
-          strokeWidth={borderWidth}
-          strokeDasharray={element.strokeDashArray}
-          strokeLinecap={element.dashStyle ? 'round' : undefined}
-          vectorEffect='non-scaling-stroke'
-        />
+        {hasShapePaths ? (
+          element.shapePaths!.map((sp, spIdx) => {
+            const isFilled = sp.isFilled && resolvedFill !== 'transparent' && resolvedFill !== 'none'
+            const isStroke = sp.isStroke && Boolean(borderWidth && borderWidth > 0)
+            if (!isFilled && !isStroke) return null
+            return (
+              <path
+                key={spIdx}
+                d={sp.path}
+                fill={isFilled ? resolvedFill : 'none'}
+                fillRule={sp.fillRule || resolvedFillRule}
+                stroke={isStroke ? borderColor : 'none'}
+                strokeWidth={isStroke ? (borderWidth || 1) : 0}
+                strokeDasharray={element.strokeDashArray}
+                strokeLinecap={element.dashStyle ? 'round' : undefined}
+                vectorEffect='non-scaling-stroke'
+              />
+            )
+          })
+        ) : (
+          <path
+            d={path}
+            fill={resolvedFill}
+            fillRule={resolvedFillRule}
+            stroke={borderColor}
+            strokeWidth={borderWidth}
+            strokeDasharray={element.strokeDashArray}
+            strokeLinecap={element.dashStyle ? 'round' : undefined}
+            vectorEffect='non-scaling-stroke'
+          />
+        )}
       </g>
     </svg>
   )
