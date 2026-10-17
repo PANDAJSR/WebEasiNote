@@ -53,6 +53,10 @@ function App() {
   const [clickToNextEnabled, setClickToNextEnabled] = useState(true)
   const [pagerPosition, setPagerPosition] = useState<PagerPosition>(DEFAULT_PAGER_POSITION)
   const [showAnimationProgress, setShowAnimationProgress] = useState(false)
+  const [toggleThumbnailsCommand, setToggleThumbnailsCommand] = useState<{
+    side: 'left' | 'right'
+    id: number
+  } | null>(null)
   const [sourceEnbxFile, setSourceEnbxFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const autoReloadingRef = useRef(false)
@@ -263,6 +267,16 @@ function App() {
             postToEnbxHost({ type: 'enbx:page-changed', page })
           }
           postToEnbxHost({ type: 'enbx:navigation-complete', requestId, page })
+          return
+        }
+
+        if (message.type === 'enbx:toggle-thumbnails') {
+          const side = message.side === 'left' ? 'left' : 'right'
+          setToggleThumbnailsCommand(prev => ({
+            side,
+            id: (prev?.id ?? 0) + 1
+          }))
+          return
         }
       } catch (error) {
         postToEnbxHost({
@@ -501,6 +515,7 @@ function App() {
           hidePager={hostRuntime}
           hideToolbar={hostRuntime}
           infoBarHeight={hostRuntime ? 0 : undefined}
+          toggleThumbnailsCommand={toggleThumbnailsCommand}
         />
       )}
     </div>

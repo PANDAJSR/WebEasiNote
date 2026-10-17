@@ -37,6 +37,7 @@ interface ViewerProps {
   hideToolbar?: boolean
   /** 底部信息条预留高度；宿主内嵌全屏播放传 0，让画面铺满整屏。 */
   infoBarHeight?: number
+  toggleThumbnailsCommand?: { side: 'left' | 'right'; id: number } | null
 }
 
 function collectMissingFontIssues(slides: SlideData[]): SlideIssue[] {
@@ -102,7 +103,8 @@ export function Viewer({
   hidePager = false,
   hideToolbar = false,
   infoBarHeight,
-  onSaveAs
+  onSaveAs,
+  toggleThumbnailsCommand = null
 }: ViewerProps) {
   const [isIssueModalOpen, setIssueModalOpen] = useState(false)
   const [issueFilter, setIssueFilter] = useState<IssueFilter>('all')
@@ -384,7 +386,8 @@ export function Viewer({
     onEditElementTextUpdate: handleEditElementTextUpdate,
     onEditTextStyleStateChange: setLiveTextStyleState,
     onEditBackgroundClick: handleEditBackgroundClick,
-    textStyleCommand
+    textStyleCommand,
+    toggleThumbnailsCommand
   }
 
   return (

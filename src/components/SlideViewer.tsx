@@ -54,6 +54,7 @@ interface SlideViewerProps {
   onEditTextStyleStateChange?: (state: TextStyleState | null) => void
   onEditBackgroundClick?: () => void
   textStyleCommand?: TextStyleCommand | null
+  toggleThumbnailsCommand?: { side: 'left' | 'right'; id: number } | null
 }
 export function SlideViewer({
   slide,
@@ -75,7 +76,8 @@ export function SlideViewer({
   onEditElementTextUpdate,
   onEditTextStyleStateChange,
   onEditBackgroundClick,
-  textStyleCommand = null
+  textStyleCommand = null,
+  toggleThumbnailsCommand = null
 }: SlideViewerProps) {
   const { containerRef, slideScaleMap } = useSlideScaleMap(slides, infoBarHeight)
   const editWheelGuardRef = useRef<HTMLDivElement | null>(null)
@@ -102,6 +104,11 @@ export function SlideViewer({
     handleToggleSlidePanel,
     handleCloseSlidePanel
   } = useSlidePanel()
+
+  useEffect(() => {
+    if (!toggleThumbnailsCommand) return
+    handleToggleSlidePanel(toggleThumbnailsCommand.side)
+  }, [toggleThumbnailsCommand?.id])
   const isFirstSlide = currentIndex <= 0
   const isLastSlide = currentIndex >= slides.length - 1
   const fitScale = slideScaleMap[slide.id] || 1
@@ -150,7 +157,12 @@ export function SlideViewer({
     if (target.closest('[data-slide-viewport="true"]')) return
     onEditBackgroundClick?.()
   }
-  useSlideKeyboardNavigation({ handlePrevSlide, handleNextSlide })
+  useSlideKeyboardNavigation({
+    handlePrevSlide,
+    handleNextSlide,
+    isSlidePanelActive,
+    handleCloseSlidePanel
+  })
   const pagerSides: Array<'left' | 'right'> = pagerPosition === 'both'
     ? ['left', 'right']
     : [pagerPosition]
@@ -418,7 +430,10 @@ export function SlideViewer({
                 index={index}
                 isActive={index === currentIndex}
                 resourceMap={resourceMap}
-                onSlideChange={onSlideChange}
+                onSlideChange={(i, s) => {
+                  onSlideChange(i, s || 'thumbnail')
+                  handleCloseSlidePanel()
+                }}
               />
             ))}
           </div>

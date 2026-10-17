@@ -4,6 +4,8 @@ import type { SlideChangeSource } from '../Viewer'
 interface UseSlideKeyboardNavigationParams {
   handlePrevSlide: (source?: SlideChangeSource) => void
   handleNextSlide: (source?: SlideChangeSource) => void
+  isSlidePanelActive?: boolean
+  handleCloseSlidePanel?: () => void
 }
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -19,11 +21,19 @@ function isEditableTarget(target: EventTarget | null): boolean {
 
 export function useSlideKeyboardNavigation({
   handlePrevSlide,
-  handleNextSlide
+  handleNextSlide,
+  isSlidePanelActive = false,
+  handleCloseSlidePanel
 }: UseSlideKeyboardNavigationParams) {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isEditableTarget(event.target)) return
+      if (event.key === 'Escape' && isSlidePanelActive) {
+        event.preventDefault()
+        event.stopImmediatePropagation()
+        handleCloseSlidePanel?.()
+        return
+      }
       if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
         event.preventDefault()
         handlePrevSlide('keyboard')
@@ -35,7 +45,7 @@ export function useSlideKeyboardNavigation({
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handlePrevSlide, handleNextSlide])
+    window.addEventListener('keydown', handleKeyDown, true)
+    return () => window.removeEventListener('keydown', handleKeyDown, true)
+  }, [handlePrevSlide, handleNextSlide, isSlidePanelActive, handleCloseSlidePanel])
 }
