@@ -1,6 +1,9 @@
-import type { TextLine } from './types';
-import { getElementText, getDirectChildElement, getDirectChildText, parseColor } from './xml-utils';
+import type { TextLine } from './types'
+import { getElementText, getDirectChildElement, getDirectChildText, parseColor } from './xml-utils'
 import { parseTextLineForShape } from './shape-inline-text'
+import { parseBrush, brushToCss } from './brushes'
+import type { Brush } from './brushes'
+import { generatePresetGeometryPath } from './preset-geometries'
 
 interface NormalizedPathResult {
   path: string
@@ -31,38 +34,77 @@ function normalizeSeewoPath(rawPath: string): NormalizedPathResult {
   return { path: normalizedPath, fillRule }
 }
 
+export function resolveStrokeDashArray(
+  dashStyle?: string | number | null,
+  strokeWidth = 1
+): string | undefined {
+  if (!dashStyle) return undefined
+  const norm = String(dashStyle).trim().toLowerCase()
+  const sw = Math.max(1, strokeWidth)
+  switch (norm) {
+    case '1':
+    case 'dash':
+      return `${sw * 4} ${sw * 2}`
+    case '2':
+    case 'dot':
+      return `${sw} ${sw * 2}`
+    case '3':
+    case 'dashdot':
+      return `${sw * 4} ${sw * 2} ${sw} ${sw * 2}`
+    case '4':
+    case 'dashdotdot':
+      return `${sw * 4} ${sw * 2} ${sw} ${sw * 2} ${sw} ${sw * 2}`
+    case '0':
+    case 'solid':
+    case 'none':
+      return undefined
+    default:
+      if (norm.includes(' ') || norm.includes(',')) {
+        return norm.replace(/,/g, ' ')
+      }
+      return undefined
+  }
+}
 
 export interface ShapeElement {
-  type: 'shape';
-  id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  rotation?: number;
-  opacity?: number;
-  backgroundColor: string;
-  foregroundColor: string;
-  path: string;
-  fillRule?: 'nonzero' | 'evenodd';
-  geometryType: string;
-  inlineText?: TextLine[];
-  borderWidth?: number;
-  borderColor?: string;
-  lineType?: string;
+  type: 'shape'
+  id: string
+  x: number
+  y: number
+  width: number
+  height: number
+  rotation?: number
+  opacity?: number
+  backgroundColor: string
+  backgroundBrush?: Brush
+  foregroundColor: string
+  foregroundBrush?: Brush
+  path: string
+  fillRule?: 'nonzero' | 'evenodd'
+  geometryType: string
+  adjusts?: number[]
+  inlineText?: TextLine[]
+  borderWidth?: number
+  borderColor?: string
+  lineType?: string
+  dashStyle?: string
+  strokeDashArray?: string
+  arrowType?: string
+  flipHorizontal?: boolean
+  flipVertical?: boolean
   shadow?: {
-    offset: number;
-    opacity: number;
-    blurRadius: number;
-    angle: number;
-    color: string;
-  };
+    offset: number
+    opacity: number
+    blurRadius: number
+    angle: number
+    color: string
+  }
   reflection?: {
-    offsetY: number;
-    opacity: number;
-    gradientStart: number;
-    gradientEnd: number;
-  };
+    offsetY: number
+    opacity: number
+    gradientStart: number
+    gradientEnd: number
+  }
 }
 
 /**
@@ -70,16 +112,12 @@ export interface ShapeElement {
  */
 export function parseShapeElement(shapeNode: Element): ShapeElement | null {
   try {
-    const id = getDirectChildText(shapeNode, 'Id') || getElementText(shapeNode, 'Id') || 'unknown';
-    console.log(`  [Shape] 开始解析 ID: ${id.substring(0, 16)}...`);
-
-    const x = parseFloat(getDirectChildText(shapeNode, 'X') || getElementText(shapeNode, 'X') || '0');
-    const y = parseFloat(getDirectChildText(shapeNode, 'Y') || getElementText(shapeNode, 'Y') || '0');
-    const width = parseFloat(getDirectChildText(shapeNode, 'Width') || getElementText(shapeNode, 'Width') || '100');
-    const height = parseFloat(getDirectChildText(shapeNode, 'Height') || getElementText(shapeNode, 'Height') || '50');
-    const rotation = parseFloat(getDirectChildText(shapeNode, 'Rotation') || getElementText(shapeNode, 'Rotation') || '0');
-
-    console.log(`  [Shape] 位置: (${x}, ${y}), 尺寸: ${width}x${height}`);
+    const id = getDirectChildText(shapeNode, 'Id') || getElementText(shapeNode, 'Id') || 'unknown'
+    const x = parseFloat(getDirectChildText(shapeNode, 'X') || getElementText(shapeNode, 'X') || '0')
+    const y = parseFloat(getDirectChildText(shapeNode, 'Y') || getElementText(shapeNode, 'Y') || '0')
+    const width = parseFloat(getDirectChildText(shapeNode, 'Width') || getElementText(shapeNode, 'Width') || '100')
+    const height = parseFloat(getDirectChildText(shapeNode, 'Height') || getElementText(shapeNode, 'Height') || '50')
+    const rotation = parseFloat(getDirectChildText(shapeNode, 'Rotation') || getElementText(shapeNode, 'Rotation') || '0')
 
     // 解析形状整体透明度
     const parsedOpacity = parseFloat(getDirectChildText(shapeNode, 'Opacity') || getElementText(shapeNode, 'Opacity') || '1')
@@ -87,33 +125,55 @@ export function parseShapeElement(shapeNode: Element): ShapeElement | null {
       ? Math.max(0, Math.min(1, parsedOpacity))
       : 1
 
-    // 解析背景色
-    let backgroundColor = '#ffffff';
-    const backgroundNode = shapeNode.querySelector('Background');
-    if (backgroundNode) {
-      const colorBrush = backgroundNode.querySelector('ColorBrush');
-      if (colorBrush?.textContent) {
-        backgroundColor = parseColor(colorBrush.textContent, true);
-        console.log(`  [Shape] 背景色: ${backgroundColor}`);
+    // 解析背景色与画刷体系
+    const backgroundNode = shapeNode.querySelector('Background')
+    const backgroundBrush = parseBrush(backgroundNode)
+    let backgroundColor = brushToCss(backgroundBrush, undefined, '#ffffff')
+    if (backgroundColor === 'transparent' || !backgroundColor) {
+      backgroundColor = '#ffffff'
+    }
+
+    // 解析前景色与画刷体系
+    const foregroundNode = shapeNode.querySelector('Foreground')
+    const foregroundBrush = parseBrush(foregroundNode)
+    let foregroundColor = brushToCss(foregroundBrush, undefined, '#000000')
+    if (foregroundColor === 'transparent' || !foregroundColor) {
+      foregroundColor = '#000000'
+    }
+
+    // 解析几何类型与调节参数
+    let geometryType = 'Rectangle'
+    const adjusts: number[] = []
+    const geometryNode = shapeNode.querySelector('Geometry')
+    if (geometryNode) {
+      const presetNode = geometryNode.querySelector('PresetGeometry')
+      if (presetNode) {
+        const typeNode = presetNode.querySelector('GeometryType')
+        if (typeNode?.textContent) {
+          geometryType = typeNode.textContent.trim()
+        }
+        const adjustsNode = presetNode.querySelector('Adjusts') || presetNode.querySelector('AdjustValues')
+        if (adjustsNode) {
+          Array.from(adjustsNode.children).forEach(child => {
+            const val = parseFloat(child.textContent || '')
+            if (Number.isFinite(val)) {
+              adjusts.push(val)
+            }
+          })
+        }
       }
     }
 
-    // 解析前景色
-    let foregroundColor = '#000000';
-    const foregroundNode = shapeNode.querySelector('Foreground');
-    if (foregroundNode) {
-      const colorBrush = foregroundNode.querySelector('ColorBrush');
-      if (colorBrush?.textContent) {
-        foregroundColor = parseColor(colorBrush.textContent, true);
-      }
-    }
-
-    // 解析路径
-    const pathElement = getDirectChildElement(shapeNode, 'Path');
-    const rawPath = pathElement?.textContent || getDirectChildText(shapeNode, 'Path') || getElementText(shapeNode, 'Path') || '';
+    // 解析路径：若 XML 中未显式序列化 Path，使用 35 种预设形状动态计算 SVG 路径
+    const pathElement = getDirectChildElement(shapeNode, 'Path')
+    const rawPath = pathElement?.textContent || getDirectChildText(shapeNode, 'Path') || getElementText(shapeNode, 'Path') || ''
     const normalizedPathResult = normalizeSeewoPath(rawPath)
-    const path = normalizedPathResult.path
-    console.log(`  [Shape] SVG Path: ${path.substring(0, 50)}${path.length > 50 ? '...' : ''}`);
+    let path = normalizedPathResult.path
+
+    if (!path) {
+      path = generatePresetGeometryPath(geometryType, width, height, adjusts)
+    }
+
     const normalizeFillRule = (value?: string | null): 'nonzero' | 'evenodd' | undefined => {
       if (!value) return undefined
       const raw = value.trim().toLowerCase()
@@ -141,109 +201,91 @@ export function parseShapeElement(shapeNode: Element): ShapeElement | null {
       fillRule = normalizedPathResult.fillRule
     }
 
-    // 解析几何类型
-    let geometryType = 'Rectangle';
-    const geometryNode = shapeNode.querySelector('Geometry');
-    if (geometryNode) {
-      const presetNode = geometryNode.querySelector('PresetGeometry');
-      if (presetNode) {
-        const typeNode = presetNode.querySelector('GeometryType');
-        if (typeNode?.textContent) {
-          geometryType = typeNode.textContent;
-          console.log(`  [Shape] 几何类型: ${geometryType}`);
-        }
-      }
-    }
-    // 解析边框粗细和线条类型
-    const thickness = parseFloat(getDirectChildText(shapeNode, 'Thickness') || getElementText(shapeNode, 'Thickness') || '0');
-    const lineType = getDirectChildText(shapeNode, 'LineType') || getElementText(shapeNode, 'LineType') || 'None';
-    if (thickness > 0) {
-      console.log(`  [Shape] 边框粗细: ${thickness}, 线条类型: ${lineType}`);
-    }
+    // 解析边框粗细、线型、箭头
+    const thickness = parseFloat(getDirectChildText(shapeNode, 'Thickness') || getElementText(shapeNode, 'Thickness') || '0')
+    const lineType = getDirectChildText(shapeNode, 'LineType') || getElementText(shapeNode, 'LineType') || 'None'
+    const dashStyle = getDirectChildText(shapeNode, 'DashStyle') || getElementText(shapeNode, 'DashStyleType') || (lineType !== 'None' ? lineType : undefined)
+    const strokeDashArray = resolveStrokeDashArray(dashStyle, thickness)
+    const arrowType = getDirectChildText(shapeNode, 'ArrowType') || getElementText(shapeNode, 'ArrowType') || undefined
+
+    // 翻转支持
+    const flipHorizontal = (getDirectChildText(shapeNode, 'FlipHorizontal') || '').toLowerCase() === 'true'
+    const flipVertical = (getDirectChildText(shapeNode, 'FlipVertical') || '').toLowerCase() === 'true'
 
     // 解析内联文本（可选）
-    let inlineText: TextLine[] | undefined;
-    const inlineTextNode = shapeNode.querySelector('InlineText');
+    let inlineText: TextLine[] | undefined
+    const inlineTextNode = shapeNode.querySelector('InlineText')
     if (inlineTextNode) {
-      console.log(`  [Shape] 发现内联文本`);
-      const richTextNode = inlineTextNode.querySelector('RichText');
+      const richTextNode = inlineTextNode.querySelector('RichText')
       if (richTextNode) {
-        const textLinesNode = richTextNode.querySelector('TextLines');
+        const textLinesNode = richTextNode.querySelector('TextLines')
         if (textLinesNode) {
-          inlineText = [];
-          const textLineNodes = textLinesNode.querySelectorAll('TextLine');
-          textLineNodes.forEach((lineNode, index) => {
-            const textLine = parseTextLineForShape(lineNode);
+          inlineText = []
+          const textLineNodes = textLinesNode.querySelectorAll('TextLine')
+          textLineNodes.forEach(lineNode => {
+            const textLine = parseTextLineForShape(lineNode)
             if (textLine) {
-              inlineText!.push(textLine);
-              console.log(`  [Shape]   内联文本行 #${index}: ${textLine.textRuns.length} 个 run`);
+              inlineText!.push(textLine)
             }
-          });
+          })
         }
       }
     }
 
     // 解析阴影效果（可选）
-    let shadow: ShapeElement['shadow'] | undefined;
-    // 解析倒影效果（可选）
-    let reflection: ShapeElement['reflection'] | undefined;
+    let shadow: ShapeElement['shadow'] | undefined
+    let reflection: ShapeElement['reflection'] | undefined
 
-    const effectsNode = shapeNode.querySelector('Effects');
+    const effectsNode = shapeNode.querySelector('Effects')
     if (effectsNode) {
-      // 解析阴影
-      const dropShadowNode = effectsNode.querySelector('DropShadow');
+      const dropShadowNode = effectsNode.querySelector('DropShadow')
       if (dropShadowNode) {
-        const offset = parseFloat(getElementText(dropShadowNode, 'Offset') || '4');
-        const opacity = parseFloat(getElementText(dropShadowNode, 'Opacity') || '0.5');
-        const blurRadius = parseFloat(getElementText(dropShadowNode, 'BlurRadius') || '8');
-        const angle = parseFloat(getElementText(dropShadowNode, 'Angle') || '135');
+        const offset = parseFloat(getElementText(dropShadowNode, 'Offset') || '4')
+        const shadowOpacity = parseFloat(getElementText(dropShadowNode, 'Opacity') || '0.5')
+        const blurRadius = parseFloat(getElementText(dropShadowNode, 'BlurRadius') || '8')
+        const angle = parseFloat(getElementText(dropShadowNode, 'Angle') || '135')
 
-        let shadowColor = '#000000';
-        const shadowBrushNode = dropShadowNode.querySelector('ShadowBrush');
+        let shadowColor = '#000000'
+        const shadowBrushNode = dropShadowNode.querySelector('ShadowBrush')
         if (shadowBrushNode) {
-          const colorBrush = shadowBrushNode.querySelector('ColorBrush');
+          const colorBrush = shadowBrushNode.querySelector('ColorBrush')
           if (colorBrush?.textContent) {
-            shadowColor = parseColor(colorBrush.textContent, true);
+            shadowColor = parseColor(colorBrush.textContent, true)
           }
         }
 
         shadow = {
           offset,
-          opacity,
+          opacity: shadowOpacity,
           blurRadius,
           angle,
           color: shadowColor
-        };
-        console.log(`  [Shape] 阴影效果: 偏移=${offset}, 透明度=${opacity}, 模糊=${blurRadius}, 角度=${angle}`);
+        }
       }
 
-      // 解析倒影
-      const reflectionNode = effectsNode.querySelector('Reflection');
+      const reflectionNode = effectsNode.querySelector('Reflection')
       if (reflectionNode) {
-        const offsetY = parseFloat(getElementText(reflectionNode, 'OffsetY') || '0');
-        const opacity = parseFloat(getElementText(reflectionNode, 'Opacity') || '0.5');
+        const offsetY = parseFloat(getElementText(reflectionNode, 'OffsetY') || '0')
+        const refOpacity = parseFloat(getElementText(reflectionNode, 'Opacity') || '0.5')
+        let gradientStart = 0.5
+        let gradientEnd = 1.0
 
-        // 解析渐变遮罩
-        let gradientStart = 0.5; // 默认值
-        let gradientEnd = 1.0;
-
-        const opacityMaskNode = reflectionNode.querySelector('OpacityMask');
+        const opacityMaskNode = reflectionNode.querySelector('OpacityMask')
         if (opacityMaskNode) {
-          const linearGradientNode = opacityMaskNode.querySelector('LinearGradientBrush');
+          const linearGradientNode = opacityMaskNode.querySelector('LinearGradientBrush')
           if (linearGradientNode) {
-            const gradientStopsNode = linearGradientNode.querySelector('GradientStops');
+            const gradientStopsNode = linearGradientNode.querySelector('GradientStops')
             if (gradientStopsNode?.textContent) {
-              // 格式: "#00000000,0.8 #ff000000,1"
-              const stopsText = gradientStopsNode.textContent.trim();
-              const stops = stopsText.split(' ').map(s => s.trim()).filter(s => s);
+              const stopsText = gradientStopsNode.textContent.trim()
+              const stops = stopsText.split(' ').map(s => s.trim()).filter(Boolean)
               if (stops.length >= 2) {
-                const firstStop = stops[0].split(',');
-                const secondStop = stops[1].split(',');
+                const firstStop = stops[0].split(',')
+                const secondStop = stops[1].split(',')
                 if (firstStop.length >= 2) {
-                  gradientStart = parseFloat(firstStop[1]) || 0.5;
+                  gradientStart = parseFloat(firstStop[1]) || 0.5
                 }
                 if (secondStop.length >= 2) {
-                  gradientEnd = parseFloat(secondStop[1]) || 1.0;
+                  gradientEnd = parseFloat(secondStop[1]) || 1.0
                 }
               }
             }
@@ -252,15 +294,12 @@ export function parseShapeElement(shapeNode: Element): ShapeElement | null {
 
         reflection = {
           offsetY,
-          opacity,
+          opacity: refOpacity,
           gradientStart,
           gradientEnd
-        };
-        console.log(`  [Shape] 倒影效果: 偏移=${offsetY}, 透明度=${opacity}, 渐变=${gradientStart}-${gradientEnd}`);
+        }
       }
     }
-
-    console.log(`  [Shape] ✓ 解析完成`);
 
     return {
       type: 'shape',
@@ -272,19 +311,27 @@ export function parseShapeElement(shapeNode: Element): ShapeElement | null {
       rotation: Number.isFinite(rotation) ? rotation : 0,
       opacity,
       backgroundColor,
+      backgroundBrush: backgroundBrush || undefined,
       foregroundColor,
+      foregroundBrush: foregroundBrush || undefined,
       path,
       fillRule,
       geometryType,
+      adjusts,
       inlineText,
       borderWidth: thickness > 0 ? thickness : undefined,
       borderColor: thickness > 0 ? foregroundColor : undefined,
       lineType: lineType !== 'None' ? lineType : undefined,
+      dashStyle,
+      strokeDashArray,
+      arrowType,
+      flipHorizontal,
+      flipVertical,
       shadow,
       reflection
-    };
+    }
   } catch (error) {
-    console.error(`  [Shape] ✗ 解析异常:`, error);
-    return null;
+    console.error(`  [Shape] ✗ 解析异常:`, error)
+    return null
   }
 }

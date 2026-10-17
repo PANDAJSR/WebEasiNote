@@ -167,11 +167,9 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         collectUnknownParameters(node, 'Group', slideId, elementId, issues)
         const groupX = parseNumber(getDirectChildText(node, 'X'))
         const groupY = parseNumber(getDirectChildText(node, 'Y'))
-        const groupRotation = parseNumber(getDirectChildText(node, 'Rotation'))
-
-        if (groupRotation !== 0) {
-          console.warn(`[Slide ${slideId}] ⚠️ Group 旋转暂未支持，将按未旋转处理（rotation=${groupRotation}）`)
-        }
+        const groupWidth = parseNumber(getDirectChildText(node, 'Width'), 0)
+        const groupHeight = parseNumber(getDirectChildText(node, 'Height'), 0)
+        const groupRotation = parseNumber(getDirectChildText(node, 'Rotation'), 0)
 
         const childElementsNode = getDirectChildElement(node, 'Elements')
         if (!childElementsNode) {
@@ -179,12 +177,65 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
           break
         }
 
+        // 先解析组内局部坐标下的子元素
         const groupChildren = parseSlideElements(childElementsNode, {
           slideId,
-          offsetX: offsetX + groupX,
-          offsetY: offsetY + groupY
+          offsetX: 0,
+          offsetY: 0
         })
-        parsedElements.push(...groupChildren.elements)
+
+        // 若 Group 没有显式指定宽高，根据未旋转子元素的外接矩形推算
+        let gW = groupWidth
+        let gH = groupHeight
+        if (gW <= 0 || gH <= 0) {
+          if (groupChildren.elements.length > 0) {
+            const minX = Math.min(...groupChildren.elements.map(e => e.x))
+            const minY = Math.min(...groupChildren.elements.map(e => e.y))
+            const maxX = Math.max(...groupChildren.elements.map(e => e.x + (e.width || 0)))
+            const maxY = Math.max(...groupChildren.elements.map(e => e.y + (e.height || 0)))
+            gW = Math.max(1, maxX - minX)
+            gH = Math.max(1, maxY - minY)
+          } else {
+            gW = 100
+            gH = 100
+          }
+        }
+
+        // 旋转中心（Group 自身几何中心）在世界坐标系下的位置
+        const originX = offsetX + groupX + gW / 2
+        const originY = offsetY + groupY + gH / 2
+        const rad = (groupRotation * Math.PI) / 180
+        const cos = Math.cos(rad)
+        const sin = Math.sin(rad)
+
+        // 对所有子元素应用复合仿射变换：位移 + 围绕 Group 中心的旋转 + 自身角度累加
+        const transformedChildren = groupChildren.elements.map(child => {
+          // 子元素在 Group 内未旋转时的世界中心坐标
+          const childWorldCenterX = offsetX + groupX + child.x + (child.width || 0) / 2
+          const childWorldCenterY = offsetY + groupY + child.y + (child.height || 0) / 2
+
+          // 绕 Group 旋转中心做 2D 矩阵旋转
+          const dx = childWorldCenterX - originX
+          const dy = childWorldCenterY - originY
+          const rotatedCenterX = originX + dx * cos - dy * sin
+          const rotatedCenterY = originY + dx * sin + dy * cos
+
+          const newX = rotatedCenterX - (child.width || 0) / 2
+          const newY = rotatedCenterY - (child.height || 0) / 2
+          const currentRot = 'rotation' in child && typeof (child as { rotation?: number }).rotation === 'number'
+            ? (child as { rotation?: number }).rotation!
+            : 0
+          const newRotation = (currentRot + groupRotation) % 360
+
+          return {
+            ...child,
+            x: newX,
+            y: newY,
+            rotation: newRotation
+          }
+        })
+
+        parsedElements.push(...transformedChildren)
         issues.push(...groupChildren.issues)
         break
       }

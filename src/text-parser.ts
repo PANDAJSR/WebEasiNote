@@ -346,6 +346,50 @@ function parseTextRun(runNode: Element): TextRun | null {
       }
     }
 
+    // 解析上下标与字形变体 (FontVariants / BaselineAlignment)
+    const variantsRaw = (
+      getElementText(runNode, 'FontVariants') ||
+      getElementText(runNode, 'BaselineAlignment') ||
+      'Normal'
+    ).toLowerCase()
+    const variants = variantsRaw.includes('sub')
+      ? 'Subscript'
+      : variantsRaw.includes('super')
+        ? 'Superscript'
+        : 'Normal'
+
+    // 解析着重号 (EmphasisMark)
+    const emphasisMark =
+      (getElementText(runNode, 'EmphasisMark') || '').toLowerCase() === 'true' ||
+      (getElementText(runNode, 'HasEmphasisMark') || '').toLowerCase() === 'true'
+
+    // 解析删除线 (Strikethrough)
+    const strikethrough = (getElementText(runNode, 'Strikethrough') || '').toLowerCase() === 'true'
+
+    // 解析下划线样式与着色
+    const underlineStyleRaw = (
+      getElementText(runNode, 'UnderlineDashStyle') ||
+      getElementText(runNode, 'UnderlineStyle') ||
+      'Solid'
+    ).toLowerCase()
+    let underlineStyle: 'solid' | 'wavy' | 'dashed' | 'dotted' | 'double' = 'solid'
+    if (underlineStyleRaw.includes('wave') || underlineStyleRaw.includes('wavy')) {
+      underlineStyle = 'wavy'
+    } else if (underlineStyleRaw.includes('dash')) {
+      underlineStyle = 'dashed'
+    } else if (underlineStyleRaw.includes('dot')) {
+      underlineStyle = 'dotted'
+    } else if (underlineStyleRaw.includes('double')) {
+      underlineStyle = 'double'
+    }
+
+    let underlineColor: string | undefined
+    const underlineBrushNode = runNode.querySelector('UnderlineBrush')
+    const underlineColorBrush = underlineBrushNode?.querySelector('ColorBrush')
+    if (underlineColorBrush?.textContent) {
+      underlineColor = parseColor(underlineColorBrush.textContent, true)
+    }
+
     return {
       text,
       fontFamily,
@@ -356,6 +400,11 @@ function parseTextRun(runNode: Element): TextRun | null {
       gradient,
       opacity,
       decoration,
+      variants,
+      emphasisMark,
+      underlineStyle,
+      underlineColor,
+      strikethrough,
       textEffects
     };
   } catch {

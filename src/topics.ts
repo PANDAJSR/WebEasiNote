@@ -67,6 +67,7 @@ export function parseTopicElement(topicNode: Element): TopicElement | null {
     const height = parseNumber(getDirectChildText(topicNode, 'Height'), 200)
     const rotation = parseNumber(getDirectChildText(topicNode, 'Rotation'))
     const topicType = getDirectChildText(topicNode, 'Type') || 'MindMap'
+    const mapType = getDirectChildText(topicNode, 'MapType') || topicType
     const branchType = getDirectChildText(topicNode, 'BranchType') || 'Ellipse'
 
     const contentWidth = parseNumber(getDirectChildText(topicNode, 'ContentWidth'), 180)
@@ -88,6 +89,34 @@ export function parseTopicElement(topicNode: Element): TopicElement | null {
         .map(child => parseTopicNode(child, '#f3f7ff', '#8ea7df'))
       : []
 
+    // 解析 SummarizeNodes
+    const summarizeContainer = getDirectChildElement(topicNode, 'SummarizeNodes')
+    const summarizeNodes = summarizeContainer
+      ? Array.from(summarizeContainer.children).map((smNode, idx) => {
+          const sId = getDirectChildText(smNode, 'Id') || `summarize-${idx}`
+          const sTitle = getDirectChildText(smNode, 'Title') || ''
+          const rangeRaw = getDirectChildText(smNode, 'Range') || '0,1'
+          const parts = rangeRaw.split(',').map(n => parseInt(n.trim(), 10) || 0)
+          return {
+            id: sId,
+            title: sTitle,
+            range: [parts[0] || 0, parts[1] || 1] as [number, number]
+          }
+        })
+      : []
+
+    // 解析 RelationNodes
+    const relationContainer = getDirectChildElement(topicNode, 'RelationNodes')
+    const relationNodes = relationContainer
+      ? Array.from(relationContainer.children).map((relNode, idx) => {
+          const rId = getDirectChildText(relNode, 'Id') || `relation-${idx}`
+          const fromNodeId = getDirectChildText(relNode, 'FromNodeId') || ''
+          const toNodeId = getDirectChildText(relNode, 'ToNodeId') || ''
+          const rTitle = getDirectChildText(relNode, 'Title') || ''
+          return { id: rId, fromNodeId, toNodeId, title: rTitle }
+        })
+      : []
+
     return {
       type: 'topic',
       id,
@@ -97,6 +126,7 @@ export function parseTopicElement(topicNode: Element): TopicElement | null {
       height,
       rotation,
       topicType,
+      mapType,
       branchType,
       title: rootTitle.text,
       textLines: rootTitle.textLines,
@@ -109,7 +139,9 @@ export function parseTopicElement(topicNode: Element): TopicElement | null {
       fontFamily: rootTitle.fontFamily,
       fontSize: rootTitle.fontSize,
       branchColor: parseColor(branchColorRaw, true),
-      children
+      children,
+      summarizeNodes,
+      relationNodes
     }
   } catch (error) {
     console.error('[Topic] 解析失败', error)

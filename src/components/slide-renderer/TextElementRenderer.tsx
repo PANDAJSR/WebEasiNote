@@ -305,12 +305,19 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
                   const gradient = buildTextGradient(run)
                   const opacity = (run.opacity ?? 1) * (run.gradient?.opacity ?? 1)
                   const textStrokeStyle = getTextStrokeStyle(run, scale)
+                  const isSub = run.variants === 'Subscript'
+                  const isSuper = run.variants === 'Superscript'
+                  const fontSize = (isSub || isSuper ? run.fontSize * 0.7 : run.fontSize) * scale
+                  const textDecorations: string[] = []
+                  if (run.decoration === 'Underline') textDecorations.push('underline')
+                  if (run.strikethrough) textDecorations.push('line-through')
+
                   return (
                     <span
                       key={runIndex}
                       style={{
                         fontFamily: buildFontFamily(run.fontFamily),
-                        fontSize: run.fontSize * scale,
+                        fontSize,
                         fontStyle: run.fontStyle,
                         fontWeight: run.fontWeight,
                         fontSynthesis: 'style weight',
@@ -320,7 +327,12 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
                         WebkitBackgroundClip: gradient ? 'text' : undefined,
                         WebkitTextFillColor: gradient ? 'transparent' : undefined,
                         opacity,
-                        textDecoration: run.decoration === 'Underline' ? 'underline' : 'none',
+                        textDecoration: textDecorations.length > 0 ? textDecorations.join(' ') : 'none',
+                        textDecorationStyle: run.underlineStyle || 'solid',
+                        textDecorationColor: run.underlineColor,
+                        textEmphasis: run.emphasisMark ? 'filled circle' : undefined,
+                        WebkitTextEmphasis: run.emphasisMark ? 'filled circle' : undefined,
+                        verticalAlign: isSub ? 'sub' : isSuper ? 'super' : undefined,
                         textShadow: getShadowStyle(run, scale),
                         WebkitTextStrokeWidth: textStrokeStyle.WebkitTextStrokeWidth,
                         WebkitTextStrokeColor: textStrokeStyle.WebkitTextStrokeColor,

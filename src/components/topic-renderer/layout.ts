@@ -325,7 +325,7 @@ export function buildRenderedNodes(
   ]
 }
 
-export function renderHorizontalBranchPath(entry: RenderNode, scale: number) {
+export function renderHorizontalBranchPath(entry: RenderNode, scale: number, branchType = 'Ellipse') {
   const childLeftX = (entry.centerX - entry.width / 2) * scale
   const childRightX = (entry.centerX + entry.width / 2) * scale
   const parentRightX = (entry.parentCenterX + entry.parentWidth / 2) * scale
@@ -338,7 +338,34 @@ export function renderHorizontalBranchPath(entry: RenderNode, scale: number) {
   const startY = entry.parentCenterY * scale
   const endY = entry.centerY * scale
 
-  const dx = Math.max(36, Math.abs(endX - startX) * 0.52)
+  const normBranch = (branchType || '').trim().toLowerCase()
+
+  if (normBranch === 'straightline' || normBranch === '2') {
+    return `M ${startX} ${startY} L ${endX} ${endY}`
+  }
+
+  if (normBranch === 'polylinewithradius' || normBranch === '1') {
+    const midX = startX + (endX - startX) * 0.5
+    const radius = Math.min(10 * scale, Math.abs(midX - startX) * 0.5, Math.abs(endY - startY) * 0.5)
+    const dirX = childOnRight ? 1 : -1
+    const dirY = endY >= startY ? 1 : -1
+
+    if (Math.abs(endY - startY) < 2) {
+      return `M ${startX} ${startY} L ${endX} ${endY}`
+    }
+
+    return [
+      `M ${startX} ${startY}`,
+      `L ${midX - radius * dirX} ${startY}`,
+      `Q ${midX} ${startY} ${midX} ${startY + radius * dirY}`,
+      `L ${midX} ${endY - radius * dirY}`,
+      `Q ${midX} ${endY} ${midX + radius * dirX} ${endY}`,
+      `L ${endX} ${endY}`
+    ].join(' ')
+  }
+
+  // 默认：优雅的椭圆/贝塞尔曲线 (BezierCurve / Ellipse)
+  const dx = Math.max(36 * scale, Math.abs(endX - startX) * 0.52)
   const direction = childOnRight ? 1 : -1
   const c1x = startX + dx * direction
   const c2x = endX - dx * direction
@@ -346,16 +373,24 @@ export function renderHorizontalBranchPath(entry: RenderNode, scale: number) {
   return `M ${startX} ${startY} C ${c1x} ${startY}, ${c2x} ${endY}, ${endX} ${endY}`
 }
 
-export function renderVerticalBranchPath(entry: RenderNode, scale: number) {
+export function renderVerticalBranchPath(entry: RenderNode, scale: number, branchType = 'PolyLineWithRadius') {
   const parentBottomX = entry.parentCenterX * scale
   const parentBottomY = (entry.parentCenterY + entry.parentHeight / 2) * scale
   const childTopX = entry.centerX * scale
   const childTopY = (entry.centerY - entry.height / 2) * scale
 
-  if (entry.siblingCount === 1) {
+  const normBranch = (branchType || '').trim().toLowerCase()
+
+  if (normBranch === 'straightline' || normBranch === '2' || entry.siblingCount === 1) {
     return `M ${parentBottomX} ${parentBottomY} L ${childTopX} ${childTopY}`
   }
 
+  if (normBranch === 'ellipse' || normBranch === 'beziercurve' || normBranch === '0') {
+    const dy = Math.max(24 * scale, Math.abs(childTopY - parentBottomY) * 0.5)
+    return `M ${parentBottomX} ${parentBottomY} C ${parentBottomX} ${parentBottomY + dy}, ${childTopX} ${childTopY - dy}, ${childTopX} ${childTopY}`
+  }
+
+  // 默认：带圆角折线 (PolyLineWithRadius)
   const middleY = parentBottomY + (childTopY - parentBottomY) * 0.55
   const radius = Math.min(14 * scale, Math.max(4 * scale, Math.abs(childTopX - parentBottomX) * 0.25))
   const dir = childTopX >= parentBottomX ? 1 : -1

@@ -28,8 +28,14 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
   )
   const rootWidth = rootVisualSize.width
   const rootHeight = rootVisualSize.height
+  const normMapType = String(element.mapType || element.topicType || '').trim().toLowerCase()
   const layoutMode: TopicLayoutMode =
-    element.topicType === 'Organization' || element.branchType === 'PolyLineWithRadius'
+    normMapType === 'organization' ||
+    normMapType === '2' ||
+    normMapType === 'downmap' ||
+    normMapType === 'orgdownmap' ||
+    normMapType === '3' ||
+    normMapType === '4'
       ? 'vertical'
       : 'horizontal'
   const isNodeExpanded = (id: string) => !collapsedNodeIds.has(id)
@@ -89,8 +95,8 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
             key={`branch-${entry.node.id}`}
             d={
               layoutMode === 'vertical'
-                ? renderVerticalBranchPath(entry, scale)
-                : renderHorizontalBranchPath(entry, scale)
+                ? renderVerticalBranchPath(entry, scale, element.branchType)
+                : renderHorizontalBranchPath(entry, scale, element.branchType)
             }
             fill='none'
             stroke={element.branchColor}
@@ -99,6 +105,41 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
             strokeLinejoin='round'
           />
         ))}
+
+        {/* 跨节点关联连线 (RelationNodes) */}
+        {element.relationNodes?.map(rel => {
+          const fromEntry = renderedNodes.find(n => n.node.id === rel.fromNodeId)
+          const toEntry = renderedNodes.find(n => n.node.id === rel.toNodeId)
+          if (!fromEntry || !toEntry) return null
+          const x1 = fromEntry.centerX * scale
+          const y1 = fromEntry.centerY * scale
+          const x2 = toEntry.centerX * scale
+          const y2 = toEntry.centerY * scale
+          const midX = (x1 + x2) / 2
+          const midY = Math.min(y1, y2) - 35 * scale
+          return (
+            <g key={rel.id}>
+              <path
+                d={`M ${x1} ${y1} Q ${midX} ${midY} ${x2} ${y2}`}
+                fill='none'
+                stroke={element.branchColor}
+                strokeWidth={2.5 * scale}
+                strokeDasharray={`${6 * scale} ${4 * scale}`}
+              />
+              {rel.title && (
+                <text
+                  x={midX}
+                  y={midY - 6 * scale}
+                  fill={element.textColor}
+                  fontSize={11 * scale}
+                  textAnchor='middle'
+                >
+                  {rel.title}
+                </text>
+              )}
+            </g>
+          )
+        })}
       </svg>
 
       {rootHasChildren && (

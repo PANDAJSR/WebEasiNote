@@ -75,6 +75,9 @@ function renderCellContent(element: TableElement, rowIndex: number, cellIndex: n
 export function TableRenderer({ element, scale }: TableRendererProps) {
   const totalColumnWidth = element.columnWidths.reduce((sum, width) => sum + width, 0)
 
+  const hPadding = Math.max(2, (element.cellHPadding || 14) * scale)
+  const vPadding = Math.max(2, (element.cellVPadding || 10) * scale)
+
   return (
     <div
       style={{
@@ -83,8 +86,8 @@ export function TableRenderer({ element, scale }: TableRendererProps) {
         top: element.y * scale,
         width: element.width * scale,
         height: element.height * scale,
-        transform: `rotate(${element.rotation}deg)`,
-        transformOrigin: 'top left',
+        transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
+        transformOrigin: 'center center',
         overflow: 'hidden'
       }}
     >
@@ -117,6 +120,13 @@ export function TableRenderer({ element, scale }: TableRendererProps) {
               <tr key={rowIndex} style={rowHeight > 0 ? { height: rowHeight * scale } : undefined}>
                 {row.map((cell, cellIndex) => {
                   if (cell.hMerged || cell.vMerged) return null
+                  const cellBg = cell.background || rowFillColor
+                  const vertAlign = cell.verticalAlignment === 'Top'
+                    ? 'top'
+                    : cell.verticalAlignment === 'Bottom'
+                      ? 'bottom'
+                      : 'middle'
+
                   return (
                     <td
                       key={cellIndex}
@@ -124,9 +134,9 @@ export function TableRenderer({ element, scale }: TableRendererProps) {
                       colSpan={cell.columnSpan}
                       style={{
                         border: `${Math.max(1, element.strokeThickness * scale)}px solid ${element.strokeColor}`,
-                        padding: `${9 * scale}px`,
-                        backgroundColor: rowFillColor,
-                        verticalAlign: 'top',
+                        padding: `${vPadding}px ${hPadding}px`,
+                        backgroundColor: cellBg,
+                        verticalAlign: vertAlign,
                         overflowWrap: 'break-word'
                       }}
                     >

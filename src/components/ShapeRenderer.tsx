@@ -25,7 +25,7 @@ function buildTextGradient(run: NonNullable<ShapeElement['inlineText']>[number][
 }
 
 export function ShapeRenderer({ element, scale }: ShapeRendererProps) {
-  const { x, y, width, height, rotation = 0, opacity = 1, backgroundColor, path, fillRule, inlineText, borderWidth, borderColor, shadow, reflection } = element
+  const { x, y, width, height, rotation = 0, opacity = 1, backgroundColor, backgroundBrush, path, fillRule, inlineText, borderWidth, borderColor, shadow, reflection } = element
   const extraHorizontalPadding = 10 * scale
   const markerCounters: Record<string, number> = {}
   const pathBounds = estimatePathBounds(path)
@@ -93,20 +93,60 @@ export function ShapeRenderer({ element, scale }: ShapeRendererProps) {
     ? `linear-gradient(to top, rgba(0,0,0,1) ${Math.max(0, gradientStart * 100).toFixed(0)}%, rgba(0,0,0,0) ${Math.max(1, gradientEnd * 100).toFixed(0)}%)`
     : undefined
 
+  const hasGradientBrush = backgroundBrush?.type === 'linear' || backgroundBrush?.type === 'radial'
+  const fillGradientId = hasGradientBrush ? `bg-grad-${element.id}` : undefined
+  const resolvedFill = fillGradientId ? `url(#${fillGradientId})` : backgroundColor
+  const flipTransform = `${element.flipHorizontal ? 'scaleX(-1) ' : ''}${element.flipVertical ? 'scaleY(-1) ' : ''}`
+
   const renderShapeSvg = () => (
     <svg
       width={mainWidth}
       height={mainHeight}
       viewBox={`0 0 ${renderWidth + visualPadding * 2} ${renderHeight + visualPadding * 2}`}
-      style={{ display: 'block' }}
+      style={{
+        display: 'block',
+        transform: flipTransform ? flipTransform : undefined,
+        transformOrigin: 'center center'
+      }}
     >
+      {hasGradientBrush && (
+        <defs>
+          {backgroundBrush.type === 'linear' && (
+            <linearGradient
+              id={fillGradientId}
+              x1={`${backgroundBrush.startPoint.x * 100}%`}
+              y1={`${backgroundBrush.startPoint.y * 100}%`}
+              x2={`${backgroundBrush.endPoint.x * 100}%`}
+              y2={`${backgroundBrush.endPoint.y * 100}%`}
+            >
+              {backgroundBrush.stops.map((s, idx) => (
+                <stop key={idx} offset={`${(s.offset * 100).toFixed(1)}%`} stopColor={s.color} />
+              ))}
+            </linearGradient>
+          )}
+          {backgroundBrush.type === 'radial' && (
+            <radialGradient
+              id={fillGradientId}
+              cx={`${backgroundBrush.center.x * 100}%`}
+              cy={`${backgroundBrush.center.y * 100}%`}
+              r={`${backgroundBrush.radiusX * 100}%`}
+            >
+              {backgroundBrush.stops.map((s, idx) => (
+                <stop key={idx} offset={`${(s.offset * 100).toFixed(1)}%`} stopColor={s.color} />
+              ))}
+            </radialGradient>
+          )}
+        </defs>
+      )}
       <g transform={`translate(${visualPadding + pathTranslateX} ${visualPadding + pathTranslateY}) scale(${pathScaleX} ${pathScaleY})`}>
         <path
           d={path}
-          fill={backgroundColor}
+          fill={resolvedFill}
           fillRule={resolvedFillRule}
           stroke={borderColor}
           strokeWidth={borderWidth}
+          strokeDasharray={element.strokeDashArray}
+          strokeLinecap={element.dashStyle ? 'round' : undefined}
           vectorEffect='non-scaling-stroke'
         />
       </g>

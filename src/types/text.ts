@@ -13,6 +13,11 @@ export interface TextRun {
   }
   opacity?: number
   decoration?: 'None' | 'Underline'
+  variants?: 'Normal' | 'Subscript' | 'Superscript'
+  emphasisMark?: boolean
+  underlineStyle?: 'solid' | 'wavy' | 'dashed' | 'dotted' | 'double'
+  underlineColor?: string
+  strikethrough?: boolean
   textEffects?: {
     frame?: {
       thickness: number

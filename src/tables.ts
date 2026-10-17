@@ -1,6 +1,7 @@
 import type { TableCell, TableElement } from './types'
 import { parseTextElement } from './text-parser'
 import { getDirectChildElement, getDirectChildText, parseColor } from './xml-utils'
+import { parseBrush, brushToCss } from './brushes'
 
 function parseNumber(value: string | null, fallback = 0): number {
   if (!value) return fallback
@@ -14,6 +15,10 @@ function parseBoolean(value: string | null): boolean {
 
 function parseColorFromNode(node: Element | null | undefined): string | undefined {
   if (!node) return undefined
+  const brush = parseBrush(node)
+  if (brush) {
+    return brushToCss(brush, undefined, undefined)
+  }
   const color = node.querySelector('ColorBrush')?.textContent
   if (!color) return undefined
   return parseColor(color)
@@ -30,11 +35,30 @@ function parseCell(cellNode: Element): TableCell {
   const textNode = getDirectChildElement(cellNode, 'Text')
   const textElement = textNode ? parseTextElement(textNode) : null
 
+  // 1. 解析单元格独立背景 (最高优先级覆盖行列斑马纹)
+  const backgroundNode = getDirectChildElement(cellNode, 'Background')
+  const backgroundBrush = parseBrush(backgroundNode)
+  const background = backgroundBrush ? brushToCss(backgroundBrush, undefined, undefined) : undefined
+
+  // 2. 解析垂直对齐方式
+  const vertAlignRaw =
+    cellNode.getAttribute('VerticalAlignment') ||
+    getDirectChildText(cellNode, 'VerticalAlignment') ||
+    textElement?.verticalTextAlignment ||
+    'Center'
+  const verticalAlignment =
+    vertAlignRaw === 'Top' || vertAlignRaw === 'Bottom' || vertAlignRaw === 'Center'
+      ? vertAlignRaw
+      : 'Center'
+
   return {
     rowSpan: Math.max(1, parseInt(getDirectChildText(cellNode, 'RowSpan') || '1', 10)),
     columnSpan: Math.max(1, parseInt(getDirectChildText(cellNode, 'ColumnSpan') || '1', 10)),
     hMerged: parseBoolean(getDirectChildText(cellNode, 'HMerged')),
     vMerged: parseBoolean(getDirectChildText(cellNode, 'VMerged')),
+    background,
+    backgroundBrush: backgroundBrush || undefined,
+    verticalAlignment,
     textLines: textElement?.textLines || []
   }
 }
@@ -52,8 +76,9 @@ export function parseTableElement(tableNode: Element): TableElement | null {
     const height = parseNumber(getDirectChildText(tableNode, 'Height'), 60)
     const rotation = parseNumber(getDirectChildText(tableNode, 'Rotation'))
 
-    const cellHPadding = parseNumber(getDirectChildText(tableNode, 'CellHPadding'))
-    const cellVPadding = parseNumber(getDirectChildText(tableNode, 'CellVPadding'))
+    // 官方默认 CellHPadding/CellVPadding 具有标准间距
+    const cellHPadding = parseNumber(getDirectChildText(tableNode, 'CellHPadding'), 14)
+    const cellVPadding = parseNumber(getDirectChildText(tableNode, 'CellVPadding'), 10)
 
     const strokeThickness = parseNumber(tableNode.querySelector('Skin > StrokeThickness')?.textContent || null, 1)
     const strokeColor = parseColorFromNode(tableNode.querySelector('Skin > Stroke')) || '#adadad'
@@ -98,8 +123,8 @@ export function parseTableElement(tableNode: Element): TableElement | null {
       rotation,
       cellHPadding,
       cellVPadding,
-      strokeColor,
       strokeThickness,
+      strokeColor,
       headerFillColor,
       rowFillColors,
       columnWidths,
@@ -107,7 +132,7 @@ export function parseTableElement(tableNode: Element): TableElement | null {
       rows
     }
   } catch (error) {
-    console.error('  [Table] 解析失败:', error)
+    console.error('[Table] 解析失败', error)
     return null
   }
 }

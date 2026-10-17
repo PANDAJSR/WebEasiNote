@@ -1,27 +1,6 @@
 import { getElementText } from './xml-utils';
-
-export interface PictureElement {
-  type: 'picture';
-  id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  sourceId: string; // id://xxx 格式的资源ID
-  pictureName: string;
-  alpha: number;
-  rotation: number;
-  displayRegion?: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  };
-  pictureSize?: {
-    width: number;
-    height: number;
-  };
-}
+import type { PictureElement } from './types';
+export type { PictureElement } from './types';
 
 /**
  * 解析图片元素
@@ -86,6 +65,16 @@ export function parsePictureElement(pictureNode: Element): PictureElement | null
     
     console.log(`  [Picture] ✓ 解析完成`);
 
+    // 解析图像滤镜 (Direct3D HLSL)
+    const bright = parseFloat(getElementText(pictureNode, 'Bright') || getElementText(pictureNode, 'Brightness') || '0')
+    const contrast = parseFloat(getElementText(pictureNode, 'Contrast') || '0')
+    const saturation = parseFloat(getElementText(pictureNode, 'Saturation') || '0')
+
+    // 解析裁剪形状与相框样式
+    const clippingShape = getElementText(pictureNode, 'ClippingShape') || getElementText(pictureNode, 'CropShape') || undefined
+    const pictureRahmenType = getElementText(pictureNode, 'PictureRahmenType') || getElementText(pictureNode, 'RahmenType') || undefined
+    const rahmenThickness = parseFloat(getElementText(pictureNode, 'RahmenThickness') || '0')
+
     return {
       type: 'picture',
       id,
@@ -97,6 +86,12 @@ export function parsePictureElement(pictureNode: Element): PictureElement | null
       pictureName,
       alpha,
       rotation,
+      bright: Number.isFinite(bright) ? bright : 0,
+      contrast: Number.isFinite(contrast) ? contrast : 0,
+      saturation: Number.isFinite(saturation) ? saturation : 0,
+      clippingShape,
+      pictureRahmenType,
+      rahmenThickness: Number.isFinite(rahmenThickness) ? rahmenThickness : 0,
       displayRegion,
       pictureSize
     };
