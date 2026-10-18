@@ -44,8 +44,21 @@ function buildConfig(): RuffleConfig {
 function injectRuffleScript(): Promise<RuffleSource> {
   const existed = window.RufflePlayer
   if (existed?.newest) return Promise.resolve(existed)
+  // 复用已注入的标签，避免加载失败重试时重复插入
+  const existing = document.querySelector<HTMLScriptElement>('script[data-ruffle-runtime="true"]')
+  if (existing) {
+    return new Promise<RuffleSource>((resolve, reject) => {
+      existing.addEventListener('load', () => {
+        const source = window.RufflePlayer
+        if (source?.newest) resolve(source)
+        else reject(new Error('Ruffle 加载完成但未注册 window.RufflePlayer'))
+      }, { once: true })
+      existing.addEventListener('error', () => reject(new Error('Ruffle 脚本加载失败')), { once: true })
+    })
+  }
   return new Promise<RuffleSource>((resolve, reject) => {
     const script = document.createElement('script')
+    script.dataset.ruffleRuntime = 'true'
     script.src = new URL(`${RUFFLE_DIR}ruffle.js`, document.baseURI).href
     script.async = true
     script.onload = () => {

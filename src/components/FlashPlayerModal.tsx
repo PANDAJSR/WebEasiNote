@@ -43,6 +43,9 @@ export function FlashPlayerModal({ open, element, sourceUrl, onClose }: FlashPla
   const hostRef = useRef<HTMLDivElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<RufflePlayer | null>(null)
+  // 重建播放器（重播）后需要按当前开关恢复音量，但不希望静音切换触发重建
+  const isMutedRef = useRef(false)
+  isMutedRef.current = isMuted
 
   const stageRatio = flashHeight > 0 ? flashWidth / flashHeight : 4 / 3
 
@@ -66,6 +69,7 @@ export function FlashPlayerModal({ open, element, sourceUrl, onClose }: FlashPla
         playerRef.current = player
         await loadSwf(player, sourceUrl)
         if (disposed) return
+        player.volume = isMutedRef.current ? 0 : 1
         setStatus('ready')
         setIsPlaying(player.isPlaying)
       })
@@ -125,7 +129,9 @@ export function FlashPlayerModal({ open, element, sourceUrl, onClose }: FlashPla
   }
 
   // 全屏时控制条仍保留在底部，舞台按可用高度等比撑开
-  const stageWidth = `min(100%, calc(${isFullscreen ? '100vh - 48px' : '70vh'} * ${stageRatio}))`
+  const stageWidth = isFullscreen
+    ? `min(100%, calc((100vh - 48px) * ${stageRatio}))`
+    : `min(100%, calc(70vh * ${stageRatio}))`
 
   return (
     <Modal
