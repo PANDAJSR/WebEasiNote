@@ -1,7 +1,8 @@
 /**
- * 希沃白板5 PresetGeometry 35 种预设形状与常用几何图形的动态 SVG 路径生成器
- * 用于当 ENBX XML 未序列化 <Path>（官方 Req=False，由 GeometryType + Adjusts 动态生成）时，
- * 依据 GeometryType 与宽高自动计算出高精度的 SVG Path。
+ * Web 端针对常见形状的近似 SVG 路径生成器。
+ * 官方 ShapeSaveInfo 将 Geometry 声明为必需字段，Path 为可选字段；官方在载入
+ * 已知 ShapeType 时由形状类生成几何，Path 主要作为序列化路径数据及未知形状的回退。
+ * 这里的几何公式不是官方实现的逐项复刻，且不会覆盖所有官方 ShapeType。
  */
 
 export function generatePresetGeometryPath(

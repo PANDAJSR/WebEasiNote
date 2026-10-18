@@ -159,7 +159,10 @@ export function parseShapeElement(shapeNode: Element): ShapeElement | null {
         const adjustsNode = presetNode.querySelector('Adjusts') || presetNode.querySelector('AdjustValues')
         if (adjustsNode) {
           Array.from(adjustsNode.children).forEach(child => {
-            const val = parseFloat(child.textContent || '')
+            // 官方 Adjust 项包含 Id/ScaleX/ScaleY；只把 ScaleX 交给
+            // 当前仅支持单一数值的近似预设几何生成器。
+            const scaleX = getDirectChildText(child, 'ScaleX')
+            const val = parseFloat(scaleX || (child.querySelector('Id') ? '' : child.textContent) || '')
             if (Number.isFinite(val)) {
               adjusts.push(val)
             }
