@@ -9,6 +9,7 @@ import { Viewer } from './Viewer'
 import type { SlideChangeSource } from './Viewer'
 import type { SlideData } from '../parser'
 import { NavigationIntent } from '../navigation-intent'
+import { SlidePreviewLoader } from './slide-viewer/SlidePreview'
 
 type CloudViewerProps = Pick<ComponentProps<typeof Viewer>, 'onClear' | 'clickToNextEnabled' |
   'pagerPosition' | 'showAnimationProgress' | 'hidePager' | 'hideToolbar' | 'infoBarHeight' |
@@ -137,11 +138,11 @@ export function CloudViewer({ manifestUrl, ...props }: CloudViewerProps) {
   }
 
   return <>
-    {slides.length > 0 && source && <Viewer {...props} key={source.sessionId} metadata={source.metadata}
+    {slides.length > 0 && source && <SlidePreviewLoader.Provider value={source.previewSlide}><Viewer {...props} key={source.sessionId} metadata={source.metadata}
       slides={slides} currentIndex={index} slideChangeSource={changeSource} resourceMap={source.resources}
       onSlideChange={handleSlideChange} onSaveAs={handleSaveAs}
       onNavigationResult={(requestId, page) => postToEnbxHost({ type: 'enbx:navigation-complete',
-        sessionId: source.sessionId, requestId, page })} />}
+        sessionId: source.sessionId, requestId, page })} /></SlidePreviewLoader.Provider>}
     {busy && <div style={{ position: 'absolute', top: 12, left: '50%', zIndex: 1000, background: '#ffffff', padding: 8 }}>
       <Spin size='small' /> 正在加载页面…
     </div>}

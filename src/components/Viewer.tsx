@@ -340,7 +340,7 @@ export function Viewer({
             <div style={styles.sidebarHeader}>
               <span>幻灯片</span>
             </div>
-            <div style={styles.slideList}>
+              <div style={styles.slideList} data-slide-list>
               {resolvedSlides.map((slideItem, index) => (
                 <SlideThumbnail
                   key={slideItem.id}

@@ -28,6 +28,8 @@ export class HttpCourseware {
   private readonly tasks = new Map<number, Promise<SlideData>>()
   private readonly entries = new Set<string>()
   private baseUrl = ''
+  private readonly previewCache = new Map<number, SlideData>()
+  private previewQueue: Promise<unknown> = Promise.resolve()
   sessionId = ''
   metadata!: CoursewareMetadata
 
@@ -93,6 +95,35 @@ export class HttpCourseware {
 
   private readText(path: string) { return this.readUrl<string>(this.url(path), 'text') }
 
+  /** 可见缩略图串行读取，不提交导航正文，最多保留 24 页解析结果。 */
+  readonly previewSlide = (index: number, signal: AbortSignal): Promise<SlideData> => {
+    const task = this.previewQueue.then(async () => {
+      signal.throwIfAborted()
+      this.controller.signal.throwIfAborted()
+      const descriptor = this.descriptors[index]
+      if (!descriptor) throw new Error('页码超出范围')
+      const cached = this.loaded.get(index) || this.previewCache.get(index)
+      if (cached) {
+        if (this.previewCache.delete(index)) this.previewCache.set(index, cached)
+        return cached
+      }
+      const response = await fetch(this.url(descriptor.path, true), {
+        signal: AbortSignal.any([signal, this.controller.signal])
+      })
+      if (!response.ok) throw new Error('读取页面预览失败')
+      const xml = await response.text()
+      signal.throwIfAborted()
+      this.parseXml(xml)
+      const slide = parseSlideXML(xml)
+      if (slide.id !== descriptor.id) throw new Error('预览页 ID 与目录不符')
+      this.previewCache.set(index, slide)
+      if (this.previewCache.size > 24) this.previewCache.delete(this.previewCache.keys().next().value!)
+      return slide
+    })
+    this.previewQueue = task.catch(() => undefined)
+    return task
+  }
+
   ensureSlide(index: number): Promise<SlideData> {
     const cached = this.loaded.get(index)
     if (cached) return Promise.resolve(cached)
@@ -152,5 +183,5 @@ export class HttpCourseware {
     return new File([blob], `${this.metadata.name}.enbx`)
   }
 
-  dispose() { this.controller.abort(); this.loaded.clear() }
+  dispose() { this.controller.abort(); this.loaded.clear(); this.previewCache.clear() }
 }

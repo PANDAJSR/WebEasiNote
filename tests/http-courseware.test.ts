@@ -75,6 +75,47 @@ test('正文 ID 不符不提交；失败后同一页允许重试，完整导出�
   } finally { source.dispose(); globalThis.fetch = originalFetch }
 })
 
+test('可见预览串行加载、取消排队请求并复用缓存，不改变导航状态；缓存有界', async () => {
+  const dom = new Window()
+  Object.assign(globalThis, { DOMParser: dom.DOMParser, XMLSerializer: dom.XMLSerializer, Node: dom.Node })
+  const originalFetch = globalThis.fetch
+  const requested: number[] = []
+  const first = deferred<Response>()
+  const count = 26
+  globalThis.fetch = async input => {
+    const path = new URL(String(input)).pathname
+    if (path.endsWith('manifest.json')) return Response.json({ protocolVersion: 1, sessionId: 's', name: '预览',
+      files: ['Board.xml', ...Array.from({ length: count }, (_, i) => `Slides/Slide_${i}.xml`)].map(path => ({ path })) })
+    if (path.endsWith('Board.xml')) return new Response(`<Board><Slides>${Array.from({ length: count }, (_, i) => `<Item>s${i}</Item>`).join('')}</Slides></Board>`)
+    const index = Number(path.match(/Slide_(\d+)\.xml$/)![1])
+    requested.push(index)
+    if (requested.length === 1) return first.promise
+    return new Response(`<Slide><Id>s${index}</Id><Elements/></Slide>`)
+  }
+  const source = new HttpCourseware()
+  try {
+    await source.open('https://example.test/courseware/s/manifest.json')
+    const controller = new AbortController()
+    const preview = source.previewSlide(0, controller.signal)
+    const canceled = new AbortController()
+    const queued = source.previewSlide(1, canceled.signal)
+    const rejection = assert.rejects(queued, { name: 'AbortError' })
+    canceled.abort()
+    await new Promise(resolve => setImmediate(resolve))
+    assert.deepEqual(requested, [0])
+    first.resolve(new Response('<Slide><Id>s0</Id><Elements/></Slide>'))
+    const slide = await preview
+    await rejection
+    assert.equal(await source.previewSlide(0, controller.signal), slide)
+    assert.deepEqual(requested, [0])
+    assert.equal(source.loaded.size, 0)
+    assert.equal(source.projectSlides()[0].loadState, 'unrequested')
+    for (let index = 1; index < count; index++) await source.previewSlide(index, controller.signal)
+    await source.previewSlide(0, controller.signal)
+    assert.equal(requested.filter(index => index === 0).length, 2)
+  } finally { source.dispose(); globalThis.fetch = originalFetch }
+})
+
 test('连续导航只提交最后目标；超时或取消后迟到正文不得提交', async () => {
   const intent = new NavigationIntent()
   const old = deferred<void>()
