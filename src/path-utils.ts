@@ -10,7 +10,8 @@ interface ParseContext {
   subpathBounds: PathBounds[]
 }
 
-const TOKEN_REGEX = /[a-zA-Z]|[-+]?(?:\d*\.\d+|\d+)(?:e[-+]?\d+)?/g
+// SVG 数值允许 E/e 指数；大写 E 也是数值的一部分，不能误识别为命令。
+const TOKEN_REGEX = /[a-zA-Z]|[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/g
 
 /**
  * 估算 SVG Path 的边界框

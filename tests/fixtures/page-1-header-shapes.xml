@@ -1,0 +1,82 @@
+<Elements>
+  <Shape>
+    <Geometry>
+      <PresetGeometry>
+        <GeometryType>Rectangle</GeometryType>
+      </PresetGeometry>
+    </Geometry>
+    <Path>M0,4.4482476369012147E-07L66.83968353271484,4.4482476369012147E-07 66.83968353271484,49.70131301879883 0,49.70131301879883 0,4.4482476369012147E-07z</Path>
+    <Background>
+      <ColorBrush>#FF0D99A1</ColorBrush>
+    </Background>
+    <Foreground>
+      <ColorBrush>#00FFFFFF</ColorBrush>
+    </Foreground>
+    <Thickness>0</Thickness>
+    <LineType>None</LineType>
+    <Opacity>1</Opacity>
+    <TextWidth>66.83968503937007</TextWidth>
+    <TextMargin>9.600000000000001,4.800000000000001,9.600000000000001,4.800000000000001</TextMargin>
+    <TextContainerMargin>0,0,0,0</TextContainerMargin>
+    <IsTextLocationCustomize>True</IsTextLocationCustomize>
+    <PenSetting />
+    <Id>5ecd1ad9713045d5a46fa16dc0d649b8</Id>
+    <X>0</X>
+    <Y>34.62981627296588</Y>
+    <Width>66.83968503937007</Width>
+    <Height>49.70131233595801</Height>
+    <Rotation>0</Rotation>
+    <IsLocked>False</IsLocked>
+    <CanClone>False</CanClone>
+    <HasMask>False</HasMask>
+    <RotateOrigin>0.5,0.5</RotateOrigin>
+    <SaveInfoMetadata>
+      <SupportsFallback>True</SupportsFallback>
+      <ImportanceLevel>Important</ImportanceLevel>
+    </SaveInfoMetadata>
+    <ElementPptxOriginId>
+      <OriginPptxId>5</OriginPptxId>
+      <OriginPptxName>矩形 4</OriginPptxName>
+    </ElementPptxOriginId>
+  </Shape>
+  <Shape>
+    <Geometry>
+      <PresetGeometry>
+        <GeometryType>Rectangle</GeometryType>
+      </PresetGeometry>
+    </Geometry>
+    <Path>M4.1733017042133724E-08,-3.552713678800501E-15L13.996430397033691,-3.552713678800501E-15 13.996430397033691,49.70131301879883 4.1733017042133724E-08,49.70131301879883 4.1733017042133724E-08,-3.552713678800501E-15z</Path>
+    <Background>
+      <ColorBrush>#FF0D99A1</ColorBrush>
+    </Background>
+    <Foreground>
+      <ColorBrush>#00FFFFFF</ColorBrush>
+    </Foreground>
+    <Thickness>0</Thickness>
+    <LineType>None</LineType>
+    <Opacity>1</Opacity>
+    <TextWidth>11.996940382452191</TextWidth>
+    <TextMargin>0,0,0,0</TextMargin>
+    <TextContainerMargin>0,0,0,0</TextContainerMargin>
+    <IsTextLocationCustomize>False</IsTextLocationCustomize>
+    <PenSetting />
+    <Id>0a3cd56a96f947189e648710b1c1c757</Id>
+    <X>82.1217847769029</X>
+    <Y>34.62981627296588</Y>
+    <Width>13.996430446194225</Width>
+    <Height>49.70131233595801</Height>
+    <Rotation>0</Rotation>
+    <IsLocked>False</IsLocked>
+    <CanClone>False</CanClone>
+    <HasMask>False</HasMask>
+    <RotateOrigin>0.5,0.5</RotateOrigin>
+    <SaveInfoMetadata>
+      <SupportsFallback>True</SupportsFallback>
+      <ImportanceLevel>Important</ImportanceLevel>
+    </SaveInfoMetadata>
+    <ElementPptxOriginId>
+      <OriginPptxId>6</OriginPptxId>
+      <OriginPptxName>矩形 5</OriginPptxName>
+    </ElementPptxOriginId>
+  </Shape>
+</Elements>
