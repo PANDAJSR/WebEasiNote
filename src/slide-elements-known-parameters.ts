@@ -62,6 +62,24 @@ export const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'Thumbnail',
     'Animations'
   ]),
+  Flash: new Set([
+    'Id',
+    'X',
+    'Y',
+    'Width',
+    'Height',
+    'Rotation',
+    'IsLocked',
+    'CanClone',
+    'HasMask',
+    'RotateOrigin',
+    'SaveInfoMetadata',
+    'Source',
+    'FlashName',
+    'FlashWidth',
+    'FlashHeight',
+    'Animations'
+  ]),
   Table: new Set([
     'Id',
     'X',

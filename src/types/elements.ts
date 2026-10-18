@@ -103,6 +103,24 @@ export interface VideoElement {
   thumbnailSourceId?: string
 }
 
+export interface FlashElement {
+  type: 'flash'
+  id: string
+  rawXml?: string
+  x: number
+  y: number
+  width: number
+  height: number
+  rotation: number
+  sourceId: string
+  /** 原始文件名，含扩展名 */
+  flashName: string
+  /** SWF 舞台原生宽度（FlashSaveInfo.FlashWidth，默认 99） */
+  flashWidth: number
+  /** SWF 舞台原生高度（FlashSaveInfo.FlashHeight，默认 99） */
+  flashHeight: number
+}
+
 export interface TableCell {
   rowSpan: number
   columnSpan: number

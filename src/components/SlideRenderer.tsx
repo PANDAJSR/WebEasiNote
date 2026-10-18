@@ -267,6 +267,7 @@ export function SlideRenderer({
                     resourceMap={resourceMap}
                     slideIndex={slideIndex}
                     currentIndex={currentIndex}
+                    isEditMode={isEditMode}
                   />
                 </div>
                 {isEditMode && canEditText && editingTextElementId === element.id && (

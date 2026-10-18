@@ -1,7 +1,8 @@
-import type { SlideElement, ShapeElement, PictureElement, VideoElement, SlideIssue } from './types'
+import type { SlideElement, ShapeElement, PictureElement, VideoElement, FlashElement, SlideIssue } from './types'
 import { parseShapeElement } from './shapes'
 import { parsePictureElement } from './pictures'
 import { parseVideoElement } from './videos'
+import { parseFlashElement } from './flashes'
 import { parseTextElement } from './text-parser'
 import { parseTableElement } from './tables'
 import { parseTopicElement } from './topics'
@@ -135,6 +136,17 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         if (videoElement) {
           parsedElements.push({
             ...applyOffset(videoElement as VideoElement, offsetX, offsetY),
+            rawXml
+          })
+        }
+        break
+      }
+      case 'Flash': {
+        collectUnknownParameters(node, 'Flash', slideId, elementId, issues)
+        const flashElement = parseFlashElement(node)
+        if (flashElement) {
+          parsedElements.push({
+            ...applyOffset(flashElement as FlashElement, offsetX, offsetY),
             rawXml
           })
         }

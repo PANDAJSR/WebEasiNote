@@ -2,10 +2,12 @@ import type { SlideElement, UnknownElement, TopicElement, CylinderElement, ConeE
 import type { ShapeElement } from '../../shapes'
 import type { PictureElement } from '../../pictures'
 import type { VideoElement } from '../../videos'
+import type { FlashElement } from '../../flashes'
 import type { TableElement } from '../../types'
 import { ShapeRenderer } from '../ShapeRenderer'
 import { PictureRenderer } from '../PictureRenderer'
 import { VideoRenderer } from '../VideoRenderer'
+import { FlashRenderer } from '../FlashRenderer'
 import { TableRenderer } from '../TableRenderer'
 import { TopicRenderer } from '../TopicRenderer'
 import { CylinderRenderer } from '../CylinderRenderer'
@@ -21,6 +23,7 @@ interface ElementRendererProps {
   resourceMap: Record<string, string>
   slideIndex: number
   currentIndex: number
+  isEditMode?: boolean
 }
 
 export function ElementRenderer({
@@ -28,7 +31,8 @@ export function ElementRenderer({
   scale,
   resourceMap,
   slideIndex,
-  currentIndex
+  currentIndex,
+  isEditMode = false
 }: ElementRendererProps) {
   switch (element.type) {
     case 'text':
@@ -46,6 +50,16 @@ export function ElementRenderer({
           isCurrentSlide={slideIndex === currentIndex}
           currentSlideNumber={currentIndex + 1}
           sourceSlideNumber={slideIndex + 1}
+        />
+      )
+    case 'flash':
+      return (
+        <FlashRenderer
+          element={element as FlashElement}
+          scale={scale}
+          resourceMap={resourceMap}
+          isEditMode={isEditMode}
+          isCurrentSlide={slideIndex === currentIndex}
         />
       )
     case 'table':

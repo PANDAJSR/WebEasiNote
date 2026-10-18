@@ -27,5 +27,8 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 
+# Ruffle 运行时资源（由 scripts/copy-ruffle-assets.mjs 生成）
+/public/ruffle/
+
 # tests
 test_cases/*

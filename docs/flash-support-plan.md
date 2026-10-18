@@ -49,8 +49,8 @@ Cvte.Paint.FlashPlayer.Flash : MultimediaElement, ISavable<FlashSaveInfo>
   - `Image.Flash`：`Margin="-3 0 0 0"`，`Stretch=None`（自然尺寸 25×30）。
   - `Image.Play`：`Margin="5 0 0 0"`，自然尺寸 ≈17.3×24.6，`FillRule=EvenOdd`。
 - 命中层：整圆透明 `Ellipse` 模板的 `InteractiveButton`，`Cursor=Hand`。
-- 换算成 SVG（`viewBox="0 0 64 64"`）时两段几何的平移量：
-  `f` → `translate(14.167, 15.667)`；`play` → `translate(23.169, 19.876)`（由自然尺寸居中 + 上面负/正 margin 推出）。
+- 换算成 SVG（`viewBox="0 0 64 64"`）时两段几何的平移量（居中偏移 + 官方 Margin）：
+  `f` → `translate(-1.833 -0.333)`；`play` → `translate(9.853 3.876)`。
 
 ### 2.3 官方播放器窗口（`FlashPlayerWindow`，仅作行为参照）
 
