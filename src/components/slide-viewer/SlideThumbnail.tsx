@@ -9,7 +9,7 @@ interface SlideThumbnailProps {
   index: number
   isActive: boolean
   resourceMap: Record<string, string>
-  onSlideChange: (index: number, source?: SlideChangeSource) => void
+  onSlideChange: (index: number, source?: SlideChangeSource) => void | Promise<void>
 }
 
 export function SlideThumbnail({
@@ -22,7 +22,7 @@ export function SlideThumbnail({
   return (
     <Button
       type='text'
-      onClick={() => onSlideChange(index, 'thumbnail')}
+      onClick={() => { void Promise.resolve(onSlideChange(index, 'thumbnail')).catch(() => undefined) }}
       style={{
         ...styles.slideTab,
         ...(isActive ? styles.slideTabActive : {})

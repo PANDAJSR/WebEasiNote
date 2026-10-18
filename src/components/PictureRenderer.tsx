@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { CSSProperties } from 'react'
 import type { PictureElement } from '../pictures'
+import { ProgressiveImage } from './ProgressiveImage'
 
 interface PictureRendererProps {
   element: PictureElement
@@ -113,9 +114,7 @@ export function PictureRenderer({ element, scale, resourceMap }: PictureRenderer
 
   useEffect(() => {
     const url = resourceMap[sourceId]
-    if (url) {
-      setImageUrl(url)
-    }
+    setImageUrl(url || null)
   }, [sourceId, resourceMap])
 
   if (!imageUrl) {
@@ -176,7 +175,7 @@ export function PictureRenderer({ element, scale, resourceMap }: PictureRenderer
           ...rahmenStyle
         }}
       >
-        <img
+        <ProgressiveImage
           src={imageUrl}
           alt=''
           style={{
@@ -212,7 +211,7 @@ export function PictureRenderer({ element, scale, resourceMap }: PictureRenderer
         ...rahmenStyle
       }}
     >
-      <img
+      <ProgressiveImage
         src={imageUrl}
         alt=''
         style={{

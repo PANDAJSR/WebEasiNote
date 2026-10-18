@@ -5,6 +5,7 @@ import { WelcomeView } from './components/WelcomeView'
 import { LoadingView } from './components/LoadingView'
 import { ErrorView } from './components/ErrorView'
 import { Viewer } from './components/Viewer'
+import { CloudViewer } from './components/CloudViewer'
 import type { SlideChangeSource } from './components/Viewer'
 import { exportSlidesToEnbx } from './enbx-export'
 import { saveBlobToFile } from './save-courseware'
@@ -58,6 +59,7 @@ function App() {
     requestId: string
   } | null>(null)
   const [sourceEnbxFile, setSourceEnbxFile] = useState<File | null>(null)
+  const [manifestUrl, setManifestUrl] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const currentSlideIndexRef = useRef(0)
   const slideCountRef = useRef(0)
@@ -132,6 +134,7 @@ function App() {
     }
   }, [swipeNavigationEnabled])
   const loadENBXFile = async (file: File, options?: { autoReload?: boolean }) => {
+    setManifestUrl('')
     const isAutoReload = options?.autoReload === true
     let loadedMap: Record<string, string> = {}
     if (!isAutoReload) {
@@ -196,7 +199,12 @@ function App() {
     currentSlideIndexRef.current = currentSlideIndex
     slideCountRef.current = slides.length
   }, [currentSlideIndex, slides.length])
-  useEnbxHostMessages({ loadENBXUrlRef, viewModeRef, setNavigationCommand,
+  useEnbxHostMessages({ loadENBXUrlRef, openManifest: url => {
+    setManifestUrl(url)
+    setViewMode('viewer')
+    setNavigationCommand(null)
+    setWatchedENBX(null)
+  }, viewModeRef, setNavigationCommand,
     setToggleThumbnailsCommand, setClickToNextEnabled, setSwipeNavigationEnabled })
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -292,6 +300,7 @@ function App() {
     }
   }
   const handleClear = () => {
+    setManifestUrl('')
     revokeObjectUrls(resourceMap)
     setMetadata(null)
     setSlides([])
@@ -355,7 +364,12 @@ function App() {
       )}
       {viewMode === 'loading' && <LoadingView />}
       {viewMode === 'error' && error && <ErrorView error={error} onBack={handleClear} />}
-      {viewMode === 'viewer' && metadata && (
+      {viewMode === 'viewer' && manifestUrl && <CloudViewer key={manifestUrl} manifestUrl={manifestUrl}
+        onClear={handleClear} clickToNextEnabled={clickToNextEnabled} pagerPosition={pagerPosition}
+        showAnimationProgress={showAnimationProgress} hidePager={hostRuntime} hideToolbar={hostRuntime}
+        infoBarHeight={hostRuntime ? 0 : undefined} toggleThumbnailsCommand={toggleThumbnailsCommand}
+        navigationCommand={navigationCommand} swipeNavigationEnabled={swipeNavigationEnabled} />}
+      {viewMode === 'viewer' && !manifestUrl && metadata && (
         <Viewer
           onSaveAs={handleSaveAs}
           metadata={metadata}

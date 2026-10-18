@@ -5,6 +5,7 @@ import type { ViewMode } from './app-utils'
 
 interface HostMessageOptions {
   loadENBXUrlRef: MutableRefObject<(url: string, fileName: string) => Promise<boolean>>
+  openManifest: (url: string) => void
   viewModeRef: MutableRefObject<ViewMode>
   setNavigationCommand: Dispatch<SetStateAction<{ id: number; direction: 'previous' | 'next'; requestId: string } | null>>
   setToggleThumbnailsCommand: Dispatch<SetStateAction<{ side: 'left' | 'right'; id: number } | null>>
@@ -12,13 +13,17 @@ interface HostMessageOptions {
   setSwipeNavigationEnabled: (value: boolean) => void
 }
 
-export function useEnbxHostMessages({ loadENBXUrlRef, viewModeRef, setNavigationCommand,
+export function useEnbxHostMessages({ loadENBXUrlRef, openManifest, viewModeRef, setNavigationCommand,
   setToggleThumbnailsCommand, setClickToNextEnabled, setSwipeNavigationEnabled }: HostMessageOptions) {
   useEffect(() => {
     if (!isEnbxHostRuntime()) return
     const handleHostMessage = async (message: EnbxHostMessage) => {
       try {
         if (message.type === 'enbx:open') {
+          if (message.sourceKind === 'http-manifest' && typeof message.manifestUrl === 'string') {
+            openManifest(message.manifestUrl)
+            return
+          }
           const url = typeof message.url === 'string' ? message.url : ''
           const fileName = typeof message.fileName === 'string' ? message.fileName : 'courseware.enbx'
           if (url) await loadENBXUrlRef.current(url, fileName)

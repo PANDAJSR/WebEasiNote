@@ -93,7 +93,7 @@ export function VideoRenderer({
       loop={isLoopPlay}
       autoPlay={isAutoPlay}
       playsInline
-      preload='metadata'
+      preload={videoUrl.includes('/courseware/') ? 'none' : 'metadata'}
       aria-label={mediaName || '视频'}
       onLoadedMetadata={() => {
         if (!videoRef.current) return

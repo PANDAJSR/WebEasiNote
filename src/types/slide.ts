@@ -84,6 +84,8 @@ export type SlideElement = (
 }
 
 export interface SlideData {
+  /** HTTP 页目录投影的状态；只有 core-ready 的正文允许提交为当前页。 */
+  loadState?: 'unrequested' | 'loading' | 'core-ready' | 'error'
   id: string
   width: number
   height: number

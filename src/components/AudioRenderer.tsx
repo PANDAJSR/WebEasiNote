@@ -33,7 +33,7 @@ export function AudioRenderer({ element, scale, resourceMap, isCurrentSlide,
   const width = expanded ? 400 : 111
   const left = expanded ? Math.max(0, Math.min(element.x, slideWidth - width)) : element.x
   return <>
-    <audio ref={player.ref} src={url} preload='metadata' aria-label={element.mediaName} />
+    <audio ref={player.ref} src={url} preload={url?.includes('/courseware/') ? 'none' : 'metadata'} aria-label={element.mediaName} />
     {isVisible && isCurrentSlide && !element.isHidden && <div
       style={{ position: 'absolute', left: left * scale, top: element.y * scale,
         transform: `scale(${scale})`, transformOrigin: 'top left' }}>

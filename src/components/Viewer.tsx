@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Button, Modal } from 'antd'
+import { Modal } from 'antd'
+import { ViewerToolbar } from './ViewerToolbar'
 import { styles } from '../styles'
 import { SlideViewer } from './SlideViewer'
 import { SlideThumbnail } from './slide-viewer/SlideThumbnail'
@@ -25,7 +26,7 @@ interface ViewerProps {
   metadata: CoursewareMetadata
   slides: SlideData[]
   currentIndex: number
-  onSlideChange: (index: number, source?: SlideChangeSource) => void
+  onSlideChange: (index: number, source?: SlideChangeSource) => void | Promise<void>
   slideChangeSource: SlideChangeSource
   onClear: () => void
   resourceMap?: Record<string, string>
@@ -161,7 +162,7 @@ export function Viewer({
 
   useEffect(() => {
     setEditedElements({})
-  }, [slides])
+  }, [metadata])
 
   useEffect(() => {
     if (!selectedElementId) return
@@ -327,31 +328,10 @@ export function Viewer({
   return (
     <div style={styles.viewerContainer}>
       {!hideToolbar && (
-      <div style={styles.toolbar}>
-        <div style={styles.toolbarLeft}>
-          <span style={styles.coursewareName}>{metadata.name}</span>
-          <span style={styles.slideInfo}>
-            第 {currentIndex + 1} / {resolvedSlides.length} 页
-          </span>
-        </div>
-        <div style={styles.toolbarRight}>
-          <Button
-            onClick={() => setViewerMode(isEditMode ? 'play' : 'edit')}
-            style={styles.modeToggleButton}
-          >
-            {isEditMode ? '播放模式' : '编辑模式'}
-          </Button>
-          <Button onClick={handleSaveAs} loading={isSaving} style={styles.saveAsButton}>
-            另存为
-          </Button>
-          <Button onClick={() => setIssueModalOpen(true)} style={styles.issueButton}>
-            {issueButtonText}
-          </Button>
-          <Button type='text' onClick={onClear} style={styles.clearButton}>
-            关闭
-          </Button>
-        </div>
-      </div>
+        <ViewerToolbar name={metadata.name} currentIndex={currentIndex} pageCount={resolvedSlides.length}
+          isEditMode={isEditMode} isSaving={isSaving} issueButtonText={issueButtonText}
+          onToggleMode={() => setViewerMode(isEditMode ? 'play' : 'edit')} onSaveAs={handleSaveAs}
+          onIssues={() => setIssueModalOpen(true)} onClear={onClear} />
       )}
 
       <div style={styles.mainContent}>

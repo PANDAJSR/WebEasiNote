@@ -16,12 +16,13 @@ import { useSlideSwipeNavigation } from './slide-viewer/useSlideSwipeNavigation'
 import { SlideViewerLayer } from './slide-viewer/SlideViewerLayer'
 import { slideInfoBarHeight } from './slide-viewer/constants'
 import { clearRasterCache } from '../rendering/rasterCache'
+import { usePageNavigation } from './slide-viewer/usePageNavigation'
 
 interface SlideViewerProps {
   slide: SlideData
   slides: SlideData[]
   currentIndex: number
-  onSlideChange: (index: number, source?: SlideChangeSource) => void
+  onSlideChange: (index: number, source?: SlideChangeSource) => void | Promise<void>
   slideChangeSource: SlideChangeSource
   resourceMap?: Record<string, string>
   clickToNextEnabled: boolean
@@ -79,7 +80,7 @@ export function SlideViewer({
   onNavigationResult,
   swipeNavigationEnabled = true
 }: SlideViewerProps) {
-  useEffect(() => () => clearRasterCache(), [slides])
+  useEffect(() => () => clearRasterCache(), [])
   const { containerRef, slideScaleMap } = useSlideScaleMap(slides, infoBarHeight)
   const editWheelGuardRef = useRef<HTMLDivElement | null>(null)
   const {
@@ -129,50 +130,11 @@ export function SlideViewer({
   const currentViewportWidth = Math.max(0, slide.width * viewportScale)
   const currentViewportHeight = Math.max(0, slide.height * viewportScale)
 
-  const handlePrevSlide = (source: SlideChangeSource = 'pager') => {
-    clearStepDirection()
-    if (!isEditMode && stepBackwardElementAnimation()) return
-    if (isFirstSlide) return
-    onSlideChange(currentIndex - 1, source)
-  }
-
-  const handleNextSlide = (source: SlideChangeSource = 'pager') => {
-    clearStepDirection()
-    if (!isEditMode && stepForwardElementAnimation()) return
-    if (isLastSlide) return
-    onSlideChange(currentIndex + 1, source)
-  }
-
-  useEffect(() => {
-    if (!navigationCommand) return
-    if (navigationCommand.direction === 'next') {
-      clearStepDirection()
-      const stepped = !isEditMode && stepForwardElementAnimation()
-      if (stepped) {
-        onNavigationResult?.(navigationCommand.requestId, currentIndex + 1)
-        return
-      }
-      if (isLastSlide) {
-        onNavigationResult?.(navigationCommand.requestId, 0)
-        return
-      }
-      onSlideChange(currentIndex + 1, 'pager')
-      onNavigationResult?.(navigationCommand.requestId, currentIndex + 2)
-    } else {
-      clearStepDirection()
-      const stepped = !isEditMode && stepBackwardElementAnimation()
-      if (stepped) {
-        onNavigationResult?.(navigationCommand.requestId, currentIndex + 1)
-        return
-      }
-      if (isFirstSlide) {
-        onNavigationResult?.(navigationCommand.requestId, 0)
-        return
-      }
-      onSlideChange(currentIndex - 1, 'pager')
-      onNavigationResult?.(navigationCommand.requestId, currentIndex)
-    }
-  }, [navigationCommand?.id])
+  const { handlePrevSlide, handleNextSlide, navigatePage } = usePageNavigation({
+    currentIndex, pageCount: slides.length, isEditMode, clearStepDirection,
+    stepForwardElementAnimation, stepBackwardElementAnimation, onSlideChange,
+    navigationCommand, onNavigationResult
+  })
 
   const handleSlideViewportClick = (event: React.MouseEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement
@@ -365,7 +327,7 @@ export function SlideViewer({
                 isActive={index === currentIndex}
                 resourceMap={resourceMap}
                 onSlideChange={(i, s) => {
-                  onSlideChange(i, s || 'thumbnail')
+                  void navigatePage(i, s || 'thumbnail').catch(() => undefined)
                   handleCloseSlidePanel()
                 }}
               />
