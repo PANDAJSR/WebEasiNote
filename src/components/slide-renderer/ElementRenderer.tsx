@@ -79,7 +79,7 @@ export function ElementRenderer({
     case 'table':
       return <TableRenderer element={element as TableElement} scale={scale} />
     case 'topic':
-      return <TopicRenderer element={element as TopicElement} scale={scale} />
+      return <TopicRenderer element={element as TopicElement} scale={scale} slideWidth={slideWidth} slideHeight={slideHeight} />
     case 'cylinder':
       return <CylinderRenderer element={element as CylinderElement} scale={scale} />
     case 'cone':

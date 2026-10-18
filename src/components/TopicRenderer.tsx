@@ -11,11 +11,13 @@ import {
 interface TopicRendererProps {
   element: TopicElement
   scale: number
+  slideWidth: number
+  slideHeight: number
 }
 
 type TopicLayoutMode = 'horizontal' | 'vertical'
 
-export function TopicRenderer({ element, scale }: TopicRendererProps) {
+export function TopicRenderer({ element, scale, slideWidth, slideHeight }: TopicRendererProps) {
   const [collapsedNodeIds, setCollapsedNodeIds] = useState<Set<string>>(new Set())
   const rootCenterX = element.x
   const rootCenterY = element.y
@@ -73,8 +75,8 @@ export function TopicRenderer({ element, scale }: TopicRendererProps) {
         position: 'absolute',
         left: 0,
         top: 0,
-        width: '100%',
-        height: '100%',
+        width: slideWidth * scale,
+        height: slideHeight * scale,
         transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
         transformOrigin: `${rootCenterX * scale}px ${rootCenterY * scale}px`,
         pointerEvents: 'none'
