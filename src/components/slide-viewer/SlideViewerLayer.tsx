@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo, useRef } from 'react'
 import { styles } from '../../styles'
 import { SlideRenderer } from '../SlideRenderer'
 import type { SlideData, TextLine } from '../../parser'
@@ -67,6 +67,11 @@ export function SlideViewerLayer({
   textStyleCommand
 }: SlideViewerLayerProps) {
   const isCurrent = index === currentIndex
+  const visited = useRef(false)
+  if (isCurrent) visited.current = true
+  const crossPlaySlide = useMemo(() => ({ ...slideItem,
+    elements: slideItem.elements.filter(element => element.type === 'video' && element.isCrossSlidePlay)
+  }), [slideItem])
   const isEntering = transitionState?.enteringIndex === index
   const isLeaving = transitionState?.leavingIndex === index
   const isAnimating = Boolean(isEntering || isLeaving)
@@ -143,7 +148,7 @@ export function SlideViewerLayer({
     : 'none'
   const currentSlideNumber = currentIndex + 1
   const sourceSlideNumber = index + 1
-  const shouldKeepAliveForCrossPlay = slideItem.elements.some(
+  const shouldKeepAliveForCrossPlay = visited.current && slideItem.elements.some(
     element => element.type === 'video'
       && element.isCrossSlidePlay
       && currentSlideNumber > sourceSlideNumber
@@ -153,6 +158,7 @@ export function SlideViewerLayer({
       )
   )
 
+  if (!isCurrent && !isEntering && !isLeaving && !shouldKeepAliveForCrossPlay) return null
   return (
     <div
       style={{
@@ -187,7 +193,7 @@ export function SlideViewerLayer({
         }}
       >
         <SlideRenderer
-          slide={slideItem}
+          slide={isCurrent || isEntering || isLeaving ? slideItem : crossPlaySlide}
           scale={slideScale}
           resourceMap={resourceMap}
           slideIndex={index}

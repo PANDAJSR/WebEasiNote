@@ -72,6 +72,7 @@ export type SlideElement = (
 ) & {
   groupId?: string
   groupAncestorIds?: string[]
+  staticCacheSafe?: boolean
 }
 
 export interface SlideData {
@@ -81,6 +82,7 @@ export interface SlideData {
   rawXml?: string
   backgroundColor: string
   backgroundImage?: string
+  thumbnail?: string
   transition?: {
     key: string
     durationMs: number

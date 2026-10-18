@@ -1,20 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import JSZip from 'jszip'
-import {
-  parseENBXFile,
-  parseExtractedFolder,
-  loadSlidesFromENBX,
-  loadSlidesFromFolder,
-  type CoursewareMetadata,
-  type SlideData
-} from './parser'
-import { parseReferenceXML } from './pictures'
+import type { CoursewareMetadata, SlideData } from './parser'
+import { readCoursewareFile, readCoursewareFolder } from './courseware-loader'
 import { WelcomeView } from './components/WelcomeView'
 import { LoadingView } from './components/LoadingView'
 import { ErrorView } from './components/ErrorView'
 import { Viewer } from './components/Viewer'
 import type { SlideChangeSource } from './components/Viewer'
 import { exportSlidesToEnbx } from './enbx-export'
+import { saveBlobToFile } from './save-courseware'
 import {
   DEFAULT_PAGER_POSITION,
   isPagerPosition,
@@ -24,11 +17,11 @@ import {
 } from './viewer-settings'
 import type { PagerPosition } from './viewer-settings'
 import { styles } from './styles'
+import { useEnbxHostMessages } from './useEnbxHostMessages'
+import { useCoursewareAutoReload } from './useCoursewareAutoReload'
 import {
   isEnbxHostRuntime,
-  postToEnbxHost,
-  subscribeToEnbxHost,
-  type EnbxHostMessage
+  postToEnbxHost
 } from './host-bridge'
 import {
   AUTO_RELOAD_STORAGE_KEY,
@@ -66,7 +59,6 @@ function App() {
   } | null>(null)
   const [sourceEnbxFile, setSourceEnbxFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const autoReloadingRef = useRef(false)
   const currentSlideIndexRef = useRef(0)
   const slideCountRef = useRef(0)
   const viewModeRef = useRef(viewMode)
@@ -75,35 +67,6 @@ function App() {
   const lastOpenUrlRef = useRef('')
   const pickerWindow = window as PickerWindow
   const supportsOpenFilePicker = typeof pickerWindow.showOpenFilePicker === 'function'
-  const supportsSaveFilePicker = typeof pickerWindow.showSaveFilePicker === 'function'
-
-  const saveBlobToFile = async (blob: Blob, fileName: string) => {
-    if (supportsSaveFilePicker) {
-      const saveHandle = await pickerWindow.showSaveFilePicker!({
-        suggestedName: fileName,
-        excludeAcceptAllOption: true,
-        types: [
-          {
-            description: 'ENBX 课件文件',
-            accept: {
-              'application/octet-stream': ['.enbx']
-            }
-          }
-        ]
-      })
-      const writable = await saveHandle.createWritable()
-      await writable.write(blob)
-      await writable.close()
-      return
-    }
-
-    const fileUrl = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = fileUrl
-    anchor.download = fileName
-    anchor.click()
-    URL.revokeObjectURL(fileUrl)
-  }
   useEffect(() => {
     try {
       const saved = localStorage.getItem(AUTO_RELOAD_STORAGE_KEY)
@@ -179,36 +142,8 @@ function App() {
       console.log('='.repeat(60))
       console.log(`[App] 开始解析 ENBX 文件: ${file.name}${isAutoReload ? '（自动重载）' : ''}`)
       console.log('='.repeat(60))
-      const zip = await JSZip.loadAsync(file)
-      console.log('[App] ZIP 文件加载成功')
-      const referenceFile = zip.file('Reference.xml')
-      let map: Record<string, string> = {}
-      if (referenceFile) {
-        const refXml = await referenceFile.async('text')
-        map = parseReferenceXML(refXml)
-        console.log(`[App] Reference.xml 解析完成, 共 ${Object.keys(map).length} 个资源映射`)
-      }
-      let loadedCount = 0
-      let failedCount = 0
-      for (const [id, filePath] of Object.entries(map)) {
-        const imgFile = zip.file(filePath)
-        if (!imgFile) {
-          failedCount++
-          continue
-        }
-        try {
-          const blob = await imgFile.async('blob')
-          loadedMap[id] = URL.createObjectURL(blob)
-          loadedCount++
-        } catch {
-          failedCount++
-        }
-      }
-      console.log(`[App] 图片资源加载完成: ${loadedCount} 成功, ${failedCount} 失败`)
-      const meta = await parseENBXFile(file)
-      const slideData = await loadSlidesFromENBX(file)
-      const totalElements = slideData.reduce((sum, slide) => sum + slide.elements.length, 0)
-      console.log(`[App] 幻灯片: ${slideData.length} 页, 元素总数: ${totalElements}`)
+      const { meta, slideData, resources } = await readCoursewareFile(file)
+      loadedMap = resources
       setMetadata(meta)
       setSlides(slideData)
       setSourceEnbxFile(file)
@@ -257,67 +192,12 @@ function App() {
     return loadENBXFile(new File([blob], fileName, { type: 'application/octet-stream' }))
   }
   loadENBXUrlRef.current = loadENBXUrl
-
   useEffect(() => {
     currentSlideIndexRef.current = currentSlideIndex
     slideCountRef.current = slides.length
   }, [currentSlideIndex, slides.length])
-
-  useEffect(() => {
-    if (!isEnbxHostRuntime()) return
-
-    const handleHostMessage = async (message: EnbxHostMessage) => {
-      try {
-        if (message.type === 'enbx:open') {
-          const url = typeof message.url === 'string' ? message.url : ''
-          const fileName = typeof message.fileName === 'string' ? message.fileName : 'courseware.enbx'
-          if (url) await loadENBXUrlRef.current(url, fileName)
-          return
-        }
-
-        if (message.type === 'enbx:navigate') {
-          const requestId = typeof message.requestId === 'string' ? message.requestId : ''
-          const direction = message.direction === 'previous' ? 'previous' : 'next'
-          if (viewModeRef.current === 'viewer') {
-            setNavigationCommand({
-              id: Date.now() + Math.random(),
-              direction,
-              requestId
-            })
-          } else {
-            postToEnbxHost({ type: 'enbx:navigation-complete', requestId, page: 0 })
-          }
-          return
-        }
-
-        if (message.type === 'enbx:toggle-thumbnails') {
-          const side = message.side === 'left' ? 'left' : 'right'
-          setToggleThumbnailsCommand(prev => ({
-            side,
-            id: (prev?.id ?? 0) + 1
-          }))
-          return
-        }
-
-        if (message.type === 'enbx:update-settings') {
-          if (typeof message.clickToNextEnabled === 'boolean') {
-            setClickToNextEnabled(message.clickToNextEnabled)
-          }
-          if (typeof message.swipeNavigationEnabled === 'boolean') {
-            setSwipeNavigationEnabled(message.swipeNavigationEnabled)
-          }
-          return
-        }
-      } catch (error) {
-        postToEnbxHost({
-          type: 'enbx:error',
-          error: error instanceof Error ? error.message : String(error)
-        })
-      }
-    }
-
-    return subscribeToEnbxHost(handleHostMessage)
-  }, [])
+  useEnbxHostMessages({ loadENBXUrlRef, viewModeRef, setNavigationCommand,
+    setToggleThumbnailsCommand, setClickToNextEnabled, setSwipeNavigationEnabled })
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -389,36 +269,8 @@ function App() {
     let loadedMap: Record<string, string> = {}
     try {
       const dirHandle = await window.showDirectoryPicker()
-      let map: Record<string, string> = {}
-      try {
-        const refFile = await dirHandle.getFileHandle('Reference.xml')
-        const refBlob = await refFile.getFile()
-        const refXml = await refBlob.text()
-        map = parseReferenceXML(refXml)
-      } catch {
-        // Reference.xml 可能不存在
-      }
-      let resourcesHandle: FileSystemDirectoryHandle | null = null
-      try {
-        resourcesHandle = await dirHandle.getDirectoryHandle('Resources')
-      } catch {
-        // Resources 文件夹可能不存在
-      }
-      if (resourcesHandle) {
-        for (const [id, filePath] of Object.entries(map)) {
-          const fileName = filePath.split('/').pop()
-          if (!fileName) continue
-          try {
-            const fileHandle = await resourcesHandle.getFileHandle(fileName)
-            const file = await fileHandle.getFile()
-            loadedMap[id] = URL.createObjectURL(file)
-          } catch {
-            // 忽略图片加载失败
-          }
-        }
-      }
-      const meta = await parseExtractedFolder(dirHandle)
-      const slideData = await loadSlidesFromFolder(dirHandle)
+      const { meta, slideData, resources } = await readCoursewareFolder(dirHandle)
+      loadedMap = resources
       setMetadata(meta)
       setSlides(slideData)
       setSourceEnbxFile(null)
@@ -461,61 +313,25 @@ function App() {
     setCurrentSlideIndex(index)
     postToEnbxHost({ type: 'enbx:page-changed', page: index + 1 })
   }
-
   const handleSaveAs = async (editedElements: Record<string, SlideData['elements'][number]>) => {
     if (!metadata || !sourceEnbxFile) {
       throw new Error('当前仅支持从 ENBX 文件打开后进行另存为')
     }
-
     const { blob, fileName } = await exportSlidesToEnbx({
       sourceFile: sourceEnbxFile,
       slides,
       editedElements,
       coursewareName: metadata.name
     })
-
     await saveBlobToFile(blob, fileName)
   }
-  useEffect(() => {
-    if (!autoReloadEnabled || !watchedENBX || viewMode !== 'viewer') return
-    let disposed = false
-    const timerId = window.setInterval(async () => {
-      if (autoReloadingRef.current) return
-      autoReloadingRef.current = true
-      try {
-        const latestFile = await watchedENBX.handle.getFile()
-        const hasChanged =
-          latestFile.lastModified !== watchedENBX.lastModified ||
-          latestFile.size !== watchedENBX.size
-        if (!hasChanged) return
-        console.log('[App] 检测到 ENBX 文件变化，开始自动重载...')
-        const loaded = await loadENBXFile(latestFile, { autoReload: true })
-        if (loaded && !disposed) {
-          setWatchedENBX({
-            handle: watchedENBX.handle,
-            lastModified: latestFile.lastModified,
-            size: latestFile.size
-          })
-        }
-      } catch (err) {
-        console.warn('[App] 自动检测 ENBX 文件变化失败:', err)
-      } finally {
-        autoReloadingRef.current = false
-      }
-    }, 2000)
-    return () => {
-      disposed = true
-      window.clearInterval(timerId)
-    }
-  }, [autoReloadEnabled, watchedENBX, viewMode])
-
+  useCoursewareAutoReload({ autoReloadEnabled, watchedENBX, viewMode, loadENBXFile, setWatchedENBX })
   const handleNavigationResult = useCallback((requestId: string, page: number) => {
     if (page > 0) {
       postToEnbxHost({ type: 'enbx:page-changed', page })
     }
     postToEnbxHost({ type: 'enbx:navigation-complete', requestId, page })
   }, [])
-
   return (
     <div style={styles.container}>
       {viewMode === 'welcome' && (
@@ -565,4 +381,3 @@ function App() {
   )
 }
 export default App
-

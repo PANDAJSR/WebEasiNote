@@ -36,6 +36,8 @@ export interface ShapeElement {
   dashStyle?: string
   strokeDashArray?: string
   arrowType?: string
+  flipHorizontal?: boolean
+  flipVertical?: boolean
   shadow?: {
     offset: number
     opacity: number

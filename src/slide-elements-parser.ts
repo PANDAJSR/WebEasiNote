@@ -13,6 +13,7 @@ import { parseMathFormulaElement } from './math-formulas'
 import { parseRuledPaperElement } from './ruled-papers'
 import { getDirectChildElement, getDirectChildText } from './xml-utils'
 import { KNOWN_PARAMETERS } from './slide-elements-known-parameters'
+import { isStaticNodeSafe } from './rendering/staticSafety'
 
 interface ParseElementsOptions {
   slideId: string
@@ -26,33 +27,9 @@ interface ParseSlideElementsResult {
   issues: SlideIssue[]
 }
 
-function formatXml(xml: string): string {
-  const normalized = xml
-    .replace(/>\s*</g, '><')
-    .replace(/(>)(<)(\/*)/g, '$1\n$2$3')
-    .trim()
-  const lines = normalized.split('\n')
-  let indentLevel = 0
-
-  return lines
-    .map(rawLine => {
-      const line = rawLine.trim()
-      if (!line) return ''
-      if (line.startsWith('</')) {
-        indentLevel = Math.max(0, indentLevel - 1)
-      }
-      const indentedLine = `${'  '.repeat(indentLevel)}${line}`
-      if (line.startsWith('<') && !line.startsWith('</') && !line.endsWith('/>') && !line.includes('</')) {
-        indentLevel += 1
-      }
-      return indentedLine
-    })
-    .join('\n')
-}
-
 function serializeElementXml(node: Element): string {
   const serializer = new XMLSerializer()
-  return formatXml(serializer.serializeToString(node))
+  return serializer.serializeToString(node)
 }
 
 function parseNumber(value: string | null, fallback = 0): number {
@@ -62,7 +39,16 @@ function parseNumber(value: string | null, fallback = 0): number {
 }
 
 function previewValue(node: Element): string {
-  const text = node.textContent?.trim() || ''
+  // 诊断只取短预览，避免为几万节点的几何扩展拼接完整 textContent。
+  const walker = node.ownerDocument.createTreeWalker(node, 4)
+  let text = ''
+  let child = walker.nextNode()
+  while (child && text.length <= 80) {
+    const part = child.nodeValue || ''
+    text += (text ? part : part.trimStart()).slice(0, 81 - text.length)
+    child = walker.nextNode()
+  }
+  text = text.trim()
   if (text.length <= 80) return text
   return `${text.slice(0, 80)}...`
 }
@@ -105,7 +91,8 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
   allChildNodes.forEach((node, index) => {
     const tagName = node.tagName
     const elementId = getDirectChildText(node, 'Id') || `${tagName.toLowerCase()}-${index}`
-    const rawXml = rawXmlByIndex?.[index] || serializeElementXml(node)
+    // Group 不进入扁平模型，无需重复序列化整个子树。
+    const rawXml = tagName === 'Group' ? '' : rawXmlByIndex?.[index] || serializeElementXml(node)
 
     switch (tagName) {
       case 'Text': {
@@ -125,6 +112,7 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         if (shapeElement) {
           parsedElements.push({
             ...applyOffset(shapeElement as ShapeElement, offsetX, offsetY),
+            staticCacheSafe: isStaticNodeSafe(node),
             rawXml
           })
         }
@@ -233,7 +221,8 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
             y: newY,
             rotation: newRotation,
             groupId: child.groupId || elementId,
-            groupAncestorIds: [elementId, ...(child.groupAncestorIds || [])]
+            groupAncestorIds: [elementId, ...(child.groupAncestorIds || [])],
+            staticCacheSafe: child.staticCacheSafe && isStaticNodeSafe(node)
           }
         })
 

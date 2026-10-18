@@ -15,6 +15,7 @@ import { useSlideTransitions } from './slide-viewer/useSlideTransitions'
 import { useSlideSwipeNavigation } from './slide-viewer/useSlideSwipeNavigation'
 import { SlideViewerLayer } from './slide-viewer/SlideViewerLayer'
 import { slideInfoBarHeight } from './slide-viewer/constants'
+import { clearRasterCache } from '../rendering/rasterCache'
 
 interface SlideViewerProps {
   slide: SlideData
@@ -76,6 +77,7 @@ export function SlideViewer({
   onNavigationResult,
   swipeNavigationEnabled = true
 }: SlideViewerProps) {
+  useEffect(() => () => clearRasterCache(), [slides])
   const { containerRef, slideScaleMap } = useSlideScaleMap(slides, infoBarHeight)
   const editWheelGuardRef = useRef<HTMLDivElement | null>(null)
   const {

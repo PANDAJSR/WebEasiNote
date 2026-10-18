@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { SlideData, TextLine } from '../parser'
 import { ElementRenderer } from './slide-renderer/ElementRenderer'
@@ -6,7 +6,8 @@ import { EditableTextOverlay } from './slide-renderer/EditableTextOverlay'
 import type { TextSelectionRange, TextStyleCommand, TextStyleState } from './text-style-commands'
 import { applyTextStyleCommand, resolveTextStyleState } from './text-style-editing'
 import { useElementEditInteractions } from './slide-renderer/useElementEditInteractions'
-
+import { getStaticPlan, isStaticRun } from '../rendering/staticPlan'
+import { StaticRunLayer } from './slide-renderer/StaticRunLayer'
 interface SlideRendererProps {
   slide: SlideData
   scale?: number
@@ -24,7 +25,6 @@ interface SlideRendererProps {
   selectedElementId?: string | null
   textStyleCommand?: TextStyleCommand | null
 }
-
 /**
  * 幻灯片渲染器 - 使用 DOM 实现矢量渲染
  */
@@ -53,6 +53,7 @@ export function SlideRenderer({
   const backgroundImageUrl = slide.backgroundImage ? resourceMap[slide.backgroundImage] : null
   const scaledWidth = slide.width * scale
   const scaledHeight = slide.height * scale
+  const renderItems = useMemo(() => isEditMode ? slide.elements : getStaticPlan(slide), [slide, isEditMode])
   const {
     resolveElementBounds,
     handleEditElementMouseDown,
@@ -71,7 +72,6 @@ export function SlideRenderer({
     onEditElementDrag,
     onEditElementResize
   })
-
   useEffect(() => {
     if (!isEditMode) {
       setEditingTextElementId(null)
@@ -81,7 +81,6 @@ export function SlideRenderer({
       onEditTextStyleStateChange?.(null)
     }
   }, [isEditMode, onEditTextStyleStateChange, slide.id])
-
   useEffect(() => {
     if (!selectedElementId) {
       setEditingTextElementId(null)
@@ -98,7 +97,6 @@ export function SlideRenderer({
       textSelectionRangeMapRef.current = {}
     }
   }, [editingTextElementId, onEditTextStyleStateChange, selectedElementId])
-
   useEffect(() => {
     if (!selectedElementId) return
     const targetElement = slide.elements.find(element => element.id === selectedElementId)
@@ -118,37 +116,31 @@ export function SlideRenderer({
     selectedElementId,
     slide.elements
   ])
-
   useEffect(() => {
     if (!textStyleCommand || !selectedElementId) return
     if (appliedTextStyleCommandIdRef.current === textStyleCommand.id) return
     appliedTextStyleCommandIdRef.current = textStyleCommand.id
-
     const targetElement = slide.elements.find(element => element.id === selectedElementId)
     if (!targetElement || targetElement.type !== 'text') return
     const sourceLines = draftTextLinesMap[selectedElementId]
       || editingInjectedTextLinesMap[selectedElementId]
       || targetElement.textLines
     if (sourceLines.length === 0) return
-
     const isEditingCurrentElement = isEditMode && editingTextElementId === selectedElementId
     const selectionRange = isEditingCurrentElement
       ? textSelectionRangeMapRef.current[selectedElementId]
       : null
     const nextTextLines = applyTextStyleCommand(sourceLines, textStyleCommand, selectionRange)
-
     setDraftTextLinesMap(prev => ({
       ...prev,
       [selectedElementId]: nextTextLines
     }))
-
     if (isEditingCurrentElement) {
       setEditingInjectedTextLinesMap(prev => ({
         ...prev,
         [selectedElementId]: nextTextLines
       }))
     }
-
     onEditTextUpdate?.(selectedElementId, nextTextLines)
     onEditTextStyleStateChange?.(resolveTextStyleState(nextTextLines, selectionRange))
   }, [
@@ -162,7 +154,6 @@ export function SlideRenderer({
     slide.elements,
     textStyleCommand
   ])
-
   return (
     <div
       style={{
@@ -192,153 +183,161 @@ export function SlideRenderer({
           transformOrigin: 'top left'
         }}
       >
-        {slide.elements.map(element => {
-          if (elementRenderStates[element.id] === false) return null
-          const bounds = resolveElementBounds(element)
-          const draftTextLines = draftTextLinesMap[element.id]
-          const injectedEditingTextLines = editingInjectedTextLinesMap[element.id]
-          const isEditingCurrentElement = isEditMode && editingTextElementId === element.id
-          const renderedElement = (() => {
-            if (!draftTextLines) return element
-            if (element.type === 'text') {
-              return { ...element, textLines: draftTextLines }
-            }
-            if (element.type === 'shape') {
-              return { ...element, inlineText: draftTextLines }
-            }
-            return element
-          })()
-          const renderedElementWithEditingState = (() => {
-            if (!isEditingCurrentElement) return renderedElement
-            // 编辑形状文本时保留形状本体，仅隐藏形状原文本，避免出现“白底遮挡”观感
-            if (renderedElement.type === 'shape') {
-              return { ...renderedElement, inlineText: [] }
-            }
-            return renderedElement
-          })()
-          const hideReadOnlyTextLayer = isEditMode
-            && element.type === 'text'
-            && editingTextElementId === element.id
-          const canEditText = element.type === 'text' || element.type === 'shape'
-          const elementTextLines = element.type === 'text'
-            ? element.textLines
-            : (element.type === 'shape' ? (element.inlineText || []) : [])
-          const overlayTextLines = injectedEditingTextLines || elementTextLines
-          const elementArrangingType = element.type === 'text'
-            ? element.arrangingType
-            : 'Horizontal'
-          return (
-            <div
-              key={element.id}
-              data-slide-element='true'
-              style={{
-                position: 'absolute',
-                left: bounds.x,
-                top: bounds.y,
-                width: bounds.width,
-                height: bounds.height,
-                overflow: 'visible',
-                cursor: isEditMode
-                  ? canEditText && editingTextElementId === element.id
-                    ? 'text'
-                    : 'move'
-                  : undefined,
-                ...elementDisplayStyles[element.id]
-              }}
-              onMouseDown={event => handleEditElementMouseDown(element, event)}
-              onClick={() => handleEditElementClick(element.id)}
-              onDoubleClick={event => {
-                if (!isEditMode || !canEditText) return
-                event.stopPropagation()
-                event.preventDefault()
-                onElementClick?.(element.id)
-                setEditingTextElementId(element.id)
-              }}
-            >
+        {renderItems.flatMap(item => {
+          if (isStaticRun(item)) {
+            // 外部逐元素样式/可见性变化时回退，不能烘焙过期状态。
+            const changed = item.elements.some(element => elementDisplayStyles[element.id]
+              || elementRenderStates[element.id] !== undefined)
+            if (!changed) return [<StaticRunLayer key={item.id} run={item} width={slide.width} height={slide.height} scale={scale} />]
+          }
+          return (isStaticRun(item) ? item.elements : [item]).map(element => {
+            if (elementRenderStates[element.id] === false) return null
+            const bounds = resolveElementBounds(element)
+            const draftTextLines = draftTextLinesMap[element.id]
+            const injectedEditingTextLines = editingInjectedTextLinesMap[element.id]
+            const isEditingCurrentElement = isEditMode && editingTextElementId === element.id
+            const renderedElement = (() => {
+              if (!draftTextLines) return element
+              if (element.type === 'text') {
+                return { ...element, textLines: draftTextLines }
+              }
+              if (element.type === 'shape') {
+                return { ...element, inlineText: draftTextLines }
+              }
+              return element
+            })()
+            const renderedElementWithEditingState = (() => {
+              if (!isEditingCurrentElement) return renderedElement
+              // 编辑形状文本时保留形状本体，仅隐藏形状原文本，避免出现“白底遮挡”观感
+              if (renderedElement.type === 'shape') {
+                return { ...renderedElement, inlineText: [] }
+              }
+              return renderedElement
+            })()
+            const hideReadOnlyTextLayer = isEditMode
+              && element.type === 'text'
+              && editingTextElementId === element.id
+            const canEditText = element.type === 'text' || element.type === 'shape'
+            const elementTextLines = element.type === 'text'
+              ? element.textLines
+              : (element.type === 'shape' ? (element.inlineText || []) : [])
+            const overlayTextLines = injectedEditingTextLines || elementTextLines
+            const elementArrangingType = element.type === 'text'
+              ? element.arrangingType
+              : 'Horizontal'
+            return (
               <div
+                key={element.id}
+                data-slide-element='true'
                 style={{
                   position: 'absolute',
-                  left: -bounds.x,
-                  top: -bounds.y,
-                  visibility: hideReadOnlyTextLayer ? 'hidden' : 'visible'
+                  left: bounds.x,
+                  top: bounds.y,
+                  width: bounds.width,
+                  height: bounds.height,
+                  overflow: 'visible',
+                  cursor: isEditMode
+                    ? canEditText && editingTextElementId === element.id
+                      ? 'text'
+                      : 'move'
+                    : undefined,
+                  ...elementDisplayStyles[element.id]
+                }}
+                onMouseDown={event => handleEditElementMouseDown(element, event)}
+                onClick={() => handleEditElementClick(element.id)}
+                onDoubleClick={event => {
+                  if (!isEditMode || !canEditText) return
+                  event.stopPropagation()
+                  event.preventDefault()
+                  onElementClick?.(element.id)
+                  setEditingTextElementId(element.id)
                 }}
               >
-                <ElementRenderer
-                  element={renderedElementWithEditingState}
-                  scale={1}
-                  resourceMap={resourceMap}
-                  slideIndex={slideIndex}
-                  currentIndex={currentIndex}
-                />
-              </div>
-              {isEditMode && canEditText && editingTextElementId === element.id && (
-                <EditableTextOverlay
-                  textLines={overlayTextLines}
-                  rotation={element.rotation || 0}
-                  arrangingType={elementArrangingType}
-                  externalSelectionRange={textSelectionRangeMapRef.current[element.id] || null}
-                  onSelectionChange={range => {
-                    textSelectionRangeMapRef.current[element.id] = range
-                    if (element.type === 'text') {
-                      const nextSourceLines = draftTextLinesMap[element.id]
-                        || editingInjectedTextLinesMap[element.id]
-                        || element.textLines
-                      onEditTextStyleStateChange?.(resolveTextStyleState(nextSourceLines, range))
-                    }
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: -bounds.x,
+                    top: -bounds.y,
+                    visibility: hideReadOnlyTextLayer ? 'hidden' : 'visible'
                   }}
-                  onCancel={() => {
-                    setDraftTextLinesMap(prev => {
-                      if (!prev[element.id]) return prev
-                      const next = { ...prev }
-                      delete next[element.id]
-                      return next
-                    })
-                    setEditingInjectedTextLinesMap(prev => {
-                      if (!prev[element.id]) return prev
-                      const next = { ...prev }
-                      delete next[element.id]
-                      return next
-                    })
-                    delete textSelectionRangeMapRef.current[element.id]
-                    onEditTextStyleStateChange?.(null)
-                    setEditingTextElementId(null)
-                  }}
-                  onLiveChange={nextTextLines => {
-                    setDraftTextLinesMap(prev => ({
-                      ...prev,
-                      [element.id]: nextTextLines
-                    }))
-                    if (element.type === 'text') {
-                      onEditTextStyleStateChange?.(
-                        resolveTextStyleState(
-                          nextTextLines,
-                          textSelectionRangeMapRef.current[element.id] || null
+                >
+                  <ElementRenderer
+                    element={renderedElementWithEditingState}
+                    scale={1}
+                    resourceMap={resourceMap}
+                    slideIndex={slideIndex}
+                    currentIndex={currentIndex}
+                  />
+                </div>
+                {isEditMode && canEditText && editingTextElementId === element.id && (
+                  <EditableTextOverlay
+                    textLines={overlayTextLines}
+                    rotation={element.rotation || 0}
+                    arrangingType={elementArrangingType}
+                    externalSelectionRange={textSelectionRangeMapRef.current[element.id] || null}
+                    onSelectionChange={range => {
+                      textSelectionRangeMapRef.current[element.id] = range
+                      if (element.type === 'text') {
+                        const nextSourceLines = draftTextLinesMap[element.id]
+                          || editingInjectedTextLinesMap[element.id]
+                          || element.textLines
+                        onEditTextStyleStateChange?.(resolveTextStyleState(nextSourceLines, range))
+                      }
+                    }}
+                    onCancel={() => {
+                      setDraftTextLinesMap(prev => {
+                        if (!prev[element.id]) return prev
+                        const next = { ...prev }
+                        delete next[element.id]
+                        return next
+                      })
+                      setEditingInjectedTextLinesMap(prev => {
+                        if (!prev[element.id]) return prev
+                        const next = { ...prev }
+                        delete next[element.id]
+                        return next
+                      })
+                      delete textSelectionRangeMapRef.current[element.id]
+                      onEditTextStyleStateChange?.(null)
+                      setEditingTextElementId(null)
+                    }}
+                    onLiveChange={nextTextLines => {
+                      setDraftTextLinesMap(prev => ({
+                        ...prev,
+                        [element.id]: nextTextLines
+                      }))
+                      if (element.type === 'text') {
+                        onEditTextStyleStateChange?.(
+                          resolveTextStyleState(
+                            nextTextLines,
+                            textSelectionRangeMapRef.current[element.id] || null
+                          )
                         )
-                      )
-                    }
-                  }}
-                  onCommit={nextTextLines => {
-                    setDraftTextLinesMap(prev => {
-                      if (!prev[element.id]) return prev
-                      const next = { ...prev }
-                      delete next[element.id]
-                      return next
-                    })
-                    setEditingInjectedTextLinesMap(prev => {
-                      if (!prev[element.id]) return prev
-                      const next = { ...prev }
-                      delete next[element.id]
-                      return next
-                    })
-                    delete textSelectionRangeMapRef.current[element.id]
-                    onEditTextUpdate?.(element.id, nextTextLines)
-                    onEditTextStyleStateChange?.(null)
-                    setEditingTextElementId(null)
-                  }}
-                />
-              )}
-            </div>
-          )
+                      }
+                    }}
+                    onCommit={nextTextLines => {
+                      setDraftTextLinesMap(prev => {
+                        if (!prev[element.id]) return prev
+                        const next = { ...prev }
+                        delete next[element.id]
+                        return next
+                      })
+                      setEditingInjectedTextLinesMap(prev => {
+                        if (!prev[element.id]) return prev
+                        const next = { ...prev }
+                        delete next[element.id]
+                        return next
+                      })
+                      delete textSelectionRangeMapRef.current[element.id]
+                      onEditTextUpdate?.(element.id, nextTextLines)
+                      onEditTextStyleStateChange?.(null)
+                      setEditingTextElementId(null)
+                    }}
+                  />
+                )}
+              </div>
+            )
+          })
         })}
         {selectedElementId && (() => {
           const selectedElement = slide.elements.find(element => element.id === selectedElementId)

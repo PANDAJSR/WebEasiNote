@@ -1,6 +1,5 @@
 import { Button } from 'antd'
 import { styles } from '../../styles'
-import { SlideRenderer } from '../SlideRenderer'
 import type { SlideData } from '../../parser'
 import type { SlideChangeSource } from '../Viewer'
 import { thumbnailHeight, thumbnailWidth } from './constants'
@@ -17,10 +16,8 @@ export function SlideThumbnail({
   slide,
   index,
   isActive,
-  resourceMap,
   onSlideChange
 }: SlideThumbnailProps) {
-  const previewScale = Math.min(thumbnailWidth / slide.width, thumbnailHeight / slide.height, 1)
 
   return (
     <Button
@@ -34,13 +31,10 @@ export function SlideThumbnail({
       <span style={styles.slideTabNumber}>{index + 1}</span>
       <span style={styles.slideTabPreviewViewport}>
         <span style={styles.slideTabPreviewContent}>
-          <SlideRenderer
-            slide={slide}
-            scale={previewScale}
-            resourceMap={resourceMap}
-            slideIndex={index}
-            currentIndex={-1}
-          />
+          {slide.thumbnail
+            ? <img src={slide.thumbnail} loading='lazy' decoding='async' alt={`第 ${index + 1} 页预览`}
+                style={{ width: thumbnailWidth, height: thumbnailHeight, objectFit: 'contain' }} />
+            : <span>第 {index + 1} 页</span>}
         </span>
       </span>
     </Button>
