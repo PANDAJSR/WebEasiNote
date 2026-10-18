@@ -6,6 +6,8 @@ import { buildScaleInKeyframesCss } from './scale-animation'
 import { buildTranslateFadeInKeyframesCss } from './translate-fade-animation'
 import { buildTranslateInKeyframesCss } from './translate-animation'
 import { buildBlindInKeyframesCss, buildWipeInKeyframesCss } from './wipe-animation'
+import { buildPresetAnimationKeyframesCss } from './animation-presets'
+import { buildRandomizedLinesInKeyframesCss } from './randomized-lines-animation'
 
 export const FADE_IN_KEYFRAME_NAME = 'seewo-element-fade-in'
 export const FADE_OUT_KEYFRAME_NAME = 'seewo-element-fade-out'
@@ -39,6 +41,8 @@ export function ensureElementAnimationKeyframes(): void {
     ${buildTranslateFadeInKeyframesCss()}
     ${buildTranslateInKeyframesCss()}
     ${buildScaleInKeyframesCss()}
+    ${buildPresetAnimationKeyframesCss()}
+    ${buildRandomizedLinesInKeyframesCss()}
   `
   document.head.appendChild(styleElement)
 }

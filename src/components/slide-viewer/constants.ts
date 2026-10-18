@@ -1,3 +1,5 @@
+import { resolvePresetAnimationFamily } from './animation-presets'
+
 export type SlidePanelAnchorSide = 'left' | 'right'
 
 export type LayerSnapshot = {
@@ -42,16 +44,16 @@ export const TRANSLATE_FADE_IN_KEYFRAME_PREFIX = 'seewo-element-translate-fade-i
 export const SCALE_IN_KEYFRAME_PREFIX = 'seewo-element-scale-in'
 export const SLIDE_PANEL_ANIMATION_MS = 180
 
-export function isAppearanceAnimation(type: string, category: string): boolean {
-  const normalizedType = type.trim().toLowerCase()
-  const normalizedCategory = category.trim().toLowerCase()
-  return normalizedCategory === 'appearance' || normalizedType === 'fadein'
+export function isAppearanceAnimation(type: string, category: string, effect?: string): boolean {
+  const family = resolvePresetAnimationFamily({ type, category, effect })
+  if (family) return family === 'entrance'
+  return category.trim().toLowerCase() === 'appearance'
 }
 
-export function isDisappearanceAnimation(type: string, category: string): boolean {
-  const normalizedType = type.trim().toLowerCase()
-  const normalizedCategory = category.trim().toLowerCase()
-  return normalizedCategory === 'disappearance' || normalizedType === 'fadeout'
+export function isDisappearanceAnimation(type: string, category: string, effect?: string): boolean {
+  const family = resolvePresetAnimationFamily({ type, category, effect })
+  if (family) return family === 'exit'
+  return category.trim().toLowerCase() === 'disappearance'
 }
 
 export function isFadeAnimation(type: string): boolean {
@@ -59,10 +61,9 @@ export function isFadeAnimation(type: string): boolean {
   return normalizedType === 'fadein' || normalizedType === 'fadeout'
 }
 
-export function isFlickerAnimation(type: string, category: string): boolean {
+export function isFlickerAnimation(type: string, _category: string): boolean {
   const normalizedType = type.trim().toLowerCase()
-  const normalizedCategory = category.trim().toLowerCase()
-  return normalizedType === 'flicker' || normalizedCategory === 'emphasis'
+  return normalizedType === 'flicker' || normalizedType === 'boldflicker' || normalizedType === 'flash'
 }
 
 export type WipeOrientation =

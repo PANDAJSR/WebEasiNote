@@ -84,7 +84,13 @@ function parseAnimationNode(
     end: parseNumber(getDirectChildText(animationNode, 'End'), 1),
     startSize: parseScalePair(getDirectChildText(animationNode, 'StartSize')),
     endSize: parseScalePair(getDirectChildText(animationNode, 'EndSize')),
+    center: parseScalePair(getDirectChildText(animationNode, 'Center')),
     magnitude: getDirectChildText(animationNode, 'Magnitude') || undefined,
+    frequency: Number.isFinite(parseFloat(getDirectChildText(animationNode, 'Frequency') || ''))
+      ? parseFloat(getDirectChildText(animationNode, 'Frequency') || '')
+      : undefined,
+    accelerationRatio: parseNumber(getDirectChildText(animationNode, 'AccelerationRatio'), 0),
+    decelerationRatio: parseNumber(getDirectChildText(animationNode, 'DecelerationRatio'), 0),
     durationMs: parseTicksToMs(getDirectChildText(animationNode, 'Duration')),
     delayMs: parseTicksToMs(getDirectChildText(animationNode, 'Delay')),
     repeatBehaviorRaw,

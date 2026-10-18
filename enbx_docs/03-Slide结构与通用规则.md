@@ -113,15 +113,18 @@ Slide 级别：
 - 键盘方向键（←/↑/→/↓）与翻页按钮使用同一动画步进逻辑
 - 仅当前页应用元素动画样式
 - 若元素存在进入类动画（如 `FadeIn`、`DiagonalWipeIn`、`BlindIn`、`TranslateIn`、`TranslateFadeIn`），初始默认隐藏
-- 当前已消费并可见生效：`FadeIn`、`FadeOut`、`Flicker`、`DiagonalWipeIn`、`BlindIn`、`TranslateIn`、`TranslateFadeIn`、`ScaleIn`
+- 当前已消费并可见生效：`FadeIn/FadeOut`、`Flicker`、`DiagonalWipeIn`、`BlindIn`、`TranslateIn`、`TranslateFadeIn`、`ScaleIn`，以及官方 Office 转换器枚举里的入场/退出、滤镜和强调预设（`Fly`、`Blinds`、`Dissolve`、`RandomLine`、`Spiral`、`Wipe`、`Whirl`、`Bounce`、`Drop`、`Flow`、`Cycle`、`Scale`、颜色/脉冲/翻转等）。扩展预设按网页可用的变换、裁剪与滤镜近似呈现，尚未通过官方播放器逐效果对照。
 - `DiagonalWipeIn` 当前支持方向：`LeftToRight`、`RightToLeft`、`TopToBottom`、`BottomToTop`、`LeftTopToRightBottom`、`RightTopToLeftBottom`、`LeftBottomToRightTop`、`RightBottomToLeftTop`
 - `BlindIn` 当前支持方向：`Direction=Vertical/Horizontal`（渲染为等分条带同步展开的百叶窗遮罩）
 - `TranslateIn` 当前支持方向：`LeftToRight`、`RightToLeft`、`TopToBottom`、`BottomToTop`、`LeftTopToRightBottom`、`RightTopToLeftBottom`、`LeftBottomToRightTop`、`RightBottomToLeftTop`（从页面外区域移入到目标位置）
-- `TranslateIn` 当前按 `Orientation` 播放移入动画，`Path` 仅识别但未参与轨迹计算
+- `TranslateIn` 按 `Path` 直线端点计算位移；没有路径时按 `Orientation` 从页面外移入
 - `TranslateFadeIn` 当前支持方向：同 `TranslateIn`；渲染为“位移 + 透明度”联动浮现
 - `TranslateFadeIn` 优先读取父级 `Animation/Path`，若为空则回退读取 `Children/Animation(Type=Line)/Path` 作为位移向量（如 `M0,-150L0,-150 0,0`）
-- `ScaleIn` 支持读取 `StartSize` / `EndSize`（`x,y`），当前以元素中心为缩放锚点播放（默认 `0,0 -> 1,1`）
+- `ScaleIn` 支持读取 `StartSize` / `EndSize`（`x,y`）和 `Center` 缩放锚点（默认 `0,0 -> 1,1`）
+- 所有 CSS 动画播放时读取 `RepeatBehavior`、`Frequency`、`AccelerationRatio` 和 `DecelerationRatio`；未知的 `Type` 不会按 `Emphasis` 错播成闪烁
 - `Flicker` 执行后会落在可见亮态（不会回退到隐藏态）
+- `RandomizedLinesInEffect` 是课件实际保存的“线条”入场类型，不能只识别 Office 转换器里的 `RandomLine`。按 `Direction=Horizontal/Vertical` 使用随机条纹遮罩揭示，点击前隐藏，点击后保持可见；不将其近似为位移、模糊或淡入。
+- 真实样本 `2.2专题二 中东地区.enbx` 第 5 页有 16 条动画、12 个点击组，其中 4 段正文使用 `RandomizedLinesInEffect`，整份课件共 17 处。该类型可保存 `Start=1`、`End=0`，这两个值不能直接当成元素入场时的不透明度；初始隐藏仍按 `Category=Appearance` 处理。回归夹具仅保留动画字段、ID、顺序和组层级，不包含课件图像资源。
 - 兼容规则：当 `TargetId` 无法匹配到页面元素时，会回退到动画所属元素 `Id` 进行绑定
 - 每页动画步进状态会保留，切到其他页再返回时继续保持原步骤结果
 

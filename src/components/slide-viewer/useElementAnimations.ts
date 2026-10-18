@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties } from 'react'
 import type { SlideData } from '../../parser'
 import {
   buildAnimationStartBatches,
@@ -9,33 +8,12 @@ import {
   type TimelineAnimation
 } from './element-animation-timeline'
 import {
-  DEFAULT_ELEMENT_ANIMATION_DURATION_MS,
-  ENABLE_ELEMENT_ANIMATION_DEBUG_LOG,
-  FLICKER_KEYFRAME_NAME,
-  isAppearanceAnimation,
-  isBlindInAnimation,
-  isDiagonalWipeInAnimation,
-  isDisappearanceAnimation,
-  isFadeAnimation,
-  isFlickerAnimation,
-  isScaleInAnimation,
-  isTranslateFadeInAnimation,
-  isTranslateInAnimation,
-  normalizeBlindDirection,
-  normalizeWipeOrientation
+  DEFAULT_ELEMENT_ANIMATION_DURATION_MS, ENABLE_ELEMENT_ANIMATION_DEBUG_LOG,
+  isAppearanceAnimation
 } from './constants'
-import {
-  buildScaleInKeyframeName,
-  resolveScaleInRange,
-  SCALE_IN_END_X_VAR,
-  SCALE_IN_END_Y_VAR,
-  SCALE_IN_START_X_VAR,
-  SCALE_IN_START_Y_VAR
-} from './scale-animation'
-import { FADE_IN_KEYFRAME_NAME, FADE_OUT_KEYFRAME_NAME, ensureElementAnimationKeyframes } from './element-animation-keyframes'
-import { buildTranslateFadeInKeyframeName, resolveTranslateFadeInOffset, TRANSLATE_FADE_IN_OFFSET_X_VAR, TRANSLATE_FADE_IN_OFFSET_Y_VAR } from './translate-fade-animation'
-import { buildTranslateInKeyframeName } from './translate-animation'
-import { buildBlindInKeyframeName, buildWipeInKeyframeName } from './wipe-animation'
+import { ensureElementAnimationKeyframes } from './element-animation-keyframes'
+import { resolvePresetAnimationFamily } from './animation-presets'
+import { useElementAnimationStyles } from './useElementAnimationStyles'
 interface UseElementAnimationsParams { slide: SlideData }
 interface PlayClickAnimationGroupOptions {
   advanceStep?: boolean
@@ -50,13 +28,7 @@ function areSameStringArray(left: string[], right: string[]): boolean {
 }
 
 function isConsumableAnimation(animation: SlideData['animations'][number]): boolean {
-  return isFadeAnimation(animation.type)
-    || isFlickerAnimation(animation.type, animation.category)
-    || isDiagonalWipeInAnimation(animation.type)
-    || isBlindInAnimation(animation.type)
-    || isTranslateFadeInAnimation(animation.type)
-    || isTranslateInAnimation(animation.type)
-    || isScaleInAnimation(animation.type)
+  return resolvePresetAnimationFamily(animation) !== null
 }
 export function useElementAnimations({ slide }: UseElementAnimationsParams) {
   const [slideClickSteps, setSlideClickSteps] = useState<Record<string, number>>({})
@@ -157,7 +129,7 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     const firstAppearanceAnimationByElement = new Map<string, TimelineAnimation>()
     const appearedElementIds = new Set<string>()
     timelineAnimations.forEach(animation => {
-      if (isAppearanceAnimation(animation.type, animation.category)) {
+      if (isAppearanceAnimation(animation.type, animation.category, animation.effect)) {
         const targetIds = resolveTargetElementIds(animation.targetId)
         targetIds.forEach(id => {
           if (!firstAppearanceAnimationByElement.has(id)) {
@@ -167,7 +139,7 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
       }
     })
     executedAnimations.forEach(animation => {
-      if (isAppearanceAnimation(animation.type, animation.category)) {
+      if (isAppearanceAnimation(animation.type, animation.category, animation.effect)) {
         const targetIds = resolveTargetElementIds(animation.targetId)
         targetIds.forEach(id => {
           appearedElementIds.add(id)
@@ -179,160 +151,11 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
     })
     return result
   }, [timelineAnimations, executedAnimations, stickyVisibleElementIdSet, resolveTargetElementIds])
-  const elementDisplayStyles = useMemo(() => {
-    const allAnimatedElementIds = new Set<string>()
-    const firstAppearanceAnimationByElement = new Map<string, TimelineAnimation>()
-    const latestAnimationByElement = new Map<string, TimelineAnimation>()
-    const shouldInstantApply = lastStepChangeDirectionRef.current === 'backward'
-
-    timelineAnimations.forEach(animation => {
-      const targetIds = resolveTargetElementIds(animation.targetId)
-      targetIds.forEach(id => {
-        allAnimatedElementIds.add(id)
-        if (
-          !firstAppearanceAnimationByElement.has(id)
-          && isAppearanceAnimation(animation.type, animation.category)
-        ) {
-          firstAppearanceAnimationByElement.set(id, animation)
-        }
-      })
-    })
-
-    if (allAnimatedElementIds.size === 0) return {}
-
-    executedAnimations.forEach(animation => {
-      const targetIds = resolveTargetElementIds(animation.targetId)
-      targetIds.forEach(id => {
-        latestAnimationByElement.set(id, animation)
-      })
-    })
-
-    const result: Record<string, CSSProperties> = {}
-    allAnimatedElementIds.forEach(elementId => {
-      const firstAppearanceAnimation = firstAppearanceAnimationByElement.get(elementId)
-      const latestAnimation = latestAnimationByElement.get(elementId)
-      const startHidden = Boolean(firstAppearanceAnimation)
-      let opacity = startHidden ? 0 : 1
-      let durationMs = 0
-      if (latestAnimation) {
-        const rawDur = typeof latestAnimation.durationMs === 'number'
-          ? latestAnimation.durationMs
-          : DEFAULT_ELEMENT_ANIMATION_DURATION_MS
-        durationMs = rawDur <= 10 ? 0 : rawDur
-        if (isAppearanceAnimation(latestAnimation.type, latestAnimation.category)) {
-          opacity = 1
-        } else if (isDisappearanceAnimation(latestAnimation.type, latestAnimation.category)) {
-          opacity = 0
-        } else if (isFlickerAnimation(latestAnimation.type, latestAnimation.category)) {
-          opacity = 1
-          durationMs = 0
-        }
-      }
-      if (
-        stickyVisibleElementIdSet.has(elementId)
-        && !(latestAnimation && isDisappearanceAnimation(latestAnimation.type, latestAnimation.category))
-      ) {
-        opacity = 1
-      }
-      if (shouldInstantApply) {
-        durationMs = 0
-      }
-      const style: CSSProperties = {
-        opacity,
-        transition: durationMs > 0 ? `opacity ${durationMs}ms ease` : 'none',
-        willChange: 'opacity'
-      }
-      const triggeredAnimation = currentTriggeredAnimationByElementId.get(elementId)
-      if (
-        !shouldInstantApply
-        && triggeredAnimation
-        && isFlickerAnimation(triggeredAnimation.type, triggeredAnimation.category)
-      ) {
-        const flickerDurationMs = Math.max(1, triggeredAnimation.durationMs || 1000)
-        style.animation = `${FLICKER_KEYFRAME_NAME} ${flickerDurationMs}ms ease-in-out 1`
-        style.animationFillMode = 'forwards'
-      } else if (
-        !shouldInstantApply
-        && triggeredAnimation
-        && isDiagonalWipeInAnimation(triggeredAnimation.type)
-      ) {
-        const wipeInDurationMs = Math.max(1, triggeredAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS)
-        const wipeOrientation = normalizeWipeOrientation(triggeredAnimation.orientation)
-        const wipeKeyframeName = buildWipeInKeyframeName(wipeOrientation)
-        style.animation = `${wipeKeyframeName} ${wipeInDurationMs}ms linear 1`
-        style.animationFillMode = 'forwards'
-      } else if (
-        !shouldInstantApply
-        && triggeredAnimation
-        && isBlindInAnimation(triggeredAnimation.type)
-      ) {
-        const blindInDurationMs = Math.max(1, triggeredAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS)
-        const blindDirection = normalizeBlindDirection(triggeredAnimation.direction)
-        const blindKeyframeName = buildBlindInKeyframeName(blindDirection)
-        style.transition = 'none'
-        style.animation = `${blindKeyframeName} ${blindInDurationMs}ms linear 1`
-        style.animationFillMode = 'forwards'
-      } else if (
-        !shouldInstantApply
-        && triggeredAnimation
-        && isTranslateFadeInAnimation(triggeredAnimation.type)
-      ) {
-        const translateFadeInDurationMs = Math.max(1, triggeredAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS)
-        const translateFadeOrientation = normalizeWipeOrientation(triggeredAnimation.orientation)
-        const translateFadeOffset = resolveTranslateFadeInOffset(triggeredAnimation.path, translateFadeOrientation)
-        const translateFadeKeyframeName = buildTranslateFadeInKeyframeName()
-        style.transition = 'none'
-        style.animation = `${translateFadeKeyframeName} ${translateFadeInDurationMs}ms ease-out 1`
-        style.animationFillMode = 'forwards'
-        ;(style as CSSProperties & Record<string, string>)[TRANSLATE_FADE_IN_OFFSET_X_VAR] = `${translateFadeOffset.x}px`
-        ;(style as CSSProperties & Record<string, string>)[TRANSLATE_FADE_IN_OFFSET_Y_VAR] = `${translateFadeOffset.y}px`
-      } else if (
-        !shouldInstantApply
-        && triggeredAnimation
-        && isTranslateInAnimation(triggeredAnimation.type)
-      ) {
-        const translateInDurationMs = Math.max(1, triggeredAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS)
-        const translateOrientation = normalizeWipeOrientation(triggeredAnimation.orientation)
-        const translateKeyframeName = buildTranslateInKeyframeName(translateOrientation)
-        style.animation = `${translateKeyframeName} ${translateInDurationMs}ms ease-out 1`
-        style.animationFillMode = 'forwards'
-      } else if (
-        !shouldInstantApply
-        && triggeredAnimation
-        && isScaleInAnimation(triggeredAnimation.type)
-      ) {
-        const scaleInDurationMs = Math.max(1, triggeredAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS)
-        const scaleInKeyframeName = buildScaleInKeyframeName()
-        const scaleRange = resolveScaleInRange(triggeredAnimation)
-        style.transition = 'none'
-        style.transformOrigin = 'center center'
-        style.animation = `${scaleInKeyframeName} ${scaleInDurationMs}ms ease-out 1`
-        style.animationFillMode = 'forwards'
-        ;(style as CSSProperties & Record<string, string>)[SCALE_IN_START_X_VAR] = `${scaleRange.start.x}`
-        ;(style as CSSProperties & Record<string, string>)[SCALE_IN_START_Y_VAR] = `${scaleRange.start.y}`
-        ;(style as CSSProperties & Record<string, string>)[SCALE_IN_END_X_VAR] = `${scaleRange.end.x}`
-        ;(style as CSSProperties & Record<string, string>)[SCALE_IN_END_Y_VAR] = `${scaleRange.end.y}`
-      } else if (
-        !shouldInstantApply
-        && triggeredAnimation
-        && isAppearanceAnimation(triggeredAnimation.type, triggeredAnimation.category)
-      ) {
-        const fadeInDurationMs = Math.max(1, triggeredAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS)
-        style.animation = `${FADE_IN_KEYFRAME_NAME} ${fadeInDurationMs}ms ease 1`
-        style.animationFillMode = 'forwards'
-      } else if (
-        !shouldInstantApply
-        && triggeredAnimation
-        && isDisappearanceAnimation(triggeredAnimation.type, triggeredAnimation.category)
-      ) {
-        const fadeOutDurationMs = Math.max(1, triggeredAnimation.durationMs || DEFAULT_ELEMENT_ANIMATION_DURATION_MS)
-        style.animation = `${FADE_OUT_KEYFRAME_NAME} ${fadeOutDurationMs}ms ease 1`
-        style.animationFillMode = 'forwards'
-      }
-      result[elementId] = style
-    })
-    return result
-  }, [timelineAnimations, executedAnimations, currentTriggeredAnimationByElementId, stickyVisibleElementIdSet, resolveTargetElementIds])
+  const elementDisplayStyles = useElementAnimationStyles({
+    timelineAnimations, executedAnimations, currentTriggeredAnimationByElementId,
+    stickyVisibleElementIdSet, resolveTargetElementIds,
+    shouldInstantApply: lastStepChangeDirectionRef.current === 'backward'
+  })
   const playClickAnimationGroup = useCallback((groupIndex: number, options: PlayClickAnimationGroupOptions = {}) => {
     const shouldAdvanceStep = options.advanceStep !== false
     const group = clickAnimationGroups[groupIndex]
@@ -348,7 +171,7 @@ export function useElementAnimations({ slide }: UseElementAnimationsParams) {
       if (group.triggerSource) {
         const appearedElementIds = batchIndexes
           .map(index => timelineAnimations[index])
-          .filter(animation => isAppearanceAnimation(animation.type, animation.category))
+          .filter(animation => isAppearanceAnimation(animation.type, animation.category, animation.effect))
           .map(animation => animation.targetId)
         if (appearedElementIds.length > 0) {
           setSlideStickyVisibleElementIds(previous => ({

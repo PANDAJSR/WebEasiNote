@@ -47,7 +47,11 @@ export interface ElementAnimation {
   end: number
   startSize?: { x: number; y: number }
   endSize?: { x: number; y: number }
+  center?: { x: number; y: number }
   magnitude?: string
+  frequency?: number
+  accelerationRatio?: number
+  decelerationRatio?: number
   durationMs: number
   delayMs: number
   repeatBehaviorRaw?: string
