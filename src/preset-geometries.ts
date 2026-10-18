@@ -3,13 +3,49 @@
  * 官方 ShapeSaveInfo 将 Geometry 声明为必需字段，Path 为可选字段；官方在载入
  * 已知 ShapeType 时由形状类生成几何，Path 主要作为序列化路径数据及未知形状的回退。
  * 这里的几何公式不是官方实现的逐项复刻，且不会覆盖所有官方 ShapeType。
+ *
+ * 直线类（Line/DashLine/FreeLine/LineArrowEnd/LineArrowStartEnd）例外：
+ * 官方 `LineShape.SetGeometrySaveInfo` 用 Adjusts 的两个端点（ScaleX/ScaleY × Size）
+ * 直接确定线段，因此这里按同样的方式还原，避免斜线被画成水平线。
  */
+
+export interface AdjustPoint {
+  x: number
+  y: number
+}
+
+/**
+ * 复刻官方 LineShape.SetGeometrySaveInfo：
+ * 端点 = (adjust.ScaleX × width, adjust.ScaleY × height)，
+ * 当两个端点的四个分量全为 0 时，第二个端点退化为 (1, 1)。
+ */
+function resolveLinePoints(
+  width: number,
+  height: number,
+  adjustPairs?: AdjustPoint[]
+): [AdjustPoint, AdjustPoint] {
+  if (adjustPairs && adjustPairs.length >= 2) {
+    let [a, b] = adjustPairs
+    if (a.x === 0 && a.y === 0 && b.x === 0 && b.y === 0) {
+      b = { x: 1, y: 1 }
+    }
+    return [
+      { x: a.x * width, y: a.y * height },
+      { x: b.x * width, y: b.y * height }
+    ]
+  }
+  return [
+    { x: 0, y: height / 2 },
+    { x: width, y: height / 2 }
+  ]
+}
 
 export function generatePresetGeometryPath(
   geometryType: string,
   width: number,
   height: number,
-  adjusts?: number[]
+  adjusts?: number[],
+  adjustPairs?: AdjustPoint[]
 ): string {
   const w = Math.max(1, width)
   const h = Math.max(1, height)
@@ -159,19 +195,16 @@ export function generatePresetGeometryPath(
 
     case 'line':
     case 'dashline':
-    case 'freeline':
-      return `M 0 ${(h / 2).toFixed(2)} L ${w.toFixed(2)} ${(h / 2).toFixed(2)}`
-
-    case 'linearrowend': {
-      const headSize = Math.min(24, Math.min(w * 0.25, h * 0.8))
-      const halfHead = headSize / 2
-      return `M 0 ${(h / 2).toFixed(2)} L ${w.toFixed(2)} ${(h / 2).toFixed(2)} M ${(w - headSize).toFixed(2)} ${(h / 2 - halfHead).toFixed(2)} L ${w.toFixed(2)} ${(h / 2).toFixed(2)} L ${(w - headSize).toFixed(2)} ${(h / 2 + halfHead).toFixed(2)}`
+    case 'freeline': {
+      const [p0, p1] = resolveLinePoints(w, h, adjustPairs)
+      return `M ${p0.x.toFixed(2)} ${p0.y.toFixed(2)} L ${p1.x.toFixed(2)} ${p1.y.toFixed(2)}`
     }
 
+    // 箭头由 ShapeRenderer 按官方 GetArrowPoints 几何单独绘制，此处只生成直线段
+    case 'linearrowend':
     case 'linearrowstartend': {
-      const headSize = Math.min(24, Math.min(w * 0.2, h * 0.8))
-      const halfHead = headSize / 2
-      return `M 0 ${(h / 2).toFixed(2)} L ${w.toFixed(2)} ${(h / 2).toFixed(2)} M ${headSize.toFixed(2)} ${(h / 2 - halfHead).toFixed(2)} L 0 ${(h / 2).toFixed(2)} L ${headSize.toFixed(2)} ${(h / 2 + halfHead).toFixed(2)} M ${(w - headSize).toFixed(2)} ${(h / 2 - halfHead).toFixed(2)} L ${w.toFixed(2)} ${(h / 2).toFixed(2)} L ${(w - headSize).toFixed(2)} ${(h / 2 + halfHead).toFixed(2)}`
+      const [p0, p1] = resolveLinePoints(w, h, adjustPairs)
+      return `M ${p0.x.toFixed(2)} ${p0.y.toFixed(2)} L ${p1.x.toFixed(2)} ${p1.y.toFixed(2)}`
     }
 
     case 'arrowend':

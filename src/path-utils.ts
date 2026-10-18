@@ -5,9 +5,17 @@ interface PathBounds {
   maxY: number
 }
 
+interface PathAnchor {
+  x: number
+  y: number
+}
+
 interface ParseContext {
   globalBounds: PathBounds | null
   subpathBounds: PathBounds[]
+  anchors: PathAnchor[]
+  /** 是否存在“闭合子图形”，语义见 hasClosedSegments */
+  hasClosedSegments: boolean
 }
 
 // SVG 数值允许 E/e 指数；大写 E 也是数值的一部分，不能误识别为命令。
@@ -20,6 +28,27 @@ const TOKEN_REGEX = /[a-zA-Z]|[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/g
 export function estimatePathBounds(path: string): PathBounds | null {
   const parsed = parsePath(path)
   return parsed?.globalBounds || null
+}
+
+/**
+ * 提取路径上的锚点（命令落点）序列，忽略贝塞尔/圆弧控制点。
+ * 用于计算箭头（V 形折线）的朝向，对应官方 KeyPoints 首末点语义。
+ */
+export function extractPathAnchors(path: string): PathAnchor[] {
+  const parsed = parsePath(path)
+  return parsed?.anchors || []
+}
+
+/**
+ * 判断路径是否存在闭合子图形。
+ *
+ * 复刻官方 `FreeShapeRenderer.HasClosedSegments`：`z/Z` 只会闭合「段数 > 1」
+ * 或「唯一一段不是直线」的子图形，因此 `M0,0 L10,0 Z` 这类退化两点折线
+ * 在官方看来仍然是未闭合的（`IsClosed = false`）。
+ */
+export function hasClosedSegments(path: string): boolean {
+  const parsed = parsePath(path)
+  return parsed?.hasClosedSegments || false
 }
 
 /**
@@ -64,6 +93,17 @@ function parsePath(path: string): ParseContext | null {
   const context: ParseContext = {
     globalBounds: null,
     subpathBounds: [],
+    anchors: [],
+    hasClosedSegments: false,
+  }
+
+  // 官方 HasClosedSegments：单一直线段即使带 z 也不标记 IsClosed。
+  let figureSegmentCount = 0
+  let figureHasNonLineSegment = false
+
+  const countSegment = (isLine: boolean) => {
+    figureSegmentCount += 1
+    if (!isLine) figureHasNonLineSegment = true
   }
 
   const isCommandToken = (value: string): boolean => /^[a-zA-Z]$/.test(value)
@@ -75,17 +115,28 @@ function parsePath(path: string): ParseContext | null {
     return Number.isFinite(value) ? value : null
   }
 
+  const recordAnchor = (x: number, y: number) => {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return
+    context.anchors.push({ x, y })
+  }
+
   const includePoint = (x: number, y: number) => {
     if (!Number.isFinite(x) || !Number.isFinite(y)) return
     context.globalBounds = includeInBounds(context.globalBounds, x, y)
     currentSubpath = includeInBounds(currentSubpath, x, y)
   }
 
-  const closeSubpath = () => {
+  const closeSubpath = (closing = false) => {
     if (currentSubpath) {
       context.subpathBounds.push(currentSubpath)
     }
+    if (closing && figureSegmentCount > 0
+      && (figureSegmentCount !== 1 || figureHasNonLineSegment)) {
+      context.hasClosedSegments = true
+    }
     currentSubpath = null
+    figureSegmentCount = 0
+    figureHasNonLineSegment = false
   }
 
   while (index < tokens.length) {
@@ -109,10 +160,13 @@ function parsePath(path: string): ParseContext | null {
           cx = x
           cy = y
           includePoint(cx, cy)
+          recordAnchor(cx, cy)
           if (command === 'M') {
             sx = cx
             sy = cy
             command = 'L'
+          } else {
+            countSegment(command === 'L')
           }
         }
         break
@@ -127,10 +181,13 @@ function parsePath(path: string): ParseContext | null {
           cx += dx
           cy += dy
           includePoint(cx, cy)
+          recordAnchor(cx, cy)
           if (command === 'm') {
             sx = cx
             sy = cy
             command = 'l'
+          } else {
+            countSegment(command === 'l')
           }
         }
         break
@@ -141,6 +198,8 @@ function parsePath(path: string): ParseContext | null {
           if (x === null) break
           cx = x
           includePoint(cx, cy)
+          recordAnchor(cx, cy)
+          countSegment(true)
         }
         break
       }
@@ -150,6 +209,8 @@ function parsePath(path: string): ParseContext | null {
           if (dx === null) break
           cx += dx
           includePoint(cx, cy)
+          recordAnchor(cx, cy)
+          countSegment(true)
         }
         break
       }
@@ -159,6 +220,8 @@ function parsePath(path: string): ParseContext | null {
           if (y === null) break
           cy = y
           includePoint(cx, cy)
+          recordAnchor(cx, cy)
+          countSegment(true)
         }
         break
       }
@@ -168,6 +231,8 @@ function parsePath(path: string): ParseContext | null {
           if (dy === null) break
           cy += dy
           includePoint(cx, cy)
+          recordAnchor(cx, cy)
+          countSegment(true)
         }
         break
       }
@@ -185,6 +250,8 @@ function parsePath(path: string): ParseContext | null {
           cx = x as number
           cy = y as number
           includePoint(cx, cy)
+          recordAnchor(cx, cy)
+          countSegment(false)
         }
         break
       }
@@ -202,6 +269,8 @@ function parsePath(path: string): ParseContext | null {
           cx += dx as number
           cy += dy as number
           includePoint(cx, cy)
+          recordAnchor(cx, cy)
+          countSegment(false)
         }
         break
       }
@@ -217,6 +286,8 @@ function parsePath(path: string): ParseContext | null {
           cx = x as number
           cy = y as number
           includePoint(cx, cy)
+          recordAnchor(cx, cy)
+          countSegment(false)
         }
         break
       }
@@ -232,6 +303,8 @@ function parsePath(path: string): ParseContext | null {
           cx += dx as number
           cy += dy as number
           includePoint(cx, cy)
+          recordAnchor(cx, cy)
+          countSegment(false)
         }
         break
       }
@@ -248,6 +321,8 @@ function parsePath(path: string): ParseContext | null {
           cx = x as number
           cy = y as number
           includePoint(cx, cy)
+          recordAnchor(cx, cy)
+          countSegment(false)
         }
         break
       }
@@ -264,6 +339,8 @@ function parsePath(path: string): ParseContext | null {
           cx += dx as number
           cy += dy as number
           includePoint(cx, cy)
+          recordAnchor(cx, cy)
+          countSegment(false)
         }
         break
       }
@@ -272,7 +349,8 @@ function parsePath(path: string): ParseContext | null {
         cx = sx
         cy = sy
         includePoint(cx, cy)
-        closeSubpath()
+        recordAnchor(cx, cy)
+        closeSubpath(true)
         break
       }
       default: {

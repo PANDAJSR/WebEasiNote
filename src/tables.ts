@@ -51,6 +51,17 @@ function parseCell(cellNode: Element): TableCell {
       ? vertAlignRaw
       : 'Center'
 
+  // 3. 解析单元格文本边距覆盖（官方 TableCellTextMarginExtension，值为 左,上,右,下）
+  let textMargin: TableCell['textMargin']
+  const marginText = tableCellTextMargin(cellNode)
+  if (marginText) {
+    const parts = marginText.trim().split(/[,\s]+/).map(Number)
+    if ((parts.length === 1 || parts.length === 4) && parts.every(Number.isFinite)) {
+      if (parts.length === 1) parts.push(parts[0], parts[0], parts[0])
+      textMargin = { left: parts[0], top: parts[1], right: parts[2], bottom: parts[3] }
+    }
+  }
+
   return {
     rowSpan: Math.max(1, parseInt(getDirectChildText(cellNode, 'RowSpan') || '1', 10)),
     columnSpan: Math.max(1, parseInt(getDirectChildText(cellNode, 'ColumnSpan') || '1', 10)),
@@ -59,8 +70,16 @@ function parseCell(cellNode: Element): TableCell {
     background,
     backgroundBrush: backgroundBrush || undefined,
     verticalAlignment,
+    textMargin,
     textLines: textElement?.textLines || []
   }
+}
+
+/** 读取 Cell/TableCellTextMarginExtension/TextMargin */
+function tableCellTextMargin(cellNode: Element): string | null {
+  const extensionNode = getDirectChildElement(cellNode, 'TableCellTextMarginExtension')
+  if (!extensionNode) return null
+  return getDirectChildText(extensionNode, 'TextMargin')
 }
 
 /**
@@ -76,9 +95,10 @@ export function parseTableElement(tableNode: Element): TableElement | null {
     const height = parseNumber(getDirectChildText(tableNode, 'Height'), 60)
     const rotation = parseNumber(getDirectChildText(tableNode, 'Rotation'))
 
-    // 官方默认 CellHPadding/CellVPadding 具有标准间距
-    const cellHPadding = parseNumber(getDirectChildText(tableNode, 'CellHPadding'), 14)
-    const cellVPadding = parseNumber(getDirectChildText(tableNode, 'CellVPadding'), 10)
+    // 官方 TableElement：CellHPadding = Math.Max(saveInfo.CellHPadding, 24)（默认 24），
+    // 单元格文本边距 = CellHPadding / 2（左右各一半），见 TableCell 构造函数。
+    const cellHPadding = Math.max(24, parseNumber(getDirectChildText(tableNode, 'CellHPadding'), 24))
+    const cellVPadding = Math.max(24, parseNumber(getDirectChildText(tableNode, 'CellVPadding'), 24))
 
     const strokeThickness = parseNumber(tableNode.querySelector('Skin > StrokeThickness')?.textContent || null, 1)
     const strokeColor = parseColorFromNode(tableNode.querySelector('Skin > Stroke')) || '#adadad'

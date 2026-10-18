@@ -33,9 +33,18 @@ export interface ShapeElement {
   borderWidth?: number
   borderColor?: string
   lineType?: string
-  dashStyle?: string
-  strokeDashArray?: string
-  arrowType?: string
+  /** 虚线段长（线宽倍数，官方 DashStyle.Dashes 语义）；空数组代表实线 */
+  strokeDashes?: number[]
+  strokeLineCap?: 'butt' | 'round' | 'square'
+  strokeLineJoin?: 'miter' | 'round' | 'bevel'
+  /** 官方只在“线”类 ShapeType 上绘制箭头（Line/LineArrowEnd/...） */
+  arrowStart?: boolean
+  arrowEnd?: boolean
+  /** 箭头虚线（线宽倍数）；官方 IsArrowDash=false 时为实线 */
+  arrowDashes?: number[]
+  arrowLineJoin?: 'miter' | 'round' | 'bevel'
+  /** Geometry/PresetGeometry/Adjusts 的成对端点（ScaleX/ScaleY），用于直线类几何 */
+  adjustPairs?: { x: number; y: number }[]
   flipHorizontal?: boolean
   flipVertical?: boolean
   shadow?: {
@@ -129,6 +138,8 @@ export interface TableCell {
   background?: string
   backgroundBrush?: Brush
   verticalAlignment?: 'Top' | 'Center' | 'Bottom'
+  /** 官方 TableCellTextMarginExtension/TextMargin：左,上,右,下（表格单位，直接覆盖 CellHPadding/2） */
+  textMargin?: { left: number; top: number; right: number; bottom: number }
   textLines: TextLine[]
 }
 

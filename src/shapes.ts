@@ -4,6 +4,9 @@ import { parseTextLineForShape } from './shape-inline-text'
 import { parseBrush, brushToCss } from './brushes'
 import type { Brush } from './brushes'
 import { generatePresetGeometryPath } from './preset-geometries'
+import type { AdjustPoint } from './preset-geometries'
+import { resolveShapeIsClosed, resolveShapeStroke } from './shape-stroke'
+import { parsePenSetting } from './shape-pen'
 
 interface NormalizedPathResult {
   path: string
@@ -34,36 +37,14 @@ function normalizeSeewoPath(rawPath: string): NormalizedPathResult {
   return { path: normalizedPath, fillRule }
 }
 
-export function resolveStrokeDashArray(
-  dashStyle?: string | number | null,
-  strokeWidth = 1
-): string | undefined {
-  if (!dashStyle) return undefined
-  const norm = String(dashStyle).trim().toLowerCase()
-  const sw = Math.max(1, strokeWidth)
-  switch (norm) {
-    case '1':
-    case 'dash':
-      return `${sw * 4} ${sw * 2}`
-    case '2':
-    case 'dot':
-      return `${sw} ${sw * 2}`
-    case '3':
-    case 'dashdot':
-      return `${sw * 4} ${sw * 2} ${sw} ${sw * 2}`
-    case '4':
-    case 'dashdotdot':
-      return `${sw * 4} ${sw * 2} ${sw} ${sw * 2} ${sw} ${sw * 2}`
-    case '0':
-    case 'solid':
-    case 'none':
-      return undefined
-    default:
-      if (norm.includes(' ') || norm.includes(',')) {
-        return norm.replace(/,/g, ' ')
-      }
-      return undefined
-  }
+/** 读取官方 Line/HeadEnd|TailEnd/Type 是否为 Arrow（官方判定为 Type != None） */
+function readArrowEnabled(shapeNode: Element, endTag: 'HeadEnd' | 'TailEnd'): boolean {
+  const lineNode = getDirectChildElement(shapeNode, 'Line')
+  if (!lineNode) return false
+  const endNode = getDirectChildElement(lineNode, endTag)
+  if (!endNode) return false
+  const type = (getDirectChildText(endNode, 'Type') || '').trim()
+  return type !== '' && type.toLowerCase() !== 'none'
 }
 
 export interface ShapePathItem {
@@ -97,9 +78,18 @@ export interface ShapeElement {
   borderWidth?: number
   borderColor?: string
   lineType?: string
-  dashStyle?: string
-  strokeDashArray?: string
-  arrowType?: string
+  /** 虚线段长（线宽倍数，官方 DashStyle.Dashes 语义） */
+  strokeDashes?: number[]
+  strokeLineCap?: 'butt' | 'round' | 'square'
+  strokeLineJoin?: 'miter' | 'round' | 'bevel'
+  /** 官方只在线类 ShapeType（Line/LineArrowEnd/LineArrowStartEnd/DashLine/FreeLine）上绘制箭头 */
+  arrowStart?: boolean
+  arrowEnd?: boolean
+  /** 箭头虚线（线宽倍数）；官方 IsArrowDash=false 时为实线 */
+  arrowDashes?: number[]
+  arrowLineJoin?: 'miter' | 'round' | 'bevel'
+  /** Geometry/PresetGeometry/Adjusts 的成对端点（ScaleX/ScaleY） */
+  adjustPairs?: AdjustPoint[]
   flipHorizontal?: boolean
   flipVertical?: boolean
   shadow?: {
@@ -148,6 +138,7 @@ export function parseShapeElement(shapeNode: Element): ShapeElement | null {
     // 解析几何类型与调节参数
     let geometryType = 'Rectangle'
     const adjusts: number[] = []
+    const adjustPairs: AdjustPoint[] = []
     const geometryNode = shapeNode.querySelector('Geometry')
     if (geometryNode) {
       const presetNode = geometryNode.querySelector('PresetGeometry')
@@ -159,12 +150,20 @@ export function parseShapeElement(shapeNode: Element): ShapeElement | null {
         const adjustsNode = presetNode.querySelector('Adjusts') || presetNode.querySelector('AdjustValues')
         if (adjustsNode) {
           Array.from(adjustsNode.children).forEach(child => {
-            // 官方 Adjust 项包含 Id/ScaleX/ScaleY；只把 ScaleX 交给
-            // 当前仅支持单一数值的近似预设几何生成器。
-            const scaleX = getDirectChildText(child, 'ScaleX')
-            const val = parseFloat(scaleX || (child.querySelector('Id') ? '' : child.textContent) || '')
-            if (Number.isFinite(val)) {
-              adjusts.push(val)
+            // 官方 Adjust 项同时包含 ScaleX/ScaleY；成对端点用于直线类几何，
+            // 其余近似预设几何生成器目前只用 ScaleX。
+            const scaleXText = getDirectChildText(child, 'ScaleX')
+            const scaleYText = getDirectChildText(child, 'ScaleY')
+            const scaleX = parseFloat(scaleXText || (child.querySelector('Id') ? '' : child.textContent) || '')
+            const scaleY = parseFloat(scaleYText || '')
+            if (Number.isFinite(scaleX) || Number.isFinite(scaleY)) {
+              adjustPairs.push({
+                x: Number.isFinite(scaleX) ? scaleX : 0,
+                y: Number.isFinite(scaleY) ? scaleY : 0
+              })
+            }
+            if (Number.isFinite(scaleX)) {
+              adjusts.push(scaleX)
             }
           })
         }
@@ -178,7 +177,7 @@ export function parseShapeElement(shapeNode: Element): ShapeElement | null {
     let path = normalizedPathResult.path
 
     if (!path) {
-      path = generatePresetGeometryPath(geometryType, width, height, adjusts)
+      path = generatePresetGeometryPath(geometryType, width, height, adjusts, adjustPairs)
     }
 
     const normalizeFillRule = (value?: string | null): 'nonzero' | 'evenodd' | undefined => {
@@ -233,12 +232,20 @@ export function parseShapeElement(shapeNode: Element): ShapeElement | null {
       })
     }
 
-    // 解析边框粗细、线型、箭头
+    // 解析边框粗细、线型、箭头（严格按官方 ShapeBase.SetSaveInfo 语义推导）
     const thickness = parseFloat(getDirectChildText(shapeNode, 'Thickness') || getElementText(shapeNode, 'Thickness') || '0')
     const lineType = getDirectChildText(shapeNode, 'LineType') || getElementText(shapeNode, 'LineType') || 'None'
-    const dashStyle = getDirectChildText(shapeNode, 'DashStyle') || getElementText(shapeNode, 'DashStyleType') || (lineType !== 'None' ? lineType : undefined)
-    const strokeDashArray = resolveStrokeDashArray(dashStyle, thickness)
-    const arrowType = getDirectChildText(shapeNode, 'ArrowType') || getElementText(shapeNode, 'ArrowType') || undefined
+    const penSetting = parsePenSetting(shapeNode)
+    const stroke = resolveShapeStroke({
+      thickness,
+      lineType,
+      closed: resolveShapeIsClosed(geometryType, path),
+      geometryType,
+      pen: penSetting
+    })
+    const arrowStart = readArrowEnabled(shapeNode, 'HeadEnd')
+    const arrowEnd = readArrowEnabled(shapeNode, 'TailEnd')
+    const arrowDashes = penSetting.isArrowDash === false ? [] : stroke.dashes
 
     // 翻转支持
     const flipHorizontal = (getDirectChildText(shapeNode, 'FlipHorizontal') || '').toLowerCase() === 'true'
@@ -350,14 +357,19 @@ export function parseShapeElement(shapeNode: Element): ShapeElement | null {
       fillRule,
       shapePaths: shapePaths.length > 0 ? shapePaths : undefined,
       geometryType,
-      adjusts,
+      adjusts: adjusts.length > 0 ? adjusts : undefined,
+      adjustPairs: adjustPairs.length > 0 ? adjustPairs : undefined,
       inlineText,
-      borderWidth: thickness > 0 ? thickness : undefined,
-      borderColor: thickness > 0 ? foregroundColor : undefined,
+      borderWidth: stroke.width > 0 ? stroke.width : undefined,
+      borderColor: stroke.width > 0 ? foregroundColor : undefined,
       lineType: lineType !== 'None' ? lineType : undefined,
-      dashStyle,
-      strokeDashArray,
-      arrowType,
+      strokeDashes: stroke.dashes,
+      strokeLineCap: stroke.lineCap,
+      strokeLineJoin: stroke.lineJoin,
+      arrowStart: arrowStart || undefined,
+      arrowEnd: arrowEnd || undefined,
+      arrowDashes,
+      arrowLineJoin: penSetting.lineJoin ? stroke.lineJoin : 'miter',
       flipHorizontal,
       flipVertical,
       shadow,

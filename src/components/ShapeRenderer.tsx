@@ -1,5 +1,7 @@
 import type { ShapeElement } from '../shapes'
 import { getShapeGeometry } from '../rendering/shapeGeometry'
+import { extractPathAnchors } from '../path-utils'
+import { arrowHeight, arrowWidth, buildArrowHeadPath, dashArrayToCss } from '../shape-stroke'
 import { ShapeInlineText } from './shape-renderer/ShapeInlineText'
 
 interface ShapeRendererProps {
@@ -7,13 +9,68 @@ interface ShapeRendererProps {
   scale: number
 }
 
+/**
+ * 官方只在「线」类 ShapeType 上绘制箭头：
+ * Cvte.Paint.Features.Elements.Shapes.LineShape / FreeLineShape（ShapesFactory 映射）
+ * 其余（含 Custom_PPTX_* / 自定义路径被当作 ShapeFromStream 的图形）不会绘制箭头。
+ */
+const ARROW_CAPABLE_GEOMETRY_TYPES = new Set([
+  'line',
+  'dashline',
+  'freeline',
+  'linearrowend',
+  'linearrowstartend'
+])
+
 export function ShapeRenderer({ element, scale }: ShapeRendererProps) {
   const { x, y, rotation = 0, opacity = 1, backgroundColor, backgroundBrush, path, borderWidth, borderColor, shadow, reflection } = element
   const hasShapePaths = Boolean(element.shapePaths && element.shapePaths.length > 0)
   const { renderWidth, renderHeight, pathScaleX, pathScaleY, pathTranslateX, pathTranslateY, resolvedFillRule } = getShapeGeometry(element)
-  const strokePadding = borderWidth && borderWidth > 0
-    ? borderWidth / 2 + 1
+
+  const strokeVisible = Boolean(borderWidth && borderWidth > 0 && borderColor && borderColor !== 'transparent')
+  const strokeWidthPx = strokeVisible ? (borderWidth as number) * scale : 0
+  const strokeDashArrayCss = strokeVisible
+    ? dashArrayToCss(element.strokeDashes || [], borderWidth as number, scale)
+    : undefined
+
+  // 箭头：官方 GetArrowPoints 生成 V 形开放折线（以描边色描边，不填充）
+  const arrowGeometries: string[] = []
+  const wantsArrow = Boolean(element.arrowStart || element.arrowEnd)
+    && ARROW_CAPABLE_GEOMETRY_TYPES.has((element.geometryType || '').trim().toLowerCase())
+  if (strokeVisible && wantsArrow) {
+    const anchors = extractPathAnchors(path)
+    if (anchors.length >= 2) {
+      const first = anchors[0]
+      const last = anchors[anchors.length - 1]
+      const toLocal = (p: { x: number; y: number }) => ({
+        x: p.x * pathScaleX + pathTranslateX,
+        y: p.y * pathScaleY + pathTranslateY
+      })
+      const lastLocal = toLocal(last)
+      const firstLocal = toLocal(first)
+      // 官方 LineShape 使用首末两点（弦）确定朝向
+      if (element.arrowEnd) {
+        arrowGeometries.push(buildArrowHeadPath(lastLocal, firstLocal, borderWidth as number))
+      }
+      if (element.arrowStart) {
+        arrowGeometries.push(buildArrowHeadPath(firstLocal, lastLocal, borderWidth as number))
+      }
+    }
+  }
+  const arrowPad = arrowGeometries.length > 0
+    ? Math.max(arrowWidth(borderWidth as number), arrowHeight(borderWidth as number))
     : 0
+  const arrowDashArrayCss = (() => {
+    if (arrowGeometries.length === 0) return undefined
+    const dashes = element.arrowDashes || []
+    if (dashes.length === 0) return undefined
+    return dashes.map(d => (d * (borderWidth as number)).toFixed(2)).join(' ')
+  })()
+
+  const strokePadding = Math.max(
+    borderWidth && borderWidth > 0 ? borderWidth / 2 + 1 : 0,
+    arrowPad
+  )
 
   const shadowOffsetX = shadow ? shadow.offset * Math.cos((shadow.angle * Math.PI) / 180) : 0
   const shadowOffsetY = shadow ? shadow.offset * Math.sin((shadow.angle * Math.PI) / 180) : 0
@@ -113,7 +170,7 @@ export function ShapeRenderer({ element, scale }: ShapeRendererProps) {
         {hasShapePaths ? (
           element.shapePaths!.map((sp, spIdx) => {
             const isFilled = sp.isFilled && resolvedFill !== 'transparent' && resolvedFill !== 'none'
-            const isStroke = sp.isStroke && Boolean(borderWidth && borderWidth > 0)
+            const isStroke = sp.isStroke && strokeVisible
             if (!isFilled && !isStroke) return null
             return (
               <path
@@ -122,9 +179,10 @@ export function ShapeRenderer({ element, scale }: ShapeRendererProps) {
                 fill={isFilled ? resolvedFill : 'none'}
                 fillRule={sp.fillRule || resolvedFillRule}
                 stroke={isStroke ? borderColor : 'none'}
-                strokeWidth={isStroke ? (borderWidth || 1) : 0}
-                strokeDasharray={element.strokeDashArray}
-                strokeLinecap={element.dashStyle ? 'round' : undefined}
+                strokeWidth={isStroke ? strokeWidthPx : 0}
+                strokeDasharray={strokeDashArrayCss}
+                strokeLinecap={element.strokeLineCap}
+                strokeLinejoin={element.strokeLineJoin}
                 vectorEffect='non-scaling-stroke'
               />
             )
@@ -134,14 +192,31 @@ export function ShapeRenderer({ element, scale }: ShapeRendererProps) {
             d={path}
             fill={resolvedFill}
             fillRule={resolvedFillRule}
-            stroke={borderColor}
-            strokeWidth={borderWidth}
-            strokeDasharray={element.strokeDashArray}
-            strokeLinecap={element.dashStyle ? 'round' : undefined}
+            stroke={strokeVisible ? borderColor : 'none'}
+            strokeWidth={strokeWidthPx}
+            strokeDasharray={strokeDashArrayCss}
+            strokeLinecap={element.strokeLineCap}
+            strokeLinejoin={element.strokeLineJoin}
             vectorEffect='non-scaling-stroke'
           />
         )}
       </g>
+      {arrowGeometries.length > 0 && (
+        <g transform={`translate(${visualPadding} ${visualPadding})`}>
+          {arrowGeometries.map((d, idx) => (
+            <path
+              key={`arrow-${idx}`}
+              d={d}
+              fill='none'
+              stroke={borderColor}
+              strokeWidth={borderWidth}
+              strokeLinejoin={element.arrowLineJoin || 'miter'}
+              strokeLinecap={element.strokeLineCap}
+              strokeDasharray={arrowDashArrayCss}
+            />
+          ))}
+        </g>
+      )}
     </svg>
   )
 

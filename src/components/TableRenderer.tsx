@@ -76,9 +76,10 @@ function renderCellContent(element: TableElement, rowIndex: number, cellIndex: n
 export function TableRenderer({ element, scale }: TableRendererProps) {
   const totalColumnWidth = element.columnWidths.reduce((sum, width) => sum + width, 0)
 
-  // 希沃表格内边距为全量属性，CSS 左右分别填充需除以 4 或使用上限保护避免挤压单元格文本导致折行
-  const hPadding = Math.min(8 * scale, Math.max(2, ((element.cellHPadding || 14) / 4) * scale))
-  const vPadding = Math.min(8 * scale, Math.max(2, ((element.cellVPadding || 10) / 4) * scale))
+  // 官方 TableCell 构造函数：CellEditor.Margin = (hPadding/2, vPadding/2, hPadding/2, vPadding/2)
+  // 单元格若带 TableCellTextMarginExtension，则直接使用其 TextMargin 覆盖
+  const hPadding = (element.cellHPadding || 24) / 2 * scale
+  const vPadding = (element.cellVPadding || 24) / 2 * scale
 
   return (
     <div
@@ -129,6 +130,9 @@ export function TableRenderer({ element, scale }: TableRendererProps) {
                     : cell.verticalAlignment === 'Bottom'
                       ? 'bottom'
                       : 'middle'
+                  const cellPadding = cell.textMargin
+                    ? `${cell.textMargin.top * scale}px ${cell.textMargin.right * scale}px ${cell.textMargin.bottom * scale}px ${cell.textMargin.left * scale}px`
+                    : `${vPadding}px ${hPadding}px`
 
                   return (
                     <td
@@ -137,7 +141,7 @@ export function TableRenderer({ element, scale }: TableRendererProps) {
                       colSpan={cell.columnSpan}
                       style={{
                         border: `${Math.max(1, element.strokeThickness * scale)}px solid ${element.strokeColor}`,
-                        padding: `${vPadding}px ${hPadding}px`,
+                        padding: cellPadding,
                         backgroundColor: cellBg,
                         verticalAlign: vertAlign,
                         whiteSpace: 'nowrap'

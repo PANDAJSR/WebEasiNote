@@ -32,7 +32,7 @@ function toDrawing(element: SlideElement, blocked: Set<string>): StaticDrawing |
   const shape = element as ShapeElement
   if (shape.inlineText?.length || shape.shadow || shape.reflection
     || (shape.backgroundBrush && shape.backgroundBrush.type !== 'color')
-    || shape.borderWidth || shape.strokeDashArray || shape.arrowType
+    || shape.borderWidth || shape.strokeDashes?.length || shape.arrowStart || shape.arrowEnd
     || (shape.opacity ?? 1) !== 1 || !shape.path) return null
   if (![shape.x, shape.y, shape.width, shape.height, shape.rotation || 0].every(Number.isFinite)) return null
   const geometry = getShapeGeometry(shape)
