@@ -114,6 +114,9 @@ test('图标复刻官方红圆规格，字形随悬停切换', async () => {
   // 默认显示字母 f，鼠标进入才切三角
   assert.ok(html.includes('M16.6533782'))
   assert.ok(!html.includes('M5.2006778603764'))
+  // 字形平移量含字形区在 64×64 图标内的居中量（+16），漏掉会让字重整体偏左上
+  assert.ok(html.includes('translate(14.167 15.667)'))
+  assert.ok(!html.includes('translate(23.285 19.789)'))
   // 未打开时不渲染播放弹窗
   assert.ok(!html.includes('data-flash-stage'))
 
