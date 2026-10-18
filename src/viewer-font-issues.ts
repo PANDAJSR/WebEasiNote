@@ -49,4 +49,3 @@ export function collectMissingFontIssues(slides: SlideData[]): SlideIssue[] {
   })
   return issues
 }
-
