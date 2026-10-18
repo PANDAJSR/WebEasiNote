@@ -35,7 +35,9 @@ test('Wingdings 按字符转换，保留自定义字符和独立字体变体', (
     assert.ok(!marker?.fontFamily?.toLowerCase().includes('wingdings'))
   }
   for (const char of ['\u00d8', '\uf0d8']) {
-    assert.equal(resolveTextMarkers([line('Circle', char, 'Wingdings')])[0]?.text, '➤')
+    for (const type of ['Circle', 'None']) {
+      assert.equal(resolveTextMarkers([line(type, char, 'Wingdings')])[0]?.text, '➢')
+    }
   }
   assert.equal(resolveTextMarkers([line('Circle', 'l', 'pack://font/#WINGDINGS')])[0]?.text, '●')
   for (const [char, font] of [['l', 'Wingdings 2'], ['★', 'Arial'], ['?', 'Wingdings'], ['Ø', 'Arial']]) {
@@ -43,7 +45,9 @@ test('Wingdings 按字符转换，保留自定义字符和独立字体变体', (
     assert.equal(marker?.text, char)
     assert.ok(marker?.fontFamily?.includes(font))
   }
-  assert.equal(resolveTextMarkers([line('None', 'l', 'Wingdings')])[0], null)
+  assert.equal(resolveTextMarkers([line('None', 'l', 'Wingdings')])[0]?.text, '●')
+  assert.equal(resolveTextMarkers([line('None', '★', 'Arial')])[0]?.text, '★')
+  assert.equal(resolveTextMarkers([line('None')])[0], null)
   assert.deepEqual(resolveTextMarkers(['Circle', 'Square', 'Tick'].map(type => line(type)))
     .map(marker => marker?.text), ['●', '■', '✓'])
 })
@@ -80,6 +84,42 @@ test('原课件第 7 页三段列表解析后渲染圆点，保留字号和已�
   const spans = parseMarkup(renderToStaticMarkup(renderers[0]))
   const visualLines = spans.filter(span => span.style.display === 'block')
   assert.deepEqual(visualLines.map(span => span.textContent.replace('●', '').length), [13, 14, 15, 4])
+})
+
+test('第 15 页显式自定义符号优先于 None，空心箭头只显示在第一行', async () => {
+  const xml = await readFile(new URL('./fixtures/page-15-custom-marker.xml', import.meta.url), 'utf8')
+  const richText = new dom.DOMParser().parseFromString(xml, 'text/xml').documentElement
+  const { textLines } = parseRichTextNode(richText as unknown as Element)
+  assert.equal(textLines[0].textMarker, 'None')
+  assert.equal(textLines[0].textMarkerStyle?.char, 'Ø')
+  assert.equal(textLines[0].textMarkerStyle?.fontFamily, 'Wingdings')
+  assert.deepEqual(textLines[0].lines?.map(part => part.length), [16, 7])
+  const markers = resolveTextMarkers(textLines)
+  assert.equal(markers[0]?.text, '➢')
+  assert.equal(markers[1], null)
+  const element: TextElement = { type: 'text', id: 'custom-marker', x: 0, y: 0,
+    width: 897.14, height: 328.38, textLines }
+  const shape = { ...element, type: 'shape', inlineText: textLines } as unknown as ShapeElement
+  for (const renderer of [
+    <TextElementRenderer element={element} scale={0.5} />,
+    <ShapeInlineText element={shape} scale={0.5} visualPadding={0} />,
+    <TopicNodeBox x={0} y={0} width={897.14} height={328.38} title="" textLines={textLines}
+      fillColor="#fff" strokeColor="#000" textColor="#000" textAlignment="Left"
+      fontFamily="Arial" fontSize={53.333333333333336} scale={0.5} />
+  ]) {
+    const html = renderToStaticMarkup(renderer)
+    const spans = parseMarkup(html)
+    const arrows = spans.filter(span => span.textContent === '➢')
+    assert.equal(arrows.length, 1)
+    assert.ok(Math.abs(parseFloat(arrows[0].style.fontSize) - 26.666666666666668) < 1e-6)
+    assert.ok(!arrows[0].style.fontFamily.toLowerCase().includes('wingdings'))
+    assert.ok(!html.includes('➤') && !html.includes('Ø'))
+  }
+  const visualLines = parseMarkup(renderToStaticMarkup(
+    <TextElementRenderer element={element} scale={0.5} />))
+    .filter(span => span.style.display === 'block')
+  assert.ok(visualLines[0].textContent.startsWith('➢'))
+  assert.ok(!visualLines[1].textContent.includes('➢'))
 })
 
 test('编号每段递增一次，空段、缩进、重复渲染及倒影不导致跳号', () => {
