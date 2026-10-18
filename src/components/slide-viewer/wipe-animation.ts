@@ -65,16 +65,27 @@ function buildBlindMaskLayerRepeatList(layerCount: number): string {
 }
 
 function buildBlindMaskPositionList(layerCount: number, direction: BlindDirection): string {
+  const layerStepPercent = 100 / layerCount
+  const layerSizePercent = getBlindLayerSizePercent(layerCount)
+  const availableTravelPercent = 100 - layerSizePercent
   return Array.from({ length: layerCount }, (_, index) => {
-    const offsetPercent = (100 / layerCount) * index
+    // mask-position percentages apply to the free space after subtracting the
+    // mask image size. Convert the desired strip start back to that percentage
+    // space so every strip stays in its own equal-width slot.
+    const offsetPercent = (layerStepPercent * index / availableTravelPercent) * 100
     return direction === 'Vertical'
       ? `${offsetPercent}% 0%`
       : `0% ${offsetPercent}%`
   }).join(', ')
 }
 
+function getBlindLayerSizePercent(layerCount: number): number {
+  return (100 / layerCount) * 0.84
+}
+
 function buildBlindMaskSizeList(layerCount: number, direction: BlindDirection, opened: boolean): string {
-  const openedSize = direction === 'Vertical' ? '8.4% 100%' : '100% 8.4%'
+  const openedLayerSize = `${getBlindLayerSizePercent(layerCount)}%`
+  const openedSize = direction === 'Vertical' ? `${openedLayerSize} 100%` : `100% ${openedLayerSize}`
   const closedSize = direction === 'Vertical' ? '0% 100%' : '100% 0%'
   const size = opened ? openedSize : closedSize
   return Array.from({ length: layerCount }, () => size).join(', ')
