@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { resolveTextMarkers } from '../../text-markers'
 import { buildFontFamily } from '../../font-utils'
 import type { TextLine, TextRun } from '../../types'
 import {
@@ -6,9 +7,7 @@ import {
   estimateTextBlockSize,
   getLineHeight,
   getShadowStyle,
-  getTextStrokeStyle,
-  toCircleNumber,
-  toLatin
+  getTextStrokeStyle
 } from './text-style-utils'
 
 interface TopicNodeBoxProps {
@@ -44,46 +43,6 @@ export function TopicNodeBox({
   scale,
   isRoot = false
 }: TopicNodeBoxProps) {
-  const markerCounters: Record<string, number> = {}
-
-  const getMarkerText = (lineIndex: number, lines: TextLine[]): string | null => {
-    const line = lines[lineIndex]
-    if (!line?.textMarker || line.textMarker === 'None') return null
-
-    const style = line.textMarkerStyle
-    if (style?.char) return style.char
-
-    const counterKey = `${line.textMarker}-${style?.autoNumberType || ''}-${style?.startAt || 1}`
-    if (!(counterKey in markerCounters)) {
-      markerCounters[counterKey] = (style?.startAt || 1) - 1
-    }
-    markerCounters[counterKey] += 1
-    const n = markerCounters[counterKey]
-
-    switch (line.textMarker) {
-      case 'Circle':
-        return '●'
-      case 'Rect':
-      case 'Box':
-      case 'Square':
-        return '■'
-      case 'Tick':
-        return '✓'
-      case 'Decimal':
-        return `${n}.`
-      case 'Decimal1':
-        return `(${n})`
-      case 'Decimal2':
-        return toCircleNumber(n)
-      case 'UpperLatin':
-        return `${toLatin(n)}.`
-      case 'LowerLatin':
-        return `${toLatin(n, true)}.`
-      default:
-        return '•'
-    }
-  }
-
   const resolvedLines = textLines.length > 0
     ? textLines
     : (() => {
@@ -112,6 +71,7 @@ export function TopicNodeBox({
       }
       return [fallbackLine]
     })()
+  const markers = resolveTextMarkers(resolvedLines)
 
   const reflectionEffect = (() => {
     for (const line of resolvedLines) {
@@ -157,8 +117,8 @@ export function TopicNodeBox({
             }}
           >
             {(() => {
-              const markerText = getMarkerText(lineIndex, resolvedLines)
-              if (!markerText) return null
+              const marker = markers[lineIndex]
+              if (!marker) return null
               const markerWidth = Math.max((line.indent || line.marginLeft || 0) * scale, 12 * scale)
               return (
                 <span
@@ -169,15 +129,15 @@ export function TopicNodeBox({
                     width: markerWidth,
                     textAlign: 'right',
                     paddingRight: 2 * scale,
-                    fontFamily: buildFontFamily(line.textMarkerStyle?.fontFamily),
-                    fontSize: (firstRun?.fontSize || fontSize) * scale,
+                    fontFamily: marker.fontFamily,
+                    fontSize: (line.textMarkerStyle?.fontSize || firstRun?.fontSize || fontSize) * scale,
                     color: firstRun?.color || textColor,
                     opacity: firstRun?.opacity ?? 1,
                     lineHeight: 'inherit',
                     whiteSpace: 'pre'
                   }}
                 >
-                  {markerText}
+                  {marker.text}
                 </span>
               )
             })()}

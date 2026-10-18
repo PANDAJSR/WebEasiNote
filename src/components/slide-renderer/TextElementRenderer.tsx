@@ -6,93 +6,19 @@ import {
   buildTextGradient,
   getShadowStyle,
   getTextStrokeStyle,
-  mergeOpacityToColor,
-  toCircleNumber,
-  toLatin
+  mergeOpacityToColor
 } from './text-style-utils'
+import { resolveTextMarkers } from '../../text-markers'
+import { TextMarkerSpan } from './TextMarkerSpan'
+import { measureRunWidth, sliceLineRunsByLineProperties } from './text-layout-utils'
+
 const RULED_PAPER_TEXT_VERTICAL_OFFSET_RATIO = -0.12
 const RULED_PAPER_CONTENT_PADDING_RATIO = 0.08
-
-let textMeasureCanvas: HTMLCanvasElement | null = null
-
-function measureRunWidth(
-  run: TextElement['textLines'][number]['textRuns'][number],
-  scale: number
-): number {
-  const content = run.text.replace(/\r/g, '')
-  if (!content) return 0
-  if (typeof document === 'undefined') {
-    return content.length * run.fontSize * scale
-  }
-  textMeasureCanvas ||= document.createElement('canvas')
-  const ctx = textMeasureCanvas.getContext('2d')
-  if (!ctx) {
-    return content.length * run.fontSize * scale
-  }
-  const fontStyle = run.fontStyle || 'normal'
-  const fontWeight = run.fontWeight || 'normal'
-  const fontFamily = buildFontFamily(run.fontFamily) || 'sans-serif'
-  ctx.font = `${fontStyle} ${fontWeight} ${(run.fontSize * scale).toFixed(4)}px ${fontFamily}`
-  return ctx.measureText(content).width
-}
-
-interface VisualLine {
-  runs: TextElement['textLines'][number]['textRuns']
-}
-
-function sliceLineRunsByLineProperties(
-  textRuns: TextElement['textLines'][number]['textRuns'],
-  lineProperties?: Array<{ startOffset: number; length: number }>
-): VisualLine[] {
-  if (!lineProperties || lineProperties.length <= 1) {
-    return [{ runs: textRuns }]
-  }
-
-  const breakOffsets = lineProperties.slice(1).map(p => p.startOffset)
-  const visualLines: VisualLine[] = []
-  let currentRuns: TextElement['textLines'][number]['textRuns'] = []
-  let currentOffset = 0
-  let breakIndex = 0
-
-  for (const run of textRuns) {
-    let runText = run.text
-    let runStart = currentOffset
-
-    while (breakIndex < breakOffsets.length && runStart + runText.length > breakOffsets[breakIndex]) {
-      const splitAt = breakOffsets[breakIndex] - runStart
-      if (splitAt > 0) {
-        currentRuns.push({
-          ...run,
-          text: runText.slice(0, splitAt)
-        })
-      }
-      visualLines.push({ runs: currentRuns })
-      currentRuns = []
-      runText = runText.slice(splitAt)
-      runStart = breakOffsets[breakIndex]
-      breakIndex += 1
-    }
-
-    if (runText.length > 0) {
-      currentRuns.push({
-        ...run,
-        text: runText
-      })
-    }
-    currentOffset += run.text.length
-  }
-
-  if (currentRuns.length > 0 || visualLines.length === 0) {
-    visualLines.push({ runs: currentRuns })
-  }
-
-  return visualLines
-}
 
 export function TextElementRenderer({ element, scale }: { element: TextElement; scale: number }) {
   const { x, y, width, height, textLines } = element
   const enableAutoWrap = !element.ruledPaper && element.arrangingType !== 'Vertical'
-  const markerCounters: Record<string, number> = {}
+  const markers = resolveTextMarkers(textLines)
   const textOuterPadding = 10 * scale
   const ruledPaper = element.ruledPaper
   const mainHeight = height * scale
@@ -103,47 +29,6 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
   const ruledRowHeight = ruledPaper ? ruledUsableHeight / ruledRowCount : 0
   const containerPadding = ruledPaper ? ruledContentPadding : textOuterPadding
   const ruledTextVerticalOffset = ruledPaper ? ruledRowHeight * RULED_PAPER_TEXT_VERTICAL_OFFSET_RATIO : 0
-  const getMarkerText = (lineIndex: number): string | null => {
-    const line = textLines[lineIndex]
-    if (!line) return null
-    const style = line.textMarkerStyle
-    if (style?.char) {
-      const code = style.char.charCodeAt(0)
-      if (style.fontFamily?.toLowerCase().includes('wingdings') || code === 0xF0D8 || code === 0xD8 || style.char === '') {
-        return '➤'
-      }
-      return style.char
-    }
-    if (!line.textMarker || line.textMarker === 'None') return null
-    const counterKey = `${line.textMarker}-${style?.autoNumberType || ''}-${style?.startAt || 1}`
-    if (!(counterKey in markerCounters)) {
-      markerCounters[counterKey] = (style?.startAt || 1) - 1
-    }
-    markerCounters[counterKey] += 1
-    const n = markerCounters[counterKey]
-    switch (line.textMarker) {
-      case 'Circle':
-        return '●'
-      case 'Rect':
-      case 'Box':
-      case 'Square':
-        return '■'
-      case 'Tick':
-        return '✓'
-      case 'Decimal':
-        return `${n}.`
-      case 'Decimal1':
-        return `(${n})`
-      case 'Decimal2':
-        return toCircleNumber(n)
-      case 'UpperLatin':
-        return `${toLatin(n)}.`
-      case 'LowerLatin':
-        return `${toLatin(n, true)}.`
-      default:
-        return '•'
-    }
-  }
   const getLineHeight = (line: TextElement['textLines'][number]): string => {
     if (ruledPaper) {
       return '1'
@@ -337,56 +222,28 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
             }}
           >
             {(() => {
-              const markerText = getMarkerText(lineIndex)
-              if (!markerText) return null
-              const markerFontSize = (line.textMarkerStyle?.fontSize || line.textRuns[0]?.fontSize || 16) * scale
+              const marker = markers[lineIndex]
+              if (!marker) return null
               const hasIndent = (line.indent || line.marginLeft || 0) > 0
               if (hasIndent) {
                 return (
-                  <span
-                    style={{
-                      position: 'absolute',
-                      left: alignmentPaddingLeft,
-                      top: 0,
-                      minWidth: (line.indent || line.marginLeft || 0) * scale,
-                      fontFamily: buildFontFamily(line.textMarkerStyle?.fontFamily),
-                      fontSize: markerFontSize,
-                      fontSynthesis: 'style weight',
-                      lineHeight: 'inherit',
-                      whiteSpace: 'pre'
-                    }}
-                  >
-                    {markerText}
-                  </span>
+                  <TextMarkerSpan marker={marker} line={line} scale={scale} absoluteLeft={alignmentPaddingLeft} />
                 )
               }
               if (hasRenderableText) {
                 return null
               }
               return (
-                <span
-                  style={{
-                    display: 'inline-block',
-                    marginRight: `${8 * scale}px`,
-                    fontFamily: buildFontFamily(line.textMarkerStyle?.fontFamily),
-                    fontSize: markerFontSize,
-                    fontSynthesis: 'style weight',
-                    lineHeight: 'inherit',
-                    verticalAlign: 'baseline'
-                  }}
-                >
-                  {markerText}
-                </span>
+                <TextMarkerSpan marker={marker} line={line} scale={scale} />
               )
             })()}
             {hasRenderableText
               ? (() => {
                 const visualLines = sliceLineRunsByLineProperties(line.textRuns, line.lines)
                 const isMultiLineProperty = Boolean(line.lines && line.lines.length > 1)
-                const markerText = getMarkerText(lineIndex)
+                const marker = markers[lineIndex]
                 const hasIndent = (line.indent || line.marginLeft || 0) > 0
-                const shouldRenderMarkerInFirstLine = Boolean(markerText && !hasIndent)
-                const markerFontSize = (line.textMarkerStyle?.fontSize || line.textRuns[0]?.fontSize || 16) * scale
+                const shouldRenderMarkerInFirstLine = Boolean(marker && !hasIndent)
 
                 return visualLines.map((vLine, vLineIdx) => (
                   <span
@@ -397,19 +254,7 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
                     }}
                   >
                     {vLineIdx === 0 && shouldRenderMarkerInFirstLine && (
-                      <span
-                        style={{
-                          display: 'inline-block',
-                          marginRight: `${8 * scale}px`,
-                          fontFamily: buildFontFamily(line.textMarkerStyle?.fontFamily),
-                          fontSize: markerFontSize,
-                          fontSynthesis: 'style weight',
-                          lineHeight: 'inherit',
-                          verticalAlign: 'baseline'
-                        }}
-                      >
-                        {markerText}
-                      </span>
+                      <TextMarkerSpan marker={marker!} line={line} scale={scale} />
                     )}
                     {vLine.runs.map((run, runIndex) => (
                       <span

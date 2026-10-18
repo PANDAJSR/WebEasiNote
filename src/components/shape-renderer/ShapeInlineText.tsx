@@ -1,5 +1,6 @@
 import type { ShapeElement } from '../../shapes'
 import { buildFontFamily } from '../../font-utils'
+import { resolveTextMarkers } from '../../text-markers'
 import { convertSeewoLineSpacingToMultiplier } from '../../line-spacing'
 
 function buildTextGradient(run: NonNullable<ShapeElement['inlineText']>[number]['textRuns'][number]): string | undefined {
@@ -21,63 +22,10 @@ function buildTextGradient(run: NonNullable<ShapeElement['inlineText']>[number][
 export function ShapeInlineText({ element, scale, visualPadding }: { element: ShapeElement; scale: number; visualPadding: number }) {
   const { inlineText, width, height } = element
   const extraHorizontalPadding = 10 * scale
-  const markerCounters: Record<string, number> = {}
 
     if (!inlineText || inlineText.length === 0) return null
 
-    const toLatin = (value: number, lower = false): string => {
-      let n = value
-      let result = ''
-      while (n > 0) {
-        n -= 1
-        result = String.fromCharCode(65 + (n % 26)) + result
-        n = Math.floor(n / 26)
-      }
-      return lower ? result.toLowerCase() : result
-    }
-
-    const toCircleNumber = (value: number): string => {
-      const circleNumbers = ['⓪', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩', '⑪', '⑫', '⑬', '⑭', '⑮', '⑯', '⑰', '⑱', '⑲', '⑳']
-      return circleNumbers[value] || `${value}`
-    }
-
-    const getMarkerText = (lineIndex: number): string | null => {
-      const line = inlineText[lineIndex]
-      if (!line?.textMarker || line.textMarker === 'None') return null
-
-      const style = line.textMarkerStyle
-      if (style?.char) return style.char
-
-      const counterKey = `${line.textMarker}-${style?.autoNumberType || ''}-${style?.startAt || 1}`
-      if (!(counterKey in markerCounters)) {
-        markerCounters[counterKey] = (style?.startAt || 1) - 1
-      }
-      markerCounters[counterKey] += 1
-      const n = markerCounters[counterKey]
-
-      switch (line.textMarker) {
-        case 'Circle':
-          return '●'
-        case 'Rect':
-        case 'Box':
-        case 'Square':
-          return '■'
-        case 'Tick':
-          return '✓'
-        case 'Decimal':
-          return `${n}.`
-        case 'Decimal1':
-          return `(${n})`
-        case 'Decimal2':
-          return toCircleNumber(n)
-        case 'UpperLatin':
-          return `${toLatin(n)}.`
-        case 'LowerLatin':
-          return `${toLatin(n, true)}.`
-        default:
-          return '•'
-      }
-    }
+    const markers = resolveTextMarkers(inlineText)
 
     const getLineHeight = (line: NonNullable<ShapeElement['inlineText']>[number]): string => {
       if (line.fixedLineSpacing && line.fixedLineSpacing > 0) {
@@ -134,8 +82,8 @@ export function ShapeInlineText({ element, scale, visualPadding }: { element: Sh
                 }}
               >
                 {(() => {
-                  const markerText = getMarkerText(lineIndex)
-                  if (!markerText) return null
+                  const marker = markers[lineIndex]
+                  if (!marker) return null
                   const markerAreaWidth = Math.max((line.indent || 0) * scale, 12 * scale)
                   const textStart = (line.marginLeft || 0) * scale + extraHorizontalPadding
                   const markerLeft = Math.max(0, textStart - markerAreaWidth)
@@ -148,7 +96,7 @@ export function ShapeInlineText({ element, scale, visualPadding }: { element: Sh
                         width: markerAreaWidth,
                         textAlign: 'right',
                         paddingRight: 2 * scale,
-                        fontFamily: buildFontFamily(line.textMarkerStyle?.fontFamily),
+                        fontFamily: marker.fontFamily,
                         fontSize: (line.textRuns[0]?.fontSize || 16) * scale,
                         fontSynthesis: 'style weight',
                         color: firstRun?.color || '#000000',
@@ -157,7 +105,7 @@ export function ShapeInlineText({ element, scale, visualPadding }: { element: Sh
                         whiteSpace: 'pre'
                       }}
                     >
-                      {markerText}
+                      {marker.text}
                     </span>
                   )
                 })()}
