@@ -112,6 +112,28 @@ export interface VideoElement {
   thumbnailSourceId?: string
 }
 
+export interface AudioElement {
+  type: 'audio'
+  id: string
+  rawXml?: string
+  x: number
+  y: number
+  width: number
+  height: number
+  rotation: number
+  sourceId: string
+  mediaName: string
+  volume: number
+  clipStart: number
+  clipEnd: number | null
+  playPoints: number[]
+  isHidden: boolean
+  isAutoPlay: boolean
+  isLoopPlay: boolean
+  isCrossSlidePlay: boolean
+  stopPlayPageNumber: number
+}
+
 export interface FlashElement {
   type: 'flash'
   id: string

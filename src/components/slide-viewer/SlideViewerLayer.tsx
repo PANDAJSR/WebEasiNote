@@ -40,6 +40,7 @@ interface SlideViewerLayerProps {
     nextHeight: number
   ) => void
   onEditTextUpdate?: (elementId: string, nextTextLines: TextLine[]) => void
+  onEditAudioUpdate?: (elementId: string, edit: import('../../audio-editing').AudioEdit) => void
   onEditTextStyleStateChange?: (state: TextStyleState | null) => void
   selectedElementId?: string | null
   textStyleCommand?: TextStyleCommand | null
@@ -62,6 +63,7 @@ export function SlideViewerLayer({
   onEditElementDrag,
   onEditElementResize,
   onEditTextUpdate,
+  onEditAudioUpdate,
   onEditTextStyleStateChange,
   selectedElementId,
   textStyleCommand
@@ -70,7 +72,7 @@ export function SlideViewerLayer({
   const visited = useRef(false)
   if (isCurrent) visited.current = true
   const crossPlaySlide = useMemo(() => ({ ...slideItem,
-    elements: slideItem.elements.filter(element => element.type === 'video' && element.isCrossSlidePlay)
+    elements: slideItem.elements.filter(element => (element.type === 'video' || element.type === 'audio') && element.isCrossSlidePlay)
   }), [slideItem])
   const isEntering = transitionState?.enteringIndex === index
   const isLeaving = transitionState?.leavingIndex === index
@@ -148,8 +150,8 @@ export function SlideViewerLayer({
     : 'none'
   const currentSlideNumber = currentIndex + 1
   const sourceSlideNumber = index + 1
-  const shouldKeepAliveForCrossPlay = visited.current && slideItem.elements.some(
-    element => element.type === 'video'
+  const shouldKeepAliveForCrossPlay = !isEditMode && visited.current && slideItem.elements.some(
+    element => (element.type === 'video' || element.type === 'audio')
       && element.isCrossSlidePlay
       && currentSlideNumber > sourceSlideNumber
       && (
@@ -204,8 +206,9 @@ export function SlideViewerLayer({
           onEditElementDrag={isCurrent && isEditMode ? onEditElementDrag : undefined}
           onEditElementResize={isCurrent && isEditMode ? onEditElementResize : undefined}
           onEditTextUpdate={isCurrent && isEditMode ? onEditTextUpdate : undefined}
+          onEditAudioUpdate={isCurrent && isEditMode ? onEditAudioUpdate : undefined}
           onEditTextStyleStateChange={isCurrent && isEditMode ? onEditTextStyleStateChange : undefined}
-          isEditMode={isCurrent && isEditMode}
+          isEditMode={isEditMode}
           selectedElementId={isCurrent && isEditMode ? selectedElementId : null}
           textStyleCommand={isCurrent && isEditMode ? textStyleCommand : null}
         />

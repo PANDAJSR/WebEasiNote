@@ -248,6 +248,12 @@ export function Viewer({
     }))
   }
 
+  const handleEditAudioUpdate = (elementId: string, edit: import('../audio-editing').AudioEdit) => {
+    const target = currentSlide.elements.find(element => element.id === elementId)
+    if (target?.type !== 'audio') return
+    setEditedElements(prev => ({ ...prev, [`${currentSlide.id}|${elementId}`]: applyAudioEdit(target, edit) }))
+  }
+
   const handleEditElementTextUpdate = (elementId: string, nextTextLines: TextLine[]) => {
     const targetElement = currentSlide.elements.find(element => element.id === elementId)
     if (!targetElement || (targetElement.type !== 'text' && targetElement.type !== 'shape')) return
@@ -308,6 +314,7 @@ export function Viewer({
     onEditElementDrag: handleEditElementDrag,
     onEditElementResize: handleEditElementResize,
     onEditElementTextUpdate: handleEditElementTextUpdate,
+    onEditAudioUpdate: handleEditAudioUpdate,
     onEditTextStyleStateChange: setLiveTextStyleState,
     onEditBackgroundClick: handleEditBackgroundClick,
     textStyleCommand,
@@ -396,3 +403,4 @@ export function Viewer({
     </div>
   )
 }
+import { applyAudioEdit } from '../audio-editing'

@@ -20,6 +20,7 @@ interface SlideRendererProps {
   onEditElementDrag?: (elementId: string, nextX: number, nextY: number) => void
   onEditElementResize?: (elementId: string, nextX: number, nextY: number, nextWidth: number, nextHeight: number) => void
   onEditTextUpdate?: (elementId: string, nextTextLines: TextLine[]) => void
+  onEditAudioUpdate?: (elementId: string, edit: import('../audio-editing').AudioEdit) => void
   onEditTextStyleStateChange?: (state: TextStyleState | null) => void
   isEditMode?: boolean
   selectedElementId?: string | null
@@ -40,6 +41,7 @@ export function SlideRenderer({
   onEditElementDrag,
   onEditElementResize,
   onEditTextUpdate,
+  onEditAudioUpdate,
   onEditTextStyleStateChange,
   isEditMode = false,
   selectedElementId = null,
@@ -191,7 +193,7 @@ export function SlideRenderer({
             if (!changed) return [<StaticRunLayer key={item.id} run={item} width={slide.width} height={slide.height} scale={scale} />]
           }
           return (isStaticRun(item) ? item.elements : [item]).map(element => {
-            if (elementRenderStates[element.id] === false) return null
+            if (elementRenderStates[element.id] === false && element.type !== 'audio') return null
             const bounds = resolveElementBounds(element)
             const draftTextLines = draftTextLinesMap[element.id]
             const injectedEditingTextLines = editingInjectedTextLinesMap[element.id]
@@ -268,6 +270,10 @@ export function SlideRenderer({
                     slideIndex={slideIndex}
                     currentIndex={currentIndex}
                     isEditMode={isEditMode}
+                    onEditAudioUpdate={onEditAudioUpdate}
+                    isVisible={elementRenderStates[element.id] !== false}
+                    slideWidth={slide.width}
+                    slideHeight={slide.height}
                   />
                 </div>
                 {isEditMode && canEditText && editingTextElementId === element.id && (

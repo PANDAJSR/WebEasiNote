@@ -2,6 +2,7 @@ import type { SlideElement, ShapeElement, PictureElement, VideoElement, FlashEle
 import { parseShapeElement } from './shapes'
 import { parsePictureElement } from './pictures'
 import { parseVideoElement } from './videos'
+import { parseAudioElement } from './audios'
 import { parseFlashElement } from './flashes'
 import { parseTextElement } from './text-parser'
 import { parseTableElement } from './tables'
@@ -128,6 +129,11 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
             rawXml
           })
         }
+        break
+      }
+      case 'Audio': {
+        collectUnknownParameters(node, 'Audio', slideId, elementId, issues)
+        parsedElements.push({ ...applyOffset(parseAudioElement(node), offsetX, offsetY), rawXml })
         break
       }
       case 'Video': {

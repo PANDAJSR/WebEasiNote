@@ -7,6 +7,7 @@ import type { TableElement } from '../../types'
 import { ShapeRenderer } from '../ShapeRenderer'
 import { PictureRenderer } from '../PictureRenderer'
 import { VideoRenderer } from '../VideoRenderer'
+import { AudioRenderer } from '../AudioRenderer'
 import { FlashRenderer } from '../FlashRenderer'
 import { TableRenderer } from '../TableRenderer'
 import { TopicRenderer } from '../TopicRenderer'
@@ -24,6 +25,10 @@ interface ElementRendererProps {
   slideIndex: number
   currentIndex: number
   isEditMode?: boolean
+  onEditAudioUpdate?: (elementId: string, edit: import('../../audio-editing').AudioEdit) => void
+  isVisible?: boolean
+  slideWidth?: number
+  slideHeight?: number
 }
 
 export function ElementRenderer({
@@ -32,7 +37,11 @@ export function ElementRenderer({
   resourceMap,
   slideIndex,
   currentIndex,
-  isEditMode = false
+  isEditMode = false,
+  onEditAudioUpdate,
+  isVisible = true,
+  slideWidth = 1280,
+  slideHeight = 720
 }: ElementRendererProps) {
   switch (element.type) {
     case 'text':
@@ -41,6 +50,11 @@ export function ElementRenderer({
       return <ShapeRenderer element={element as ShapeElement} scale={scale} />
     case 'picture':
       return <PictureRenderer element={element as PictureElement} scale={scale} resourceMap={resourceMap} />
+    case 'audio':
+      return <AudioRenderer element={element} scale={scale} resourceMap={resourceMap}
+        isCurrentSlide={slideIndex === currentIndex} currentSlideNumber={currentIndex + 1}
+        sourceSlideNumber={slideIndex + 1} isEditMode={isEditMode} isVisible={isVisible}
+        slideWidth={slideWidth} slideHeight={slideHeight} onEditAudioUpdate={onEditAudioUpdate} />
     case 'video':
       return (
         <VideoRenderer

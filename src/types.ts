@@ -4,6 +4,7 @@ export type {
   ShapeElement,
   PictureElement,
   VideoElement,
+  AudioElement,
   FlashElement,
   TableCell,
   TableElement,

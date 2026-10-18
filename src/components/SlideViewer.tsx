@@ -42,6 +42,7 @@ interface SlideViewerProps {
     nextHeight: number
   ) => void
   onEditElementTextUpdate?: (elementId: string, nextTextLines: TextLine[]) => void
+  onEditAudioUpdate?: (elementId: string, edit: import('../audio-editing').AudioEdit) => void
   onEditTextStyleStateChange?: (state: TextStyleState | null) => void
   onEditBackgroundClick?: () => void
   textStyleCommand?: TextStyleCommand | null
@@ -69,6 +70,7 @@ export function SlideViewer({
   onEditElementDrag,
   onEditElementResize,
   onEditElementTextUpdate,
+  onEditAudioUpdate,
   onEditTextStyleStateChange,
   onEditBackgroundClick,
   textStyleCommand = null,
@@ -322,6 +324,7 @@ export function SlideViewer({
                   onEditElementDrag={isCurrent && isEditMode ? onEditElementDrag : undefined}
                   onEditElementResize={isCurrent && isEditMode ? onEditElementResize : undefined}
                   onEditTextUpdate={isCurrent && isEditMode ? onEditElementTextUpdate : undefined}
+                  onEditAudioUpdate={isCurrent && isEditMode ? onEditAudioUpdate : undefined}
                   onEditTextStyleStateChange={isCurrent && isEditMode ? onEditTextStyleStateChange : undefined}
                   selectedElementId={isCurrent && isEditMode ? selectedElementId : null}
                   textStyleCommand={isCurrent && isEditMode ? textStyleCommand : null}

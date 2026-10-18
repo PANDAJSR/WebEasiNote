@@ -4,6 +4,7 @@ import type {
   ShapeElement,
   PictureElement,
   VideoElement,
+  AudioElement,
   FlashElement,
   TableElement,
   TopicElement,
@@ -66,6 +67,7 @@ export type SlideElement = (
   | ShapeElement
   | PictureElement
   | VideoElement
+  | AudioElement
   | FlashElement
   | TableElement
   | TopicElement

@@ -62,6 +62,12 @@ export const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'Thumbnail',
     'Animations'
   ]),
+  Audio: new Set([
+    'Id', 'X', 'Y', 'Width', 'Height', 'Rotation', 'Source', 'MediaName',
+    'Duration', 'ClipStart', 'ClipEnd', 'Volume', 'PlayPoints', 'IsHidden',
+    'ElementBehavior', 'Animations', 'IsLocked', 'CanClone', 'HasMask',
+    'RotateOrigin', 'SaveInfoMetadata'
+  ]),
   Flash: new Set([
     'Id',
     'X',

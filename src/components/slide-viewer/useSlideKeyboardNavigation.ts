@@ -11,6 +11,7 @@ interface UseSlideKeyboardNavigationParams {
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
   const tagName = target.tagName
+  if (target.closest('[data-audio-control="true"]')) return true
   return (
     tagName === 'INPUT'
     || tagName === 'TEXTAREA'
