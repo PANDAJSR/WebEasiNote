@@ -1,8 +1,8 @@
-import type { SlideElement, UnknownElement, TopicElement, CylinderElement, ConeElement, CubeElement, GeometryElement, MathFormulaElement } from '../../parser'
-import type { ShapeElement } from '../../shapes'
-import type { PictureElement } from '../../pictures'
-import type { VideoElement } from '../../videos'
-import type { FlashElement } from '../../flashes'
+import type { SlideElement, UnknownElement, TopicElement, CylinderElement, ConeElement, CubeElement, GeometryElement, MathFormulaElement } from '../../enbx/parser'
+import type { ShapeElement } from '../../enbx/shapes'
+import type { PictureElement } from '../../enbx/pictures'
+import type { VideoElement } from '../../enbx/videos'
+import type { FlashElement } from '../../enbx/flashes'
 import type { TableElement } from '../../types'
 import { ShapeRenderer } from '../ShapeRenderer'
 import { PictureRenderer } from '../PictureRenderer'
@@ -25,7 +25,7 @@ interface ElementRendererProps {
   slideIndex: number
   currentIndex: number
   isEditMode?: boolean
-  onEditAudioUpdate?: (elementId: string, edit: import('../../audio-editing').AudioEdit) => void
+  onEditAudioUpdate?: (elementId: string, edit: import('../../viewer/audio-editing').AudioEdit) => void
   isVisible?: boolean
   slideWidth?: number
   slideHeight?: number

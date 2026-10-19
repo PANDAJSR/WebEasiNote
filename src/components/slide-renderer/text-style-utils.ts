@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import type { TextElement } from '../../parser'
+import type { TextElement } from '../../enbx/parser'
 
 export function toLatin(value: number, lower = false): string {
   let n = value

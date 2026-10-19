@@ -2,6 +2,19 @@
 
 一个基于 React + TypeScript + Vite 的 第三方 ENBX 课件查看器，用于在浏览器中解析和查看希沃白板课件内容。
 
+## 目录结构
+
+- `src/enbx/`：ENBX 元数据、页面、元素、动画和 XML 解析。
+- `src/courseware/`：本地/云课件加载、保存与导出。
+- `src/components/`、`src/hooks/`：界面组件和应用级 hooks。
+- `src/rendering/`、`src/text/`：渲染缓存、形状描边、字体和文本规则。
+- `src/platform/`、`src/viewer/`：宿主桥接、运行时、播放器设置与编辑辅助。
+- `src/types/`、`src/styles/`：类型和样式；根级 `types.ts`、`styles.ts` 为公共导出。
+- `electron/`、`scripts/`、`tests/`：桌面入口、工具和测试。
+- `docs/`：设计与优化记录；`enbx_docs/`：ENBX 兼容性规范。
+
+`dist/`、`dist-electron/`、`release/`、`public/ruffle/` 是生成目录；`node_modules/`、本机 `.env`、测试课件和诊断 `artifacts/` 也不提交。`pnpm-lock.yaml` 和 `tests/fixtures/` 是需要提交的依赖锁文件与测试数据。文件是否已提交以 `git ls-files` 为准，本地目录存在不代表已进入 Git。
+
 ## 环境要求
 
 - Node.js 18+

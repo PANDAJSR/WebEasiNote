@@ -2,8 +2,8 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { Window } from 'happy-dom'
 import JSZip from 'jszip'
-import { HttpCourseware } from '../src/http-courseware'
-import { NavigationIntent } from '../src/navigation-intent'
+import { HttpCourseware } from '../src/courseware/http-courseware'
+import { NavigationIntent } from '../src/viewer/navigation-intent'
 
 function deferred<T>() {
   let resolve!: (value: T) => void

@@ -4,7 +4,7 @@ import JSZip from 'jszip'
 import { Window } from 'happy-dom'
 import { createCanvas, loadImage, Path2D } from '@napi-rs/canvas'
 import { Resvg } from '@resvg/resvg-js'
-import { parseSlideXML } from '../src/parser'
+import { parseSlideXML } from '../src/enbx/parser'
 import { getStaticPlan, isStaticRun } from '../src/rendering/staticPlan'
 import { fingerprintRun } from '../src/rendering/rasterCache'
 

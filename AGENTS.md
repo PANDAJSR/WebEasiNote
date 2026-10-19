@@ -19,7 +19,7 @@ pnpm build
 pnpm preview
 ```
 
-**注意**: 本项目没有配置测试框架、ESLint 或 Prettier。
+**注意**: `pnpm test` 使用 tsx 与 Node.js 测试运行器；本项目没有配置 ESLint 或 Prettier。
 
 ## 技术栈
 - **框架**: React 18
@@ -111,16 +111,23 @@ export function Viewer({ metadata }: ViewerProps) {
 ## 项目结构
 ```
 src/
-├── components/     # React 组件
-├── types.ts       # TypeScript 类型定义
-├── parser.ts      # ENBX 文件解析
-├── xml-utils.ts   # XML 处理工具
-├── pictures.ts    # 图片解析
-├── shapes.ts      # 形状解析
-├── text-parser.ts # 文本解析
-├── styles.ts      # 样式对象
+├── components/    # React 组件及组件专属逻辑
+├── courseware/    # 课件加载、HTTP 文件源、保存与导出
+├── enbx/          # ENBX XML、元素与动画解析
+├── hooks/         # 应用级 React hooks
+├── platform/      # 宿主通信与 Ruffle 运行时
+├── rendering/     # 静态渲染、缓存、形状描边与笔型
+├── text/          # 字体、行距、标记与图形内联文本
+├── viewer/        # 播放器设置、导航意图与编辑辅助
+├── types/         # 按领域拆分的类型
+├── styles/        # 按界面区域拆分的样式
+├── types.ts       # 公共类型导出
+├── styles.ts      # 公共样式导出
+├── App.tsx        # 应用编排
 └── main.tsx       # 应用入口
 ```
+
+新模块放入对应职责目录；同步更新源码、测试、脚本和文档中的相对路径。构建产物、Ruffle 复制资源、测试课件和本机配置不提交，测试 XML fixtures 与依赖锁文件需要提交。
 
 ## TypeScript 配置
 - 严格模式：启用

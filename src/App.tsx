@@ -1,29 +1,29 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { CoursewareMetadata, SlideData } from './parser'
-import { readCoursewareFile, readCoursewareFolder } from './courseware-loader'
+import type { CoursewareMetadata, SlideData } from './enbx/parser'
+import { readCoursewareFile, readCoursewareFolder } from './courseware/courseware-loader'
 import { WelcomeView } from './components/WelcomeView'
 import { LoadingView } from './components/LoadingView'
 import { ErrorView } from './components/ErrorView'
 import { Viewer } from './components/Viewer'
 import { CloudViewer } from './components/CloudViewer'
 import type { SlideChangeSource } from './components/Viewer'
-import { exportSlidesToEnbx } from './enbx-export'
-import { saveBlobToFile } from './save-courseware'
+import { exportSlidesToEnbx } from './courseware/enbx-export'
+import { saveBlobToFile } from './courseware/save-courseware'
 import {
   DEFAULT_PAGER_POSITION,
   isPagerPosition,
   PAGER_POSITION_STORAGE_KEY,
   SHOW_ANIMATION_PROGRESS_STORAGE_KEY,
   SWIPE_NAVIGATION_STORAGE_KEY
-} from './viewer-settings'
-import type { PagerPosition } from './viewer-settings'
+} from './viewer/viewer-settings'
+import type { PagerPosition } from './viewer/viewer-settings'
 import { styles } from './styles'
-import { useEnbxHostMessages } from './useEnbxHostMessages'
-import { useCoursewareAutoReload } from './useCoursewareAutoReload'
+import { useEnbxHostMessages } from './hooks/useEnbxHostMessages'
+import { useCoursewareAutoReload } from './hooks/useCoursewareAutoReload'
 import {
   isEnbxHostRuntime,
   postToEnbxHost
-} from './host-bridge'
+} from './platform/host-bridge'
 import {
   AUTO_RELOAD_STORAGE_KEY,
   CLICK_TO_NEXT_STORAGE_KEY,
@@ -32,7 +32,7 @@ import {
   type ENBXWatchState,
   type PickerWindow,
   type ViewMode
-} from './app-utils'
+} from './viewer/app-utils'
 ensureSpinKeyframes()
 function App() {
   const hostRuntime = isEnbxHostRuntime()

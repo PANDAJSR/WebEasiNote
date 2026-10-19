@@ -32,3 +32,17 @@ Thumbs.db
 
 # tests
 test_cases/*
+
+# Generated diagnostics, compiler caches and native packages
+artifacts/
+coverage/
+*.tsbuildinfo
+*.log
+*.exe
+*.dll
+*.pdb
+*.wasm
+*.dmg
+*.AppImage
+*.enbx
+*.mhb

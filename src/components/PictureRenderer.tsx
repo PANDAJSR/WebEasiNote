@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { CSSProperties } from 'react'
-import type { PictureElement } from '../pictures'
+import type { PictureElement } from '../enbx/pictures'
 import { ProgressiveImage } from './ProgressiveImage'
 
 interface PictureRendererProps {

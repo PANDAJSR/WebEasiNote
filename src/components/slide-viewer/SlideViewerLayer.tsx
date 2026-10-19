@@ -1,7 +1,7 @@
 import React, { useMemo, useRef } from 'react'
 import { styles } from '../../styles'
 import { SlideRenderer } from '../SlideRenderer'
-import type { SlideData, TextLine } from '../../parser'
+import type { SlideData, TextLine } from '../../enbx/parser'
 import type { TextStyleCommand, TextStyleState } from '../text-style-commands'
 import {
   buildLineRevealClipPath,
@@ -40,7 +40,7 @@ interface SlideViewerLayerProps {
     nextHeight: number
   ) => void
   onEditTextUpdate?: (elementId: string, nextTextLines: TextLine[]) => void
-  onEditAudioUpdate?: (elementId: string, edit: import('../../audio-editing').AudioEdit) => void
+  onEditAudioUpdate?: (elementId: string, edit: import('../../viewer/audio-editing').AudioEdit) => void
   onEditTextStyleStateChange?: (state: TextStyleState | null) => void
   selectedElementId?: string | null
   textStyleCommand?: TextStyleCommand | null

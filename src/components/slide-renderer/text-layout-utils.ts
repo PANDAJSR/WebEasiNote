@@ -1,5 +1,5 @@
 import type { TextElement } from '../../types'
-import { buildFontFamily } from '../../font-utils'
+import { buildFontFamily } from '../../text/font-utils'
 
 let textMeasureCanvas: HTMLCanvasElement | null = null
 

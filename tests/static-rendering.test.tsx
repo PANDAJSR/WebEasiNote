@@ -9,7 +9,7 @@ import { getStaticPlan, isStaticRun } from '../src/rendering/staticPlan'
 import { getShapeGeometry } from '../src/rendering/shapeGeometry'
 import { fingerprintRun, rasterRatio } from '../src/rendering/rasterCache'
 import { ShapeRenderer } from '../src/components/ShapeRenderer'
-import { parseSlideElements } from '../src/slide-elements-parser'
+import { parseSlideElements } from '../src/enbx/slide-elements-parser'
 import type { SlideData, SlideElement } from '../src/types'
 
 const dom = new Window()

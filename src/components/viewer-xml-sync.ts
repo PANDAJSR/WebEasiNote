@@ -1,6 +1,6 @@
-import type { SlideElement, TextLine, TextRun } from '../parser'
-import { parseSlideElements } from '../slide-elements-parser'
-import { getDirectChildElement } from '../xml-utils'
+import type { SlideElement, TextLine, TextRun } from '../enbx/parser'
+import { parseSlideElements } from '../enbx/slide-elements-parser'
+import { getDirectChildElement } from '../enbx/xml-utils'
 
 export function parseSingleElementXml(xmlContent: string, slideId: string): SlideElement {
   const parser = new DOMParser()

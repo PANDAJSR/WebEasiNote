@@ -1,5 +1,5 @@
 import type { TextLine } from '../../types'
-import type { ResolvedTextMarker } from '../../text-markers'
+import type { ResolvedTextMarker } from '../../text/text-markers'
 
 export function TextMarkerSpan({ marker, line, scale, absoluteLeft }: {
   marker: ResolvedTextMarker

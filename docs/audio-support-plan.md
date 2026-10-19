@@ -7,7 +7,7 @@
 - `src/slide-elements-parser.ts` 已支持 Video、Flash，但没有 Audio 分支；`ElementRenderer.tsx` 也没有音频渲染分支。
 - `src/videos.ts` 和 `VideoRenderer.tsx` 可作为资源映射、坐标、音量及行为字段的接入参考。但现有 Video 只用 `parseFloat` 读取 ClipStart，未处理 ClipEnd，不能直接照搬为完整媒体实现。
 - `SlideViewerLayer.tsx` 的 `crossPlaySlide` 和 `shouldKeepAliveForCrossPlay` 只识别 video。新增 AudioRenderer 并不足以实现跨页播放，必须同步扩展保活筛选。
-- 既有研究 `D:\Code\EasiNote-Resarch\all_element_save_infos.txt` 和 `ENBX_Elements_Reference.md` 记录了 MediaSaveInfo 的 Source、MediaName、Duration、ClipStart、ClipEnd、Volume、PlayPoints，以及 AudioSaveInfo 的 IsHidden。
+- 既有研究 `D:\Code\EasiNote-Resarch\evidence\inventory\all_element_save_infos.txt` 和 `docs/enbx/ENBX_Elements_Reference.md` 记录了 MediaSaveInfo 的 Source、MediaName、Duration、ClipStart、ClipEnd、Volume、PlayPoints，以及 AudioSaveInfo 的 IsHidden。
 - 本次使用 REA 对指定版本 `Main\Cvte.Paint.Shell.dll` 做了静态检查，确认 AudioSaveInfo 继承 MediaSaveInfo，并存在上述属性访问器。成员证据：`ev_652b5555d77c2e51db0d2b832e4dd5f92b7bf24c5a4d71b4217f2844feb8011d`。
 - 程序集身份：SHA-256 `481012f25286ac000ac14b15ab1a534476824e921e5b8b034f229ca159c74277`，MVID `98ae2eec-41c3-4275-90a3-b29c80d6b464`，程序集版本 `12.0.27.0`，目标框架 `.NETCoreApp,Version=v6.0`。身份检查父证据：`ev_3e7204305807396511b3ccb1ba230e90e50cdfb963528e9ad1ad3823927789c0`。
 
@@ -35,7 +35,7 @@
 
 选择包含 Audio 的真实 ENBX，保存脱敏后的最小 XML fixture，记录 Source → Reference.xml → Resources 的映射、真实编码和媒体 MIME。人工构造节点只用于边界测试，不能作为官方格式证据。
 
-研究记录建议保存到 `D:\Code\EasiNote-Resarch\audio-player\`，包含目标身份、REA Evidence ID、反编译或资源定位、结论和未决问题；确认的新格式信息同步回本项目 `enbx_docs/`。
+研究记录建议保存到 `D:\Code\EasiNote-Resarch\topics\audio-player\`，包含目标身份、REA Evidence ID、反编译或资源定位、结论和未决问题；确认的新格式信息同步回本项目 `enbx_docs/`。
 
 P0 完成条件：能确定正常播放、裁剪、循环、跨页和隐藏行为的规则，并有官方样式参照。若个别视觉资源无法提取，采用相似的自绘样式，记录差异即可。
 

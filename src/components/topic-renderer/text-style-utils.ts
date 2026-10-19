@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { convertSeewoLineSpacingToMultiplier } from '../../line-spacing'
+import { convertSeewoLineSpacingToMultiplier } from '../../text/line-spacing'
 import type { TextLine } from '../../types'
 
 const TOPIC_TEXT_LINE_HEIGHT = 1.1

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import { resolveTextMarkers } from '../../text-markers'
-import { buildFontFamily } from '../../font-utils'
+import { resolveTextMarkers } from '../../text/text-markers'
+import { buildFontFamily } from '../../text/font-utils'
 import type { TextLine, TextRun } from '../../types'
 import {
   buildTextGradient,

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { VideoElement } from '../videos'
+import type { VideoElement } from '../enbx/videos'
 
 interface VideoRendererProps {
   element: VideoElement

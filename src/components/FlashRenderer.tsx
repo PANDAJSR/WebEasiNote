@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from 'react'
-import type { FlashElement } from '../flashes'
+import type { FlashElement } from '../enbx/flashes'
 import { FlashPlayerModal } from './FlashPlayerModal'
 
 /** 官方 FlashElementContent.xaml 的红色圆形按钮路径 */

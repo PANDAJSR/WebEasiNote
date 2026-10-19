@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AudioElement } from '../../types'
-import type { AudioEdit } from '../../audio-editing'
+import type { AudioEdit } from '../../viewer/audio-editing'
 import type { useAudioPlayback } from './useAudioPlayback'
 import { audioStyles as styles, audioInteractionCss } from './styles'
 import { AudioSlider } from './AudioSlider'

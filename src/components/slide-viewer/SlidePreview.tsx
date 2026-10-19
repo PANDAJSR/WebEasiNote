@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
-import type { SlideData } from '../../parser'
+import type { SlideData } from '../../enbx/parser'
 import { SlideRenderer } from '../SlideRenderer'
 import { thumbnailHeight, thumbnailWidth } from './constants'
 

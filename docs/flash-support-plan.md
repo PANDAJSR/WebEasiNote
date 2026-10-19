@@ -6,7 +6,7 @@
 > 研究素材：本机 `C:\Program Files (x86)\Seewo\EasiNote5\EasiNote5_5.2.4.10148` 反编译结果
 > （`Cvte.Paint.Shell.dll` 的 `Cvte.Paint.FlashPlayer` 命名空间）+ 真实课件取证
 > `flash英语_c5308831-473b-442b-8e5d-755e3ff3ad8b_v47.enbx`。
-> 反编译产物保存在 `D:\Code\EasiNote-Resarch\decompiled_flash\`。
+> 反编译产物保存在 `D:\Code\EasiNote-Resarch\evidence\decompiled\flash\`。
 
 ## 1. 结论摘要
 
@@ -179,7 +179,7 @@ nightly 把 core 逻辑合进了 `ruffle.js`，只需拷 3 个文件；wasm 文�
 | --- | --- |
 | `src/types/elements.ts` | 在 `VideoElement` 后新增 `FlashElement`（含 `rawXml?`） |
 | `src/types/slide.ts` | `SlideElement` 联合类型加入 `FlashElement`，并 import |
-| `src/types.ts`、`src/parser.ts` | 追加 `FlashElement` 类型再导出 |
+| `src/types.ts`、`src/enbx/parser.ts` | 追加 `FlashElement` 类型再导出 |
 | `src/flashes.ts` | 新增 `parseFlashElement(node): FlashElement \| null`，`Source` 缺失返回 `null`；`FlashWidth/FlashHeight` 缺省 99 |
 | `src/slide-elements-parser.ts` | 新增 `case 'Flash'`（克隆 `case 'Video'`：`collectUnknownParameters` + `applyOffset` + `rawXml`） |
 | `src/slide-elements-known-parameters.ts` | 新增 `Flash: new Set(['Id','X','Y','Width','Height','Rotation','IsLocked','CanClone','HasMask','RotateOrigin','SaveInfoMetadata','Source','FlashName','FlashWidth','FlashHeight','Animations'])` |

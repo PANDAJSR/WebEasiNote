@@ -1,14 +1,14 @@
 import type { CSSProperties } from 'react'
-import type { TextElement } from '../../parser'
-import { buildFontFamily } from '../../font-utils'
-import { convertSeewoLineSpacingToMultiplier } from '../../line-spacing'
+import type { TextElement } from '../../enbx/parser'
+import { buildFontFamily } from '../../text/font-utils'
+import { convertSeewoLineSpacingToMultiplier } from '../../text/line-spacing'
 import {
   buildTextGradient,
   getShadowStyle,
   getTextStrokeStyle,
   mergeOpacityToColor
 } from './text-style-utils'
-import { resolveTextMarkers } from '../../text-markers'
+import { resolveTextMarkers } from '../../text/text-markers'
 import { TextMarkerSpan } from './TextMarkerSpan'
 import { measureRunWidth, sliceLineRunsByLineProperties } from './text-layout-utils'
 

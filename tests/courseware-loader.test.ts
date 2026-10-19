@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import JSZip from 'jszip'
 import { Window } from 'happy-dom'
-import { readCoursewareFile } from '../src/courseware-loader'
+import { readCoursewareFile } from '../src/courseware/courseware-loader'
 
 test('同一 ZIP 供资源、元数据和页面共用，保留原始 XML 并加载内嵌缩略图', async () => {
   const dom = new Window()

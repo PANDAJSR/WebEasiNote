@@ -1,6 +1,6 @@
 import { Button } from 'antd'
 import { styles } from '../styles'
-import type { SlideData } from '../parser'
+import type { SlideData } from '../enbx/parser'
 
 interface SidebarProps {
   slides: SlideData[]

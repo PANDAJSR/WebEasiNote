@@ -1,5 +1,5 @@
-import type { ShapeElement } from '../shapes'
-import { estimatePathBounds, inferFillRule } from '../path-utils'
+import type { ShapeElement } from '../enbx/shapes'
+import { estimatePathBounds, inferFillRule } from '../enbx/path-utils'
 
 const geometryCache = new WeakMap<ShapeElement, ReturnType<typeof calculateGeometry>>()
 

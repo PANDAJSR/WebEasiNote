@@ -1,4 +1,4 @@
-import type { Brush } from '../brushes'
+import type { Brush } from '../enbx/brushes'
 import type { TextLine } from './text'
 
 export interface ShapePathItem {

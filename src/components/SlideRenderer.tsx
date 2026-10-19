@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import type { SlideData, TextLine } from '../parser'
+import type { SlideData, TextLine } from '../enbx/parser'
 import { ElementRenderer } from './slide-renderer/ElementRenderer'
 import { EditableTextOverlay } from './slide-renderer/EditableTextOverlay'
 import type { TextSelectionRange, TextStyleCommand, TextStyleState } from './text-style-commands'
@@ -20,7 +20,7 @@ interface SlideRendererProps {
   onEditElementDrag?: (elementId: string, nextX: number, nextY: number) => void
   onEditElementResize?: (elementId: string, nextX: number, nextY: number, nextWidth: number, nextHeight: number) => void
   onEditTextUpdate?: (elementId: string, nextTextLines: TextLine[]) => void
-  onEditAudioUpdate?: (elementId: string, edit: import('../audio-editing').AudioEdit) => void
+  onEditAudioUpdate?: (elementId: string, edit: import('../viewer/audio-editing').AudioEdit) => void
   onEditTextStyleStateChange?: (state: TextStyleState | null) => void
   isEditMode?: boolean
   selectedElementId?: string | null

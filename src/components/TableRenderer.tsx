@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import type { TableElement, TextRun } from '../types'
-import { buildFontFamily } from '../font-utils'
+import { buildFontFamily } from '../text/font-utils'
 
 interface TableRendererProps {
   element: TableElement

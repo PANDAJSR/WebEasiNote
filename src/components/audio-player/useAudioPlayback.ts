@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AudioElement } from '../../types'
-import { audioRange } from '../../audios'
+import { audioRange } from '../../enbx/audios'
 
 interface PlaybackOptions {
   element: AudioElement

@@ -13,7 +13,7 @@ import { Button, Select } from 'antd'
 import { useMemo, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent } from 'react'
 import { styles } from '../styles'
-import type { SlideElement } from '../parser'
+import type { SlideElement } from '../enbx/parser'
 import type { TextStyleAction, TextStyleState } from './text-style-commands'
 
 interface ElementXmlPanelProps {

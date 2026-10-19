@@ -27,7 +27,7 @@ async function loadFixtureElements() {
 
 test('真实课件的 Flash 节点按契约解析（Source 去 id://，FlashWidth/Height 为舞台尺寸）', async () => {
   const elementsNode = await loadFixtureElements()
-  const { parseFlashElement } = await import('../src/flashes')
+  const { parseFlashElement } = await import('../src/enbx/flashes')
   const flashes = Array.from(elementsNode.querySelectorAll('Flash'))
     .map(node => parseFlashElement(node as unknown as Element))
 
@@ -56,7 +56,7 @@ test('真实课件的 Flash 节点按契约解析（Source 去 id://，FlashWidt
 })
 
 test('FlashWidth/FlashHeight 缺省取契约默认值 99，非法值回退且元素尺寸回退 64', async () => {
-  const { parseFlashElement } = await import('../src/flashes')
+  const { parseFlashElement } = await import('../src/enbx/flashes')
   const parse = (inner: string) => parseFlashElement(
     new dom.DOMParser().parseFromString(`<Flash>${inner}</Flash>`, 'text/xml').documentElement as unknown as Element
   )
@@ -82,7 +82,7 @@ test('FlashWidth/FlashHeight 缺省取契约默认值 99，非法值回退且元
 
 test('真实 Flash 节点不产生未识别参数问题', async () => {
   const elementsNode = await loadFixtureElements()
-  const { parseSlideElements } = await import('../src/slide-elements-parser')
+  const { parseSlideElements } = await import('../src/enbx/slide-elements-parser')
   const parsed = parseSlideElements(elementsNode as unknown as Element, { slideId: 'flash' })
 
   assert.equal(parsed.elements.length, 3)
@@ -94,7 +94,7 @@ test('真实 Flash 节点不产生未识别参数问题', async () => {
 test('图标复刻官方红圆规格，字形随悬停切换', async () => {
   const { renderToStaticMarkup } = await import('react-dom/server')
   const { FlashRenderer } = await import('../src/components/FlashRenderer')
-  const { parseFlashElement } = await import('../src/flashes')
+  const { parseFlashElement } = await import('../src/enbx/flashes')
   const elementsNode = await loadFixtureElements()
   const element = parseFlashElement(elementsNode.children[0] as unknown as Element)
   assert.ok(element)

@@ -1,5 +1,5 @@
 import type { SlideData, SlideElement } from '../types'
-import type { ShapeElement } from '../shapes'
+import type { ShapeElement } from '../enbx/shapes'
 import { getShapeGeometry } from './shapeGeometry'
 
 export interface StaticDrawing {

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import type { MouseEvent as ReactMouseEvent } from 'react'
 import type { CSSProperties } from 'react'
-import type { SlideData } from '../../parser'
+import type { SlideData } from '../../enbx/parser'
 
 export type ResizeHandleDirection = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
 

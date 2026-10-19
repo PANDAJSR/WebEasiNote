@@ -1,4 +1,4 @@
-import type { TextLine, TextRun } from '../parser'
+import type { TextLine, TextRun } from '../enbx/parser'
 import type { TextSelectionRange, TextStyleCommand, TextStyleState } from './text-style-commands'
 
 const FONT_SIZE_MIN = 8

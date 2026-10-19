@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { styles } from '../styles'
-import type { SlideData, TextLine } from '../parser'
+import type { SlideData, TextLine } from '../enbx/parser'
 import type { SlideChangeSource } from './Viewer'
-import type { PagerPosition } from '../viewer-settings'
+import type { PagerPosition } from '../viewer/viewer-settings'
 import type { TextStyleCommand, TextStyleState } from './text-style-commands'
 import { FloatingPager } from './slide-viewer/FloatingPager'
 import { SlideThumbnail } from './slide-viewer/SlideThumbnail'
@@ -43,7 +43,7 @@ interface SlideViewerProps {
     nextHeight: number
   ) => void
   onEditElementTextUpdate?: (elementId: string, nextTextLines: TextLine[]) => void
-  onEditAudioUpdate?: (elementId: string, edit: import('../audio-editing').AudioEdit) => void
+  onEditAudioUpdate?: (elementId: string, edit: import('../viewer/audio-editing').AudioEdit) => void
   onEditTextStyleStateChange?: (state: TextStyleState | null) => void
   onEditBackgroundClick?: () => void
   textStyleCommand?: TextStyleCommand | null

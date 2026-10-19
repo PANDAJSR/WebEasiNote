@@ -1,4 +1,4 @@
-import type { SlideData } from '../../parser'
+import type { SlideData } from '../../enbx/parser'
 
 export type SupportedAnimationTrigger = 'click' | 'before' | 'after'
 

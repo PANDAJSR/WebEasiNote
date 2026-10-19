@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { SlideData } from '../../parser'
+import type { SlideData } from '../../enbx/parser'
 import { slideInfoBarHeight } from './constants'
 
 /**

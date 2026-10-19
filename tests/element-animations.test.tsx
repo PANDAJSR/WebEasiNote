@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Window } from 'happy-dom'
-import { parseSlideAnimations } from '../src/slide-animations'
+import { parseSlideAnimations } from '../src/enbx/slide-animations'
 import { useElementAnimations } from '../src/components/slide-viewer/useElementAnimations'
 import {
   buildRandomizedLinesInKeyframeName, buildRandomizedLinesInKeyframesCss,

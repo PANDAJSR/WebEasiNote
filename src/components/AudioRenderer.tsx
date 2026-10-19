@@ -14,7 +14,7 @@ interface Props {
   isVisible: boolean
   slideWidth: number
   slideHeight: number
-  onEditAudioUpdate?: (elementId: string, edit: import('../audio-editing').AudioEdit) => void
+  onEditAudioUpdate?: (elementId: string, edit: import('../viewer/audio-editing').AudioEdit) => void
 }
 
 export function AudioRenderer({ element, scale, resourceMap, isCurrentSlide,

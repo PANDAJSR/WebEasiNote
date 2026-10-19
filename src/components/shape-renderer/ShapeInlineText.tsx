@@ -1,7 +1,7 @@
-import type { ShapeElement } from '../../shapes'
-import { buildFontFamily } from '../../font-utils'
-import { resolveTextMarkers } from '../../text-markers'
-import { convertSeewoLineSpacingToMultiplier } from '../../line-spacing'
+import type { ShapeElement } from '../../enbx/shapes'
+import { buildFontFamily } from '../../text/font-utils'
+import { resolveTextMarkers } from '../../text/text-markers'
+import { convertSeewoLineSpacingToMultiplier } from '../../text/line-spacing'
 
 function buildTextGradient(run: NonNullable<ShapeElement['inlineText']>[number]['textRuns'][number]): string | undefined {
   const gradient = run.gradient

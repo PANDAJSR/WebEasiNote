@@ -5,10 +5,10 @@ import { styles } from '../styles'
 import { SlideViewer } from './SlideViewer'
 import { SlideThumbnail } from './slide-viewer/SlideThumbnail'
 import { ElementXmlPanel } from './ElementXmlPanel'
-import type { CoursewareMetadata, SlideData, SlideElement, TextLine } from '../parser'
-import { collectMissingFontIssues } from '../viewer-font-issues'
+import type { CoursewareMetadata, SlideData, SlideElement, TextLine } from '../enbx/parser'
+import { collectMissingFontIssues } from '../viewer/viewer-font-issues'
 import { ViewerIssuesModal } from './ViewerIssuesModal'
-import type { PagerPosition } from '../viewer-settings'
+import type { PagerPosition } from '../viewer/viewer-settings'
 import type { TextStyleAction, TextStyleState } from './text-style-commands'
 import {
   parseSingleElementXml,
@@ -249,7 +249,7 @@ export function Viewer({
     }))
   }
 
-  const handleEditAudioUpdate = (elementId: string, edit: import('../audio-editing').AudioEdit) => {
+  const handleEditAudioUpdate = (elementId: string, edit: import('../viewer/audio-editing').AudioEdit) => {
     const target = currentSlide.elements.find(element => element.id === elementId)
     if (target?.type !== 'audio') return
     setEditedElements(prev => ({ ...prev, [`${currentSlide.id}|${elementId}`]: applyAudioEdit(target, edit) }))
@@ -383,4 +383,4 @@ export function Viewer({
     </div>
   )
 }
-import { applyAudioEdit } from '../audio-editing'
+import { applyAudioEdit } from '../viewer/audio-editing'

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { SlideData } from '../../parser'
+import type { SlideData } from '../../enbx/parser'
 import type { SlideChangeSource } from '../Viewer'
 import {
   DEFAULT_FADE_DURATION_MS,

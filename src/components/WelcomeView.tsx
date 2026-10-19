@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Button, Modal, Segmented, Switch } from 'antd'
 import { styles } from '../styles'
-import type { PagerPosition } from '../viewer-settings'
+import type { PagerPosition } from '../viewer/viewer-settings'
 
 interface WelcomeViewProps {
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void

@@ -1,9 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import type { CSSProperties } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
-import type { TextLine, TextRun } from '../../parser'
-import { buildFontFamily } from '../../font-utils'
-import { convertSeewoLineSpacingToMultiplier } from '../../line-spacing'
+import type { TextLine, TextRun } from '../../enbx/parser'
+import { buildFontFamily } from '../../text/font-utils'
+import { convertSeewoLineSpacingToMultiplier } from '../../text/line-spacing'
 import type { TextSelectionRange } from '../text-style-commands'
 
 interface EditableTextOverlayProps {

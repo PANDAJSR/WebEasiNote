@@ -1,7 +1,7 @@
-import type { ShapeElement } from '../shapes'
+import type { ShapeElement } from '../enbx/shapes'
 import { getShapeGeometry } from '../rendering/shapeGeometry'
-import { extractPathAnchors } from '../path-utils'
-import { arrowHeight, arrowWidth, buildArrowHeadPath, dashArrayToCss } from '../shape-stroke'
+import { extractPathAnchors } from '../enbx/path-utils'
+import { arrowHeight, arrowWidth, buildArrowHeadPath, dashArrayToCss } from '../rendering/shape-stroke'
 import { ShapeInlineText } from './shape-renderer/ShapeInlineText'
 
 interface ShapeRendererProps {

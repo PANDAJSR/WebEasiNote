@@ -11,8 +11,8 @@ import {
   FullscreenExitOutlined,
   FullscreenOutlined
 } from '@ant-design/icons'
-import type { FlashElement } from '../flashes'
-import { createRufflePlayer, destroyRufflePlayer, loadSwf } from '../ruffle-runtime'
+import type { FlashElement } from '../enbx/flashes'
+import { createRufflePlayer, destroyRufflePlayer, loadSwf } from '../platform/ruffle-runtime'
 import type { RufflePlayer } from '../types/ruffle'
 
 type PlaybackStatus = 'loading' | 'ready' | 'error'

@@ -1,4 +1,4 @@
-import { convertSeewoLineSpacingToMultiplier } from '../../line-spacing'
+import { convertSeewoLineSpacingToMultiplier } from '../../text/line-spacing'
 import type { TextLine, TopicNode } from '../../types'
 
 export interface RenderNode {
