@@ -46,6 +46,8 @@ test('图片晚到或失败重试保持原 img 实例和布局', async () => {
   await act(async () => root.render(<ProgressiveImage src='https://enbx.local/courseware/s/files/a.png'
     style={{ width: 100, height: 50 }} />))
   const img = container.querySelector('img')!
+  assert.equal(container.textContent, '', '快速加载时不闪烁占位层')
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 280)) })
   assert.match(container.textContent!, /加载中/)
   await act(async () => img.dispatchEvent(new window.Event('error')))
   const retry = container.querySelector('button')!
@@ -57,5 +59,12 @@ test('图片晚到或失败重试保持原 img 实例和布局', async () => {
   assert.equal(container.textContent, '')
   assert.equal(img.style.width, '100px')
   assert.equal(img.style.height, '50px')
+  await act(async () => root.render(<ProgressiveImage key='revisit' src={img.src}
+    style={{ width: 100, height: 50 }} />))
+  const revisited = container.querySelector('img')!
+  assert.equal(container.textContent, '')
+  await act(async () => revisited.dispatchEvent(new window.Event('load')))
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 280)) })
+  assert.equal(container.textContent, '', '重新挂载后快速 load 不显示加载提示')
   await act(async () => root.unmount())
 })

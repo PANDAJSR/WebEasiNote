@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react'
 import type { CSSProperties } from 'react'
 import type { PictureElement } from '../enbx/pictures'
 import { ProgressiveImage } from './ProgressiveImage'
@@ -110,12 +109,7 @@ export function PictureRenderer({ element, scale, resourceMap }: PictureRenderer
     displayRegion,
     pictureSize
   } = element
-  const [imageUrl, setImageUrl] = useState<string | null>(null)
-
-  useEffect(() => {
-    const url = resourceMap[sourceId]
-    setImageUrl(url || null)
-  }, [sourceId, resourceMap])
+  const imageUrl = resourceMap[sourceId]
 
   if (!imageUrl) {
     return (

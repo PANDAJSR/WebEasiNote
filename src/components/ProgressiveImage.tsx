@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ImgHTMLAttributes } from 'react'
 import { Button } from 'antd'
 
@@ -6,12 +6,30 @@ import { Button } from 'antd'
 export function ProgressiveImage({ src, style, ...props }: ImgHTMLAttributes<HTMLImageElement>) {
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [attempt, setAttempt] = useState(0)
-  useEffect(() => { setState('loading'); setAttempt(0) }, [src])
+  const [showLoading, setShowLoading] = useState(false)
+  const image = useRef<HTMLImageElement>(null)
+  useLayoutEffect(() => { setAttempt(0) }, [src])
   const cloud = src?.includes('/courseware/')
   const url = cloud && attempt ? `${src}${src?.includes('?') ? '&' : '?'}retry=${attempt}` : src
+  useLayoutEffect(() => {
+    setShowLoading(false)
+    // 缓存命中的图片可能在 effect 执行前已完成，首帧就采用实际状态。
+    setState(image.current?.complete && image.current.naturalWidth > 0 ? 'ready' : 'loading')
+  }, [url])
+  useEffect(() => {
+    if (!cloud || state !== 'loading') return
+    const timer = setTimeout(() => {
+      setShowLoading(true)
+      console.info(`[CloudLoading] image-wait src=${src} attempt=${attempt} delay=250`)
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [cloud, state, url])
   return <>
-    <img {...props} src={url} style={style} onLoad={() => setState('ready')} onError={() => setState('error')} />
-    {cloud && state !== 'ready' && <div style={{ position: 'absolute', inset: 0, display: 'flex',
+    <img {...props} ref={image} src={url} style={style} onLoad={() => setState('ready')} onError={() => {
+      setState('error')
+      if (cloud) console.warn(`[CloudLoading] image-failed src=${src} attempt=${attempt}`)
+    }} />
+    {cloud && (state === 'error' || state === 'loading' && showLoading) && <div style={{ position: 'absolute', inset: 0, display: 'flex',
       alignItems: 'center', justifyContent: 'center', background: '#e2e8f0', color: '#718096', fontSize: 12,
       pointerEvents: state === 'error' ? 'auto' : 'none' }}>
       {state === 'error' ? <Button size='small' onClick={event => {
