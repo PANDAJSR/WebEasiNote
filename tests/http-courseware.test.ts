@@ -4,12 +4,62 @@ import { Window } from 'happy-dom'
 import JSZip from 'jszip'
 import { HttpCourseware } from '../src/courseware/http-courseware'
 import { NavigationIntent } from '../src/viewer/navigation-intent'
+import { CloudPreloader } from '../src/courseware/cloud-preloader'
 
 function deferred<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>(done => { resolve = done })
   return { promise, resolve }
 }
+
+test('首屏后持续预取所有正文与静态资源，慢后台不阻塞前台，关闭取消后续任务', async () => {
+  const dom = new Window()
+  Object.assign(globalThis, { DOMParser: dom.DOMParser, XMLSerializer: dom.XMLSerializer, Node: dom.Node })
+  const originalFetch = globalThis.fetch
+  const requested: string[] = []
+  const slow = deferred<Response>()
+  const backgroundStarted = deferred<void>()
+  const entries = ['Board.xml', ...Array.from({ length: 4 }, (_, i) => `Slides/Slide_${i}.xml`),
+    'Resources/a.png', 'Resources/font.woff2', 'Resources/movie.mp4']
+  globalThis.fetch = async input => {
+    const url = new URL(String(input))
+    requested.push(url.pathname + url.search)
+    if (url.pathname.endsWith('manifest.json')) return Response.json({ protocolVersion: 1, sessionId: 's', name: '预取',
+      files: entries.map(path => ({ path })) })
+    if (url.pathname.endsWith('Board.xml')) return new Response('<Board><Slides><Item>s0</Item><Item>s1</Item><Item>s2</Item><Item>s3</Item></Slides></Board>')
+    const match = url.pathname.match(/Slide_(\d+)\.xml$/)
+    if (match) {
+      if (match[1] === '1' && url.search) { backgroundStarted.resolve(); return slow.promise }
+      return new Response(`<Slide><Id>s${match[1]}</Id><Elements/></Slide>`)
+    }
+    return new Response(new Uint8Array([1, 2, 3]))
+  }
+  const source = new HttpCourseware()
+  const worker = new CloudPreloader(source)
+  try {
+    await source.open('https://example.test/courseware/s/manifest.json')
+    await source.ensureSlide(0)
+    assert.equal(requested.some(path => path.includes('Resources/')), false)
+    const work = worker.run()
+    await backgroundStarted.promise
+    assert.equal((await source.ensureSlide(3)).id, 's3')
+    const promoted = source.ensureSlide(1)
+    slow.resolve(new Response('<Slide><Id>s1</Id><Elements/></Slide>'))
+    await promoted
+    await work
+    assert.equal(source.loaded.size, 4)
+    assert.equal(requested.some(path => path.endsWith('Resources/a.png?prefetch=1')), true)
+    assert.equal(requested.some(path => path.endsWith('Resources/font.woff2?prefetch=1')), true)
+    assert.equal(requested.some(path => path.includes('movie.mp4')), false)
+    assert.equal(requested.some(path => path.endsWith('Slide_1.xml')), true, '前台提升相同路径优先级')
+    const before = requested.length
+    const cancelled = new CloudPreloader(source)
+    const canceledWork = cancelled.run()
+    cancelled.stop()
+    await canceledWork
+    assert.equal(requested.length, before)
+  } finally { worker.stop(); source.dispose(); globalThis.fetch = originalFetch }
+})
 
 test('首屏只读取目录、引用与首张 XML，资源稳定 URL 不下载；后台页延迟不阻塞', async () => {
   const dom = new Window()

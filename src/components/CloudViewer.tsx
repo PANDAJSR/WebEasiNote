@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ComponentProps } from 'react'
 import { Alert, Button, Spin } from 'antd'
 import { HttpCourseware } from '../courseware/http-courseware'
+import { CloudPreloader } from '../courseware/cloud-preloader'
 import { postToEnbxHost, subscribeToEnbxHost } from '../platform/host-bridge'
 import { exportSlidesToEnbx } from '../courseware/enbx-export'
 import { saveBlobToFile } from '../courseware/save-courseware'
@@ -17,6 +18,7 @@ type CloudViewerProps = Pick<ComponentProps<typeof Viewer>, 'onClear' | 'clickTo
 
 export function CloudViewer({ manifestUrl, ...props }: CloudViewerProps) {
   const sourceRef = useRef<HttpCourseware | null>(null)
+  const preloader = useRef<CloudPreloader | null>(null)
   const [slides, setSlides] = useState<SlideData[]>([])
   const [index, setIndex] = useState(0)
   const [changeSource, setChangeSource] = useState<SlideChangeSource>('programmatic')
@@ -74,12 +76,13 @@ export function CloudViewer({ manifestUrl, ...props }: CloudViewerProps) {
 
   useEffect(() => {
     if (!source || !slides.length) return
-    const timer = window.setTimeout(() => {
-      void source.prefetch(index + 1).catch(() => undefined)
-      void source.prefetch(index - 1).catch(() => undefined)
-    }, 700)
-    return () => window.clearTimeout(timer)
-  }, [index, source, slides.length])
+    const worker = new CloudPreloader(source)
+    preloader.current = worker
+    void worker.run().catch(reason => console.warn('[CloudLoading] preload-stopped', reason))
+    return () => { worker.stop(); preloader.current = null }
+  }, [source, slides.length])
+
+  useEffect(() => { preloader.current?.update(index, busy) }, [index, busy, source, slides.length])
 
   // 宿主超时或取消后，旧请求不得继续提交正文。
   useEffect(() => subscribeToEnbxHost(message => {
@@ -107,6 +110,7 @@ export function CloudViewer({ manifestUrl, ...props }: CloudViewerProps) {
     pending.current?.reject(new Error('翻页已被替代'))
     pending.current = null
     const id = ++generation.current
+    console.info(`[CloudLoading] navigation-start session=${current.sessionId} page=${target + 1} request=${id} cached=${current.loaded.has(target)}`)
     retryTarget.current = target
     setBusy(true)
     setError('')
@@ -123,6 +127,7 @@ export function CloudViewer({ manifestUrl, ...props }: CloudViewerProps) {
       throw reason
     } finally {
       if (id === generation.current) {
+        console.info(`[CloudLoading] navigation-settled session=${current.sessionId} page=${target + 1} request=${id}`)
         pending.current = null
         setBusy(false)
       }

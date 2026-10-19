@@ -26,6 +26,10 @@ export class HttpCourseware {
   readonly resources: Record<string, string> = {}
   readonly controller = new AbortController()
   private readonly tasks = new Map<number, Promise<SlideData>>()
+  private readonly backgroundTasks = new Set<number>()
+  private readonly warmed = new Set<string>()
+  private readonly staticPaths = new Map<string, string>()
+  private readonly slideResources = new WeakMap<SlideData, string[]>()
   private readonly entries = new Set<string>()
   private baseUrl = ''
   private readonly previewCache = new Map<number, SlideData>()
@@ -69,10 +73,14 @@ export class HttpCourseware {
     }
     // 同时提供逻辑路径，兼容直接以路径引用的资源。
     for (const path of this.entries) this.resources[path] = this.url(path)
+    for (const path of this.entries) {
+      if (/\.(png|jpe?g|gif|webp|bmp|svg|ico|avif|woff2?|ttf|otf)$/i.test(path)) this.staticPaths.set(this.url(path), path)
+    }
     this.metadata = { type: 'folder', name: manifest.name, creator: '未知', appVersion: '未知',
       documentVersion: '1.0', modifiedDate: null, slideCount: ids.length,
       resourceCount: [...this.entries].filter(path => path.startsWith('Resources/')).length,
       slideIds: ids, slideFiles: paths, raw: { board: boardXml, document: null } }
+    console.info(`[CloudLoading] opened session=${this.sessionId} pages=${ids.length} files=${this.entries.size}`)
     return this
   }
 
@@ -124,17 +132,27 @@ export class HttpCourseware {
     return task
   }
 
-  ensureSlide(index: number): Promise<SlideData> {
+  ensureSlide(index: number, background = false): Promise<SlideData> {
     const cached = this.loaded.get(index)
     if (cached) return Promise.resolve(cached)
     const existing = this.tasks.get(index)
-    if (existing) return existing
+    if (existing) {
+      if (!background && this.backgroundTasks.delete(index)) {
+        console.info(`[CloudLoading] promote session=${this.sessionId} page=${index + 1}`)
+        // 相同逻辑路径交给插件合并，并提升尚在排队的后台任务。
+        void this.readUrl(this.url(this.descriptors[index].path), 'bytes').catch(() => undefined)
+      }
+      return existing
+    }
     const descriptor = this.descriptors[index]
     if (!descriptor) return Promise.reject(new Error('页码超出范围'))
     descriptor.state = 'loading'
+    if (background) this.backgroundTasks.add(index)
+    const started = performance.now()
+    console.info(`[CloudLoading] page-start session=${this.sessionId} page=${index + 1} background=${background}`)
     const task = (async () => {
       try {
-        const xml = await this.readText(descriptor.path)
+        const xml = await this.readUrl<string>(this.url(descriptor.path, background), 'text')
         this.controller.signal.throwIfAborted()
         this.parseXml(xml)
         const slide = parseSlideXML(xml)
@@ -142,21 +160,57 @@ export class HttpCourseware {
         slide.thumbnail = descriptor.thumbnail
         descriptor.state = 'core-ready'
         this.loaded.set(index, slide)
+        console.info(`[CloudLoading] page-ready session=${this.sessionId} page=${index + 1} ms=${Math.round(performance.now() - started)}`)
         return slide
       } catch (error) {
         descriptor.state = 'error'
+        console.warn(`[CloudLoading] page-failed session=${this.sessionId} page=${index + 1}`, error)
         throw error
-      } finally { this.tasks.delete(index) }
+      } finally { this.tasks.delete(index); this.backgroundTasks.delete(index) }
     })()
     this.tasks.set(index, task)
     return task
   }
 
-  /** 预取只读文件，不解析或提交正文；前台 ensure 会在插件队列提升同一文件。 */
+  /** 后台解析正文并缓存；不挂载页面、不提交导航。 */
   async prefetch(index: number) {
     const descriptor = this.descriptors[index]
     if (!descriptor || this.loaded.has(index)) return
-    await this.readUrl(this.url(descriptor.path, true), 'bytes')
+    await this.ensureSlide(index, true)
+  }
+
+  /** 只预热静态资源；音视频和 Flash 保持按需加载。 */
+  staticResourcePaths(slide?: SlideData): string[] {
+    if (!slide) return [...this.staticPaths.values()]
+    const cached = this.slideResources.get(slide)
+    if (cached) return cached
+    const urls = new Set<string>()
+    const visit = (value: unknown) => {
+      if (typeof value === 'string' && this.resources[value]) urls.add(this.resources[value])
+      else if (Array.isArray(value)) value.forEach(visit)
+      else if (value && typeof value === 'object') Object.values(value).forEach(visit)
+    }
+    visit(slide)
+    const paths = [...urls].flatMap(url => this.staticPaths.has(url) ? [this.staticPaths.get(url)!] : [])
+    this.slideResources.set(slide, paths)
+    return paths
+  }
+
+  async warmResource(path: string) {
+    if (this.warmed.has(path)) return
+    const started = performance.now()
+    console.info(`[CloudLoading] resource-start session=${this.sessionId} path=${path}`)
+    const response = await fetch(this.url(path, true), { signal: this.controller.signal })
+    if (!response.ok) throw new Error(`预取资源失败 (${response.status}): ${path}`)
+    // 消费流以完成缓存，不把全部图片字节长期保留在 JS 堆中。
+    if (response.body) {
+      const reader = response.body.getReader()
+      try { while (!(await reader.read()).done) this.controller.signal.throwIfAborted() }
+      finally { reader.releaseLock() }
+    }
+    this.controller.signal.throwIfAborted()
+    this.warmed.add(path)
+    console.info(`[CloudLoading] resource-ready session=${this.sessionId} path=${path} ms=${Math.round(performance.now() - started)}`)
   }
 
   /** Viewer 的目录投影；未加载项只供页码、尺寸、缩略图使用，不能作为当前正文。 */
@@ -183,5 +237,8 @@ export class HttpCourseware {
     return new File([blob], `${this.metadata.name}.enbx`)
   }
 
-  dispose() { this.controller.abort(); this.loaded.clear(); this.previewCache.clear() }
+  dispose() {
+    console.info(`[CloudLoading] dispose session=${this.sessionId} pages=${this.loaded.size} resources=${this.warmed.size}`)
+    this.controller.abort(); this.loaded.clear(); this.previewCache.clear(); this.warmed.clear()
+  }
 }
