@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import type { MathFormulaElement } from '../types'
 
 interface MathFormulaRendererProps {
@@ -8,6 +8,28 @@ interface MathFormulaRendererProps {
 
 export function MathFormulaRenderer({ element, scale }: MathFormulaRendererProps) {
   const baseFontSize = Math.max(14, Math.min(element.width, element.height) * 0.35) * scale
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [fit, setFit] = useState(1)
+
+  useLayoutEffect(() => {
+    const content = contentRef.current
+    if (!content) return
+    let disposed = false
+    const measure = () => {
+      if (disposed) return
+      // 使用未变换的布局尺寸，避免缩放后的测量反馈造成反复缩放。
+      const width = content.offsetWidth
+      const height = content.offsetHeight
+      if (width > 0 && height > 0) {
+        setFit(Math.min(1, element.width * scale / (width + 1), element.height * scale / (height + 1)))
+      }
+    }
+    measure()
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure)
+    observer?.observe(content)
+    void document.fonts?.ready.then(measure)
+    return () => { disposed = true; observer?.disconnect() }
+  }, [element.mathML, element.fallbackText, element.width, element.height, scale])
 
   const containerStyle: CSSProperties = {
     position: 'absolute',
@@ -22,8 +44,9 @@ export function MathFormulaRenderer({ element, scale }: MathFormulaRendererProps
     justifyContent: 'center',
     color: element.color,
     fontSize: baseFontSize,
+    fontFamily: '"Cambria Math", "STIX Two Math", math, serif',
     lineHeight: 1.2,
-    overflow: 'hidden',
+    overflow: 'visible',
     pointerEvents: 'none'
   }
 
@@ -38,9 +61,13 @@ export function MathFormulaRenderer({ element, scale }: MathFormulaRendererProps
   return (
     <div style={containerStyle}>
       <div
+        ref={contentRef}
         style={{
-          maxWidth: '100%',
-          maxHeight: '100%',
+          flexShrink: 0,
+          width: 'max-content',
+          whiteSpace: 'nowrap',
+          transform: `scale(${fit})`,
+          transformOrigin: 'center center',
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center'

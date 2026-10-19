@@ -1,5 +1,6 @@
 import type { MathFormulaElement } from '../types'
 import { getDirectChildElement, getDirectChildText, parseColor } from './xml-utils'
+import { normalizeMathML } from './mathml-normalization'
 
 function parseNumber(value: string | null, fallback = 0): number {
   if (!value) return fallback
@@ -19,28 +20,6 @@ function findMathElement(root: Element): Element | null {
   return null
 }
 
-function normalizeMatomNodes(root: Element) {
-  const matomNodes: Element[] = []
-  const queue: Element[] = [root]
-
-  while (queue.length > 0) {
-    const current = queue.shift()
-    if (!current) break
-    if (current.localName === 'matom') {
-      matomNodes.push(current)
-      continue
-    }
-    queue.push(...Array.from(current.children))
-  }
-
-  matomNodes.forEach(node => {
-    const parent = node.parentNode
-    if (!parent) return
-    const textNode = node.ownerDocument.createTextNode(node.textContent || '')
-    parent.replaceChild(textNode, node)
-  })
-}
-
 function parseMathML(rawMathML: string): { mathML: string; fallbackText: string } | null {
   const trimmed = rawMathML.trim()
   if (!trimmed) return null
@@ -55,7 +34,7 @@ function parseMathML(rawMathML: string): { mathML: string; fallbackText: string 
   const mathElement = findMathElement(xmlDoc.documentElement)
   if (!mathElement) return null
 
-  normalizeMatomNodes(mathElement)
+  normalizeMathML(mathElement)
 
   const serializer = new XMLSerializer()
   const serialized = serializer.serializeToString(mathElement)
