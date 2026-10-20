@@ -17,6 +17,16 @@ import { CubeRenderer } from '../CubeRenderer'
 import { GeometryRenderer } from '../GeometryRenderer'
 import { MathFormulaRenderer } from '../MathFormulaRenderer'
 import { TextElementRenderer } from './TextElementRenderer'
+import { EnglishWordCardRenderer } from '../subject-cards/EnglishWordCardRenderer'
+import { HanziCardRenderer, PinyinCardRenderer } from '../subject-cards/ChineseCardRenderer'
+import { ClassicalWorkRenderer } from '../subject-cards/ClassicalWorkRenderer'
+import { VocabularyPageRenderer } from '../subject-cards/VocabularyPageRenderer'
+import { ResourceCardRenderer } from '../subject-cards/ResourceCardRenderer'
+import { QuestionCardRenderer } from '../subject-cards/QuestionCardRenderer'
+import { DictationCardRenderer } from '../subject-cards/DictationCardRenderer'
+import { ChartRenderer } from '../subject-cards/ChartRenderer'
+import { MathFunctionRenderer } from '../subject-cards/MathFunctionRenderer'
+import { SolarSystemRenderer } from '../subject-cards/SolarSystemRenderer'
 
 interface ElementRendererProps {
   element: SlideElement
@@ -44,6 +54,31 @@ export function ElementRenderer({
   slideHeight = 720
 }: ElementRendererProps) {
   switch (element.type) {
+    case 'mathFunction':
+      return <MathFunctionRenderer element={element} scale={scale} active={slideIndex === currentIndex && isVisible && !isEditMode} />
+    case 'solarSystem':
+      return <SolarSystemRenderer element={element} scale={scale} resourceMap={resourceMap} active={slideIndex === currentIndex && isVisible && !isEditMode} />
+    case 'classicalWork':
+      return <ClassicalWorkRenderer element={element} scale={scale} active={slideIndex === currentIndex && isVisible && !isEditMode} />
+    case 'vocabularyPage':
+      return <VocabularyPageRenderer element={element} scale={scale} resourceMap={resourceMap} active={slideIndex === currentIndex && isVisible && !isEditMode} />
+    case 'resourceCard':
+      return <ResourceCardRenderer element={element} scale={scale} resourceMap={resourceMap} active={slideIndex === currentIndex && isVisible && !isEditMode} />
+    case 'questionCard':
+      return <QuestionCardRenderer element={element} scale={scale} resourceMap={resourceMap} active={slideIndex === currentIndex && isVisible && !isEditMode} />
+    case 'dictationCard':
+      return <DictationCardRenderer element={element} scale={scale} resourceMap={resourceMap} active={slideIndex === currentIndex && isVisible && !isEditMode} />
+    case 'chart':
+      return <ChartRenderer element={element} scale={scale} />
+    case 'englishWordCard':
+      return <EnglishWordCardRenderer element={element} scale={scale} resourceMap={resourceMap}
+        active={slideIndex === currentIndex && isVisible && !isEditMode} />
+    case 'hanziCard':
+      return <HanziCardRenderer element={element} scale={scale} resourceMap={resourceMap}
+        active={slideIndex === currentIndex && isVisible && !isEditMode} />
+    case 'pinyinCard':
+      return <PinyinCardRenderer element={element} scale={scale} resourceMap={resourceMap}
+        active={slideIndex === currentIndex && isVisible && !isEditMode} />
     case 'text':
       return <TextElementRenderer element={element} scale={scale} />
     case 'shape':

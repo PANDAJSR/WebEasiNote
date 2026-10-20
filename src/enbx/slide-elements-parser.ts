@@ -13,6 +13,9 @@ import { parseCubeElement } from './cubes'
 import { parseGeometryElement } from './geometries'
 import { parseMathFormulaElement } from './math-formulas'
 import { parseRuledPaperElement } from './ruled-papers'
+import { parseEnglishWordCardElement } from './english-word-cards'
+import { parseHanziCardElement, parsePinyinCardElement } from './chinese-cards'
+import { parseComplexSubject } from './complex-subjects'
 import { getDirectChildElement, getDirectChildText } from './xml-utils'
 import { KNOWN_PARAMETERS } from './slide-elements-known-parameters'
 import { isStaticNodeSafe } from '../rendering/staticSafety'
@@ -303,6 +306,7 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         }
         break
       }
+      case 'ChemicalFormula':
       case 'MathFormula': {
         collectUnknownParameters(node, 'MathFormula', slideId, elementId, issues)
         const mathFormulaElement = parseMathFormulaElement(node)
@@ -312,6 +316,21 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
             rawXml
           })
         }
+        break
+      }
+      case 'EnglishWordCard': {
+        collectUnknownParameters(node, 'EnglishWordCard', slideId, elementId, issues)
+        parsedElements.push({ ...applyOffset(parseEnglishWordCardElement(node), offsetX, offsetY), rawXml })
+        break
+      }
+      case 'HanziCard': {
+        collectUnknownParameters(node, 'HanziCard', slideId, elementId, issues)
+        parsedElements.push({ ...applyOffset(parseHanziCardElement(node), offsetX, offsetY), rawXml })
+        break
+      }
+      case 'PinyinCard': {
+        collectUnknownParameters(node, 'PinyinCard', slideId, elementId, issues)
+        parsedElements.push({ ...applyOffset(parsePinyinCardElement(node), offsetX, offsetY), rawXml })
         break
       }
       case 'RuledPaper': {
@@ -326,6 +345,12 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         break
       }
       default: {
+        const subject = parseComplexSubject(node)
+        if (subject) {
+          collectUnknownParameters(node, tagName, slideId, elementId, issues)
+          parsedElements.push({ ...applyOffset(subject, offsetX, offsetY), rawXml })
+          break
+        }
         const x = parseNumber(getDirectChildText(node, 'X')) + offsetX
         const y = parseNumber(getDirectChildText(node, 'Y')) + offsetY
         const width = parseNumber(getDirectChildText(node, 'Width'), 200)

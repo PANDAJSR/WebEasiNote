@@ -5,6 +5,7 @@ import { revokeObjectUrls } from '../viewer/app-utils'
 import type { SlideData } from '../types'
 import { getStaticPlan, isStaticRun } from '../rendering/staticPlan'
 import { fingerprintRun } from '../rendering/rasterCache'
+import { subjectResourcePaths } from './subject-resources'
 
 async function prepareStaticPlans(slides: SlideData[]) {
   for (const slide of slides) {
@@ -40,6 +41,7 @@ export async function readCoursewareFile(file: File) {
       try {
         const blob = await imgFile.async('blob')
         resources[id] = URL.createObjectURL(blob)
+        resources[filePath] = resources[id]
         loadedCount++
       } catch {
         failedCount++
@@ -48,6 +50,10 @@ export async function readCoursewareFile(file: File) {
     console.log(`[App] 图片资源加载完成: ${loadedCount} 成功, ${failedCount} 失败`)
     const meta = await parseENBXFile(file, zip)
     const slideData = await loadSlidesFromENBX(file, zip)
+    for (const path of subjectResourcePaths(slideData)) {
+      const resource = zip.file(path)
+      if (resource && !resources[path]) resources[path] = URL.createObjectURL(await resource.async('blob'))
+    }
     await prepareStaticPlans(slideData)
     return { meta, slideData, resources }
   } catch (error) {
@@ -82,6 +88,7 @@ export async function readCoursewareFolder(dirHandle: FileSystemDirectoryHandle)
           const fileHandle = await resourcesHandle.getFileHandle(fileName)
           const file = await fileHandle.getFile()
           resources[id] = URL.createObjectURL(file)
+          resources[filePath] = resources[id]
         } catch {
           // 忽略图片加载失败
         }
@@ -89,6 +96,18 @@ export async function readCoursewareFolder(dirHandle: FileSystemDirectoryHandle)
     }
     const meta = await parseExtractedFolder(dirHandle)
     const slideData = await loadSlidesFromFolder(dirHandle)
+    for (const path of subjectResourcePaths(slideData)) {
+      if (resources[path]) continue
+      try {
+        const parts = path.split('/')
+        let directory = dirHandle
+        for (const part of parts.slice(0, -1)) directory = await directory.getDirectoryHandle(part)
+        const file = await (await directory.getFileHandle(parts[parts.length - 1])).getFile()
+        resources[path] = URL.createObjectURL(file)
+      } catch {
+        // 缺失发音只禁用对应按钮，不影响正文。
+      }
+    }
     await prepareStaticPlans(slideData)
     return { meta, slideData, resources }
   } catch (error) {

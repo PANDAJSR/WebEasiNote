@@ -1,4 +1,4 @@
-import type { TextElement } from '../types'
+import type { TextElement, TextLine } from '../types'
 import { getDirectChildElement, getDirectChildText, parseColor } from './xml-utils'
 import { parseRichTextNode } from './text-parser'
 
@@ -22,10 +22,6 @@ export function parseRuledPaperElement(node: Element): TextElement | null {
     const opacity = parseNumber(getDirectChildText(node, 'Opacity'), 1)
 
     const richTextNode = getDirectChildElement(node, 'RichText')
-    if (!richTextNode) {
-      console.warn('[RuledPaper] ✗ 未找到 RichText 节点')
-      return null
-    }
 
     const lineColorNode = getDirectChildElement(node, 'LineColor')
     const lineColorBrush = lineColorNode ? getDirectChildText(lineColorNode, 'ColorBrush') : null
@@ -35,7 +31,19 @@ export function parseRuledPaperElement(node: Element): TextElement | null {
     const backgroundBrush = backgroundNode ? getDirectChildText(backgroundNode, 'ColorBrush') : null
     const backgroundColor = backgroundBrush ? parseColor(backgroundBrush) : '#ffffff'
 
-    const parsedRichText = parseRichTextNode(richTextNode)
+    // 旧版仅保存 Words；空白练习纸也应保留格线。
+    const words = getDirectChildText(node, 'Words') || ''
+    const wordLines = words.split(/\r\n|\r|\n/)
+    const fallbackLines: TextLine[] = wordLines.map(text => ({
+      textAlignment: 'Center',
+      textRuns: [{ text, fontFamily: 'Arial',
+        fontSize: Math.max(1, height * 0.56 / wordLines.length),
+        fontStyle: 'normal', fontWeight: 'normal', color: '#000000' }]
+    }))
+    const parsedRichText = richTextNode ? parseRichTextNode(richTextNode) : {
+      arrangingType: 'Horizontal' as const, sizeToContent: 'Manual' as const,
+      verticalTextAlignment: 'Center' as const, textLines: fallbackLines
+    }
     return {
       type: 'text',
       id,

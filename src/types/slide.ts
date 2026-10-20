@@ -13,6 +13,9 @@ import type {
   CubeElement
 } from './elements'
 import type { GeometryElement, MathFormulaElement } from './geometry'
+import type { EnglishWordCardElement, HanziCardElement, PinyinCardElement } from './subjects'
+import type { ClassicalWorkElement, VocabularyPageElement, ResourceCardElement, QuestionCardElement,
+  DictationCardElement, ChartElement, MathFunctionElement, SolarSystemElement } from './complex-subjects'
 
 export interface UnknownElement {
   type: 'unknown'
@@ -76,6 +79,17 @@ export type SlideElement = (
   | CubeElement
   | GeometryElement
   | MathFormulaElement
+  | EnglishWordCardElement
+  | HanziCardElement
+  | PinyinCardElement
+  | ClassicalWorkElement
+  | VocabularyPageElement
+  | ResourceCardElement
+  | QuestionCardElement
+  | DictationCardElement
+  | ChartElement
+  | MathFunctionElement
+  | SolarSystemElement
   | UnknownElement
 ) & {
   groupId?: string

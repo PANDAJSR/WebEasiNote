@@ -1,4 +1,7 @@
+import { COMPLEX_SUBJECT_PARAMETERS } from './complex-subject-parameters'
+
 export const KNOWN_PARAMETERS: Record<string, Set<string>> = {
+  ...COMPLEX_SUBJECT_PARAMETERS,
   Text: new Set([
     'Id',
     'X',
@@ -228,6 +231,7 @@ export const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'Animations'
   ]),
   MathFormula: new Set([
+    'FontFamily', 'FontWeight', 'Opacity',
     'Foreground',
     'MathML',
     'Id',
@@ -243,6 +247,21 @@ export const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'HasMask',
     'RotateOrigin',
     'SaveInfoMetadata'
+  ]),
+  EnglishWordCard: new Set([
+    'Id', 'X', 'Y', 'Width', 'Height', 'Rotation', 'Word', 'Soundmark',
+    'Semantics', 'Sentences', 'Phrases', 'Synonym', 'PronounceSource', 'PronounceFileName',
+    'Remark', 'IsCollapsed', 'ScaleRatio', 'CurrentContentType', 'Animations', 'ResourcePattern',
+    'IsLocked', 'CanClone', 'HasMask', 'RotateOrigin', 'SaveInfoMetadata'
+  ]),
+  HanziCard: new Set([
+    'Id', 'X', 'Y', 'Width', 'Height', 'Rotation', 'HanziList', 'Character', 'Pinyin',
+    'PronounceList', 'Animations', 'IsLocked', 'CanClone', 'HasMask', 'RotateOrigin', 'SaveInfoMetadata'
+  ]),
+  PinyinCard: new Set([
+    'Id', 'X', 'Y', 'Width', 'Height', 'Rotation', 'Pinyin', 'TonePinyin', 'IsTonePinyinsVisible',
+    'PronounceList', 'PinyinInfoList', 'LineColor', 'Background', 'Opacity', 'Animations', 'Brushes',
+    'IsLocked', 'CanClone', 'HasMask', 'RotateOrigin', 'SaveInfoMetadata'
   ]),
   RuledPaper: new Set([
     'RichText',

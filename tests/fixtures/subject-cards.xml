@@ -1,0 +1,31 @@
+<!-- 按官方保存契约构造的回归夹具，不是真实课件取证。 -->
+<Elements>
+  <EnglishWordCard>
+    <Id>dictionary</Id><X>40</X><Y>30</Y><Width>460</Width><Height>300</Height>
+    <Word>bright</Word><Soundmark>/braɪt/</Soundmark><IsCollapsed>False</IsCollapsed>
+    <Semantics><SemanticInfo><Semantic>明亮的</Semantic><PartOfSpeech>adj.</PartOfSpeech></SemanticInfo></Semantics>
+    <Sentences><SentenceInfo><Sentence>The sun is bright.</Sentence><Translation>阳光明媚。</Translation></SentenceInfo></Sentences>
+    <Phrases><PhrasesInfo><Phrase>bright future</Phrase><Translation>光明的未来</Translation></PhrasesInfo></Phrases>
+    <Synonym><SynonymsInfo><Word>shining</Word><Soundmark>/ˈʃaɪnɪŋ/</Soundmark>
+      <PronounceSource>Resources/shining.mp3</PronounceSource>
+      <Semantics><SemanticInfo><Semantic>闪亮的</Semantic><PartOfSpeech>adj.</PartOfSpeech></SemanticInfo></Semantics>
+    </SynonymsInfo></Synonym>
+    <PronounceSource>id://bright-audio</PronounceSource><ScaleRatio>1</ScaleRatio><CurrentContentType>Sentence</CurrentContentType>
+  </EnglishWordCard>
+  <HanziCard>
+    <Id>hanzi</Id><X>520</X><Y>30</Y><Width>240</Width><Height>280</Height>
+    <HanziList><HanziInfo><Hanzi>行</Hanzi><Pinyin>xíng</Pinyin>
+      <PinyinList><Item>xíng</Item><Item>háng</Item></PinyinList><Radical>彳</Radical><StrokeCount>6</StrokeCount><StrokeCode>332112</StrokeCode>
+    </HanziInfo></HanziList>
+    <PronounceList><Pronounce><Name>xing2</Name><Source>id://xing</Source></Pronounce>
+      <Pronounce><Name>hang2</Name><Source>Resources/hang.mp3</Source></Pronounce></PronounceList>
+  </HanziCard>
+  <PinyinCard>
+    <Id>pinyin</Id><X>40</X><Y>360</Y><Width>300</Width><Height>200</Height>
+    <PinyinInfoList><PinyinInfo><Pinyin>lü</Pinyin><TonePinyin>lǜ</TonePinyin><IsTonePinyinsVisible>True</IsTonePinyinsVisible>
+      <PronounceList><Pronounce><Name>lv4</Name><Source>Resources/lv4.mp3</Source></Pronounce></PronounceList>
+    </PinyinInfo></PinyinInfoList><LineColor><ColorBrush>#FF008844</ColorBrush></LineColor>
+    <Background><ColorBrush>#FFFFFFFF</ColorBrush></Background><Opacity>0.9</Opacity>
+  </PinyinCard>
+  <RuledPaper><Id>paper</Id><X>380</X><Y>360</Y><Width>380</Width><Height>180</Height><Words>Apple&#10;Pear</Words></RuledPaper>
+</Elements>

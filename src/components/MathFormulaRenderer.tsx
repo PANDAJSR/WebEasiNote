@@ -21,7 +21,7 @@ export function MathFormulaRenderer({ element, scale }: MathFormulaRendererProps
       const width = content.offsetWidth
       const height = content.offsetHeight
       if (width > 0 && height > 0) {
-        setFit(Math.min(1, element.width * scale / (width + 1), element.height * scale / (height + 1)))
+        setFit(Math.min(element.width * scale / (width + 1), element.height * scale / (height + 1)))
       }
     }
     measure()
