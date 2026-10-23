@@ -24,25 +24,39 @@ export function lassoContains(points: SelectionPoint[], point: SelectionPoint) {
   return inside
 }
 
-function enclosesElement(points: SelectionPoint[], element: SlideElement) {
-  const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([x, y]) => {
-    const offset = rotatePoint({ x: x * element.width / 2, y: y * element.height / 2 },
-      ('rotation' in element && element.rotation) || 0)
-    return { x: element.x + element.width / 2 + offset.x, y: element.y + element.height / 2 + offset.y }
-  })
-  if (!corners.every(corner => lassoContains(points, corner))) return false
-  // A concave lasso can contain all corners while cutting through a box edge.
-  return corners.every((a, index) => {
-    const b = corners[(index + 1) % corners.length]
-    return points.every((c, i) => {
-      const d = points[(i + 1) % points.length]
-      return !(cross(a, b, c) * cross(a, b, d) < -epsilon
-        && cross(c, d, a) * cross(c, d, b) < -epsilon)
-    })
-  })
+export const LASSO_SELECTION_COVERAGE = 0.5
+
+/** 在元素局部坐标按 64 条扫描线估算覆盖面积；凹形/自交套索使用奇偶填充。 */
+export function lassoCoverage(points: SelectionPoint[], element: SlideElement) {
+  if (points.length < 3) return 0
+  const width = Math.max(1, Math.abs(element.width))
+  const height = Math.max(1, Math.abs(element.height))
+  const local = points.map(point => rotatePoint({
+    x: point.x - element.x - element.width / 2,
+    y: point.y - element.y - element.height / 2
+  }, -(('rotation' in element && element.rotation) || 0)))
+  if (Math.max(...local.map(point => point.x)) <= -width / 2
+    || Math.min(...local.map(point => point.x)) >= width / 2
+    || Math.max(...local.map(point => point.y)) <= -height / 2
+    || Math.min(...local.map(point => point.y)) >= height / 2) return 0
+  let covered = 0
+  const rows = 64
+  for (let row = 0; row < rows; row++) {
+    const y = height * ((row + 0.5) / rows - 0.5)
+    const crossings: number[] = []
+    for (let i = 0, j = local.length - 1; i < local.length; j = i++) {
+      const a = local[j], b = local[i]
+      if ((a.y > y) !== (b.y > y)) crossings.push(a.x + (b.x - a.x) * (y - a.y) / (b.y - a.y))
+    }
+    crossings.sort((a, b) => a - b)
+    for (let i = 0; i + 1 < crossings.length; i += 2) {
+      covered += Math.max(0, Math.min(width / 2, crossings[i + 1]) - Math.max(-width / 2, crossings[i]))
+    }
+  }
+  return Math.min(1, covered / (rows * width))
 }
 
-/** Enclose every member's rotated bounds. Locked/hidden groups remain atomic. */
+/** 覆盖至少一半即可选中；组合按成员面积加权，始终整体选择且全部成员必须可选。 */
 export function lassoSelection(elements: SlideElement[], points: SelectionPoint[],
   eligible: (element: SlideElement) => boolean = element => !element.isLocked && element.type !== 'unknown') {
   if (points.length < 3) return []
@@ -52,7 +66,15 @@ export function lassoSelection(elements: SlideElement[], points: SelectionPoint[
     if (visited.has(element.id)) continue
     const members = selectionMembers(elements, element)
     members.forEach(member => visited.add(member.id))
-    if (members.every(member => eligible(member) && enclosesElement(points, member))) result.push(...members)
+    if (!members.every(eligible)) continue
+    let area = 0
+    let coveredArea = 0
+    for (const member of members) {
+      const memberArea = Math.max(1, Math.abs(member.width)) * Math.max(1, Math.abs(member.height))
+      area += memberArea
+      coveredArea += memberArea * lassoCoverage(points, member)
+    }
+    if (coveredArea / area + epsilon >= LASSO_SELECTION_COVERAGE) result.push(...members)
   }
   const ids = new Set(result.map(element => element.id))
   return elements.filter(element => ids.has(element.id))

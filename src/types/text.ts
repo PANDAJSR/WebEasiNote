@@ -90,6 +90,8 @@ export interface TextElement {
   sizeToContent?: 'Manual' | 'Height' | 'WidthAndHeight'
   verticalTextAlignment?: 'Top' | 'Center' | 'Bottom'
   textLines: TextLine[]
+  /** 放映会话的整体内容缩放，不对应 ENBX XML 字段；保留原始文字布局与字号。 */
+  playbackContentScale?: number
   ruledPaper?: {
     lineColor: string
     backgroundColor: string

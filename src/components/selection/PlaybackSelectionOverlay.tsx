@@ -142,8 +142,7 @@ export function PlaybackSelectionOverlay({ slide, scale, selection, elementDispl
       next.rotation = snapSelectionRotation((from.rotation || 0) + (angle - startAngle) * 180 / Math.PI,
         from.rotation || 0, Math.hypot(position.x - center.x, position.y - center.y) * scale, event.shiftKey, event.altKey)
     } else {
-      const proportional = active.original.length > 1 || event.shiftKey
-      next = resizeSelection(from, active.handle, delta, proportional, event.ctrlKey)
+      next = resizeSelection(from, active.handle, delta, true, event.ctrlKey)
     }
     if (active.handle === 'move' && active.original.every(element => element.canClone) && !active.clones) {
       active.clones = cloneSelection(active.original)

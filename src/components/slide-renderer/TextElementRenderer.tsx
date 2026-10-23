@@ -16,6 +16,15 @@ const RULED_PAPER_TEXT_VERTICAL_OFFSET_RATIO = -0.12
 const RULED_PAPER_CONTENT_PADDING_RATIO = 0.08
 
 export function TextElementRenderer({ element, scale }: { element: TextElement; scale: number }) {
+  const contentScale = element.playbackContentScale || 1
+  // 同时放大字号、行距、段落间距、内边距、边框和效果，避免只改变文本框而重新排版。
+  const layoutElement = contentScale === 1 ? element : { ...element,
+    x: element.x / contentScale, y: element.y / contentScale,
+    width: element.width / contentScale, height: element.height / contentScale }
+  return <TextElementContent element={layoutElement} scale={scale * contentScale} />
+}
+
+function TextElementContent({ element, scale }: { element: TextElement; scale: number }) {
   const { x, y, width, height, textLines } = element
   const enableAutoWrap = !element.ruledPaper && element.arrangingType !== 'Vertical'
   const markers = resolveTextMarkers(textLines)

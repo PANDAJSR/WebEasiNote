@@ -92,15 +92,19 @@ export function selectionBounds(elements: SlideElement[]): SelectionBounds {
 }
 
 export function transformSelection(elements: SlideElement[], from: SelectionBounds, to: SelectionBounds): SlideElement[] {
-  if (elements.length === 1) return [{ ...elements[0], ...to }]
+  const scaleContent = (element: SlideElement): SlideElement => element.type === 'text'
+    ? { ...element, playbackContentScale: (element.playbackContentScale || 1) * to.width / from.width }
+    : element
+  if (elements.length === 1) return [scaleContent({ ...elements[0], ...to })]
   const angle = (to.rotation || 0) - (from.rotation || 0)
   return elements.map(element => {
     const offset = rotatePoint({ x: (element.x + element.width / 2 - from.x - from.width / 2) * to.width / from.width,
       y: (element.y + element.height / 2 - from.y - from.height / 2) * to.height / from.height }, angle)
     const width = element.width * to.width / from.width
     const height = element.height * to.height / from.height
-    return { ...element, x: to.x + to.width / 2 + offset.x - width / 2,
+    const transformed = { ...element, x: to.x + to.width / 2 + offset.x - width / 2,
       y: to.y + to.height / 2 + offset.y - height / 2, width, height,
       rotation: ((('rotation' in element && element.rotation) || 0) + angle + 360) % 360 }
+    return scaleContent(transformed)
   })
 }

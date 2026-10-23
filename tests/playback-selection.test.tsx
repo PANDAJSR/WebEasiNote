@@ -4,10 +4,11 @@ import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Window } from 'happy-dom'
 import { resizeSelection, rotatePoint, selectionBounds, selectionContains, snapSelectionRotation, transformSelection } from '../src/viewer/selection-geometry'
-import { lassoContains, lassoSelection } from '../src/viewer/selection-lasso'
+import { lassoContains, lassoCoverage, lassoSelection } from '../src/viewer/selection-lasso'
 import { SlideRenderer } from '../src/components/SlideRenderer'
 import { usePlaybackSelection } from '../src/viewer/usePlaybackSelection'
-import type { SlideData, SlideElement } from '../src/types'
+import type { SlideData, SlideElement, TextElement } from '../src/types'
+import { TextElementRenderer } from '../src/components/slide-renderer/TextElementRenderer'
 import { cloneSelection } from '../src/viewer/selection-clone'
 import { cropSelectionPicture } from '../src/viewer/selection-picture'
 import { applySelectionFlags } from '../src/enbx/element-selection-flags'
@@ -80,6 +81,40 @@ test('旋转元素按局部坐标命中，缩放保持对角，跨零度吸附',
   assert.equal(snapSelectionRotation(14, 0, 200, true, true), 14)
 })
 
+test('放映文本按整体比例缩放字号、行距、内边距，重复缩放与移动不改变原始内容', async () => {
+  const text: TextElement = { type: 'text', id: 'text-scale', x: 40, y: 50, width: 200, height: 100,
+    sizeToContent: 'Manual', textLines: [{ textAlignment: 'Left', fixedLineSpacing: 30,
+      spaceBefore: 4, spaceAfter: 6, marginLeft: 8, textRuns: [{ text: '整体缩放文本', fontSize: 20,
+        fontFamily: 'Microsoft YaHei', fontStyle: 'normal', fontWeight: 'normal', color: '#000000' }] }] }
+  const from = selectionBounds([text])
+  const resized = transformSelection([text], from, { ...from, width: 400, height: 200 })[0] as TextElement
+  assert.equal(resized.playbackContentScale, 2)
+  assert.equal(text.playbackContentScale, undefined)
+  assert.equal(resized.textLines, text.textLines)
+  const moved = transformSelection([resized], selectionBounds([resized]), { ...selectionBounds([resized]), x: 80 })[0] as TextElement
+  assert.equal(moved.playbackContentScale, 2)
+  const back = transformSelection([moved], selectionBounds([moved]), { ...selectionBounds([moved]), width: 200, height: 100 })[0] as TextElement
+  assert.equal(back.playbackContentScale, 1)
+  const shape = { type: 'shape', id: 'neighbor', x: 300, y: 100, width: 50, height: 50 } as SlideElement
+  const groupBounds = selectionBounds([text, shape])
+  const group = transformSelection([text, shape], groupBounds,
+    { ...groupBounds, width: groupBounds.width * 1.5, height: groupBounds.height * 1.5 })
+  assert.equal((group[0] as TextElement).playbackContentScale, 1.5)
+  const container = document.createElement('div')
+  document.body.append(container)
+  const root = createRoot(container as unknown as HTMLElement)
+  await act(async () => root.render(<TextElementRenderer element={resized} scale={1} />))
+  const content = Array.from(container.querySelectorAll('span')).find(span => span.textContent === '整体缩放文本' && span.style.fontSize)!
+  assert.equal(content.style.fontSize, '40px')
+  const layout = container.firstElementChild!.firstElementChild as HTMLElement
+  assert.equal(layout.style.width, '404px')
+  assert.equal(layout.style.height, '200px')
+  assert.equal(layout.style.padding, '20px')
+  assert.equal((layout.firstElementChild as HTMLElement).style.lineHeight, '60px')
+  assert.equal((container.firstElementChild as HTMLElement).style.left, '40px')
+  await act(async () => root.unmount())
+})
+
 test('组合克隆隔离 ID 与原始 XML；旋转图片连续裁剪保持原像素位置', () => {
   const originals = ['a', 'b'].map(id => ({ type: 'shape', id, groupId: 'inner', groupAncestorIds: ['outer', 'inner'],
     x: 0, y: 0, width: 40, height: 40, canClone: true, rawXml: '<Shape/>',
@@ -106,7 +141,7 @@ test('组合克隆隔离 ID 与原始 XML；旋转图片连续裁剪保持原像
   assert.equal(cropped.rotation, 90)
 })
 
-test('套索完整包围旋转边界，过滤锁定/隐藏元素并保持组合原子性', () => {
+test('套索按覆盖比例选择旋转元素，过滤锁定/隐藏元素并保持组合原子性', () => {
   const shape = (id: string, x: number, extra: object = {}): SlideElement => ({ type: 'shape', id,
     x, y: 30, width: 20, height: 20, backgroundColor: '#fff', foregroundColor: '#000',
     path: '', geometryType: 'Rectangle', ...extra })
@@ -118,11 +153,34 @@ test('套索完整包围旋转边界，过滤锁定/隐藏元素并保持组合�
   assert.equal(lassoContains(polygon, { x: 0, y: 50 }), true)
   assert.equal(lassoContains(polygon, { x: 201, y: 50 }), false)
   assert.deepEqual(lassoSelection(elements, polygon, element => !element.isLocked && element.id !== 'hidden')
-    .map(element => element.id), ['a', 'b'])
+    .map(element => element.id), ['a', 'b', 'g1', 'g2'])
   assert.deepEqual(lassoSelection(elements, polygon.slice(0, 2)), [])
   const concave = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 },
     { x: 55, y: 100 }, { x: 55, y: 25 }, { x: 45, y: 25 }, { x: 45, y: 100 }, { x: 0, y: 100 }]
-  assert.deepEqual(lassoSelection([shape('cut', 30, { width: 40, height: 40 })], concave), [])
+  assert.deepEqual(lassoSelection([shape('cut', 30, { width: 40, height: 40 })], concave).map(element => element.id), ['cut'])
+  const partial = (right: number) => [{ x: 0, y: 0 }, { x: right, y: 0 }, { x: right, y: 100 }, { x: 0, y: 100 }]
+  const target = shape('partial', 0, { y: 0, width: 100, height: 100 })
+  assert.equal(lassoCoverage(partial(49), target), 0.49)
+  assert.equal(lassoSelection([target], partial(49)).length, 0)
+  assert.equal(lassoSelection([target], partial(50)).length, 1)
+  assert.equal(lassoSelection([target], partial(65)).length, 1)
+  assert.equal(lassoSelection([target], partial(0)).length, 0)
+  // 在旋转后的局部空间计算覆盖率，而不是放大的轴对齐外接框。
+  const rotation = 37
+  const rotatedLasso = partial(60).map(point => {
+    const offset = rotatePoint({ x: point.x - 50, y: point.y - 50 }, rotation)
+    return { x: offset.x + 50, y: offset.y + 50 }
+  })
+  assert.ok(Math.abs(lassoCoverage(rotatedLasso, { ...target, rotation }) - 0.6) < 1e-8)
+  assert.equal(lassoSelection([{ ...target, rotation }], rotatedLasso).length, 1)
+  // 奇偶规则保留凹口，不以中心点/角点或外接框代替面积。
+  assert.equal(lassoSelection([target], [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 },
+    { x: 90, y: 100 }, { x: 90, y: 10 }, { x: 10, y: 10 }, { x: 10, y: 100 }, { x: 0, y: 100 }]).length, 0)
+  // 大成员覆盖超过一半即可带动整个组合，不要求每个成员分别达标。
+  const group = [shape('large', 0, { y: 0, width: 100, height: 100, groupId: 'weighted' }),
+    shape('small', 200, { groupId: 'weighted' })]
+  assert.deepEqual(lassoSelection(group, partial(60)).map(element => element.id), ['large', 'small'])
+  assert.equal(lassoSelection(group, partial(50)).length, 0)
   const selected = elements.slice(0, 2)
   const from = selectionBounds(selected)
   const next = transformSelection(selected, from, { ...from, x: from.x + 25, y: from.y + 10 })
@@ -156,7 +214,8 @@ test('套索多选可整体拖动、取消、追加、删除；跨页清空选�
   const pointer = async (type: string, x: number, y: number, shiftKey = false) => act(async () =>
     container.querySelector('[data-playback-selection]')!.dispatchEvent(new window.PointerEvent(type,
       { bubbles: true, pointerId: 1, button: 0, clientX: x, clientY: y, shiftKey })))
-  const enclose = async (cancel = false, shift = false, left = 20, right = 280) => {
+  // 第二个元素只圈住约 2/3，仍应能选中并参与后续整体操作。
+  const enclose = async (cancel = false, shift = false, left = 20, right = 240) => {
     await pointer('pointerdown', left, 20, shift)
     await pointer('pointermove', right, 20)
     await pointer('pointermove', right, 130)
@@ -243,6 +302,13 @@ test('播放选择消费点击、取消预览；提交、置顶、删除跨页�
   await pointer('pointerup', 100, 80)
   assert.equal(selection!.slides[0].elements[0].x, 80)
   assert.equal(pages[0].elements[0].x, 40)
+  const resizeHandle = container.querySelector('[aria-label="缩放 e"]')!
+  await act(async () => resizeHandle.dispatchEvent(new window.PointerEvent('pointerdown',
+    { bubbles: true, pointerId: 1, button: 0, clientX: 180, clientY: 100 })))
+  await pointer('pointermove', 230, 100)
+  await pointer('pointerup', 230, 100)
+  assert.equal(selection!.slides[0].elements[0].width, 150)
+  assert.equal(selection!.slides[0].elements[0].height, 90)
   await act(async () => surface.dispatchEvent(new window.MouseEvent('click', { bubbles: true, clientX: 100, clientY: 80 })))
   assert.equal(animationClicks, 0)
   const buttons = Array.from(container.querySelectorAll('button'))
