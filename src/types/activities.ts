@@ -1,6 +1,9 @@
 import type { Brush } from '../enbx/brushes'
 import type { SlideElement } from './slide'
 import type { TextElement } from './text'
+import type { MatchingConfig } from '../enbx/activities/matching-config'
+import type { ActivityQuestion } from '../enbx/activities/question-config'
+import type { CompetitionConfig } from '../enbx/activities/competition-config'
 
 export interface ActivityElement {
   type: 'activity'
@@ -35,6 +38,9 @@ export interface ActivityDefinition {
   isPlayAudio: boolean
   mode: string
   categories: ActivityCategory[]
+  matching?: MatchingConfig
+  questions?: ActivityQuestion[]
+  competition?: CompetitionConfig
   playable: boolean
   diagnostics: string[]
   rawXml: string

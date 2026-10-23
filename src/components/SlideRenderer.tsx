@@ -13,6 +13,9 @@ import { PlaybackSelectionOverlay } from './selection/PlaybackSelectionOverlay'
 import type { PlaybackSelection } from '../viewer/usePlaybackSelection'
 import { useActivityPlayback } from '../viewer/activities/useActivityPlayback'
 import { ActivityControls } from './activities/ActivityControls'
+import { MatchingActivity } from './activities/MatchingActivity'
+import { QuestionActivity } from './activities/QuestionActivity'
+import { CompetitionActivity } from './activities/CompetitionActivity'
 interface SlideRendererProps {
   slide: SlideData
   scale?: number
@@ -374,6 +377,13 @@ export function SlideRenderer({
         resourceMap={resourceMap}
         elementRenderStates={elementRenderStates} onPreview={setSelectionPreview} />}
       {!isEditMode && slideIndex === currentIndex && <ActivityControls playback={activity} paused={!!playbackSelection?.enabled} />}
+      {!isEditMode && slideIndex === currentIndex && slide.activities?.filter(definition => definition.playable)
+        .map(definition => definition.matching ? <MatchingActivity key={definition.id} definition={definition}
+          elements={slide.elements} resourceMap={resourceMap} active={!playbackSelection?.enabled} />
+          : definition.competition ? <CompetitionActivity key={definition.id} definition={definition}
+            elements={slide.elements} resourceMap={resourceMap} active={!playbackSelection?.enabled} />
+          : definition.questions ? <QuestionActivity key={definition.id} definition={definition}
+            active={!playbackSelection?.enabled} /> : null)}
     </div>
   )
 }

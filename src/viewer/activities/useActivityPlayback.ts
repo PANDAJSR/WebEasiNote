@@ -4,6 +4,7 @@ import type { ActivityDefinition, ActivityElement, SlideData, SlideElement } fro
 import { classificationContainer, classificationDrop } from './classification'
 import { playClassificationFeedback } from './classification-feedback'
 import { pointerToSlide } from '../pointer-coordinates'
+import { shuffledMaterialPositions } from './shuffle'
 
 // 定义随文档解析创建，选择操作只复制页面；WeakMap 在文档释放后自动回收。
 const sessions = new WeakMap<ActivityDefinition, Set<string>>()
@@ -37,7 +38,8 @@ export function useActivityPlayback(slide: SlideData, scale: number, active: boo
   const finishFeedback = useRef<(() => void) | null>(null)
   const gesture = useRef<Gesture | null>(null)
   const definitions = slide.activities || []
-  const playable = definitions.filter(definition => definition.playable)
+  const playable = definitions.filter(definition => definition.playable
+    && (definition.key === 'Classify' || definition.key === 'SuperClassify'))
   const clear = () => {
     const current = gesture.current
     gesture.current = null
@@ -157,6 +159,9 @@ export function useActivityPlayback(slide: SlideData, scale: number, active: boo
       finishFeedback.current?.()
       acceptedFor(definition).clear()
       positionsFor(definition).clear()
+      if (definition.key === 'SuperClassify') {
+        shuffledMaterialPositions(definition, slide.elements).forEach((point, id) => positionsFor(definition).set(id, point))
+      }
       setFeedback('')
       refresh(value => value + 1)
     }
