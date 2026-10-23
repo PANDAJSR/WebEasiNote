@@ -17,6 +17,7 @@ import { SlideViewerLayer } from './slide-viewer/SlideViewerLayer'
 import { slideInfoBarHeight } from './slide-viewer/constants'
 import { clearRasterCache } from '../rendering/rasterCache'
 import { usePageNavigation } from './slide-viewer/usePageNavigation'
+import type { PlaybackSelection } from '../viewer/usePlaybackSelection'
 
 interface SlideViewerProps {
   slide: SlideData
@@ -32,6 +33,7 @@ interface SlideViewerProps {
   /** 底部信息条预留高度；宿主内嵌全屏播放传 0，避免比例一致时出现四周黑边。 */
   infoBarHeight?: number
   isEditMode: boolean
+  playbackSelection?: PlaybackSelection
   selectedElementId?: string | null
   onEditElementSelect?: (elementId: string) => void
   onEditElementDrag?: (elementId: string, nextX: number, nextY: number) => void
@@ -66,6 +68,7 @@ export function SlideViewer({
   hidePager = false,
   infoBarHeight = slideInfoBarHeight,
   isEditMode,
+  playbackSelection,
   selectedElementId = null,
   onEditElementSelect,
   onEditElementDrag,
@@ -143,7 +146,7 @@ export function SlideViewer({
       onEditBackgroundClick?.()
       return
     }
-    if (!clickToNextEnabled) return
+    if (playbackSelection?.enabled || !clickToNextEnabled) return
     if (target.closest('[data-slide-element="true"]')) return
     handleNextSlide('click')
   }
@@ -167,7 +170,7 @@ export function SlideViewer({
     containerRef,
     isEditMode,
     isSlidePanelActive,
-    enabled: swipeNavigationEnabled,
+    enabled: swipeNavigationEnabled && !playbackSelection?.enabled,
     handlePrevSlide,
     handleNextSlide
   })
@@ -272,6 +275,7 @@ export function SlideViewer({
                   lineRevealProgress={lineRevealProgress}
                   setLayerRef={setLayerRef}
                   isEditMode={isEditMode}
+                  playbackSelection={playbackSelection}
                   elementDisplayStyles={!isEditMode && isCurrent ? elementDisplayStyles : undefined}
                   elementRenderStates={!isEditMode && isCurrent ? elementRenderStates : undefined}
                   onElementClick={

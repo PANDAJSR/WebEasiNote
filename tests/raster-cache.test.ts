@@ -18,7 +18,13 @@ class Bitmap {
 }
 Object.assign(globalThis, { Worker: FakeWorker, OffscreenCanvas: class {} })
 const run = { kind: 'static', id: 'r', drawings: [], elements: [] } as StaticRun
-const tick = () => new Promise(resolve => setTimeout(resolve, 10))
+async function tick() {
+  // SHA-256 在线程池中执行；等待实际请求，避免并行测试负载下固定 10ms 超时。
+  for (let attempt = 0; sent.length === 0 && attempt < 500; attempt += 1) {
+    await new Promise(resolve => setTimeout(resolve, 10))
+  }
+  assert.ok(sent.length > 0, '栅格任务未提交到 Worker')
+}
 function reply(bitmap = new Bitmap()) {
   const request = sent.shift()!
   request.worker.onmessage?.({ data: { id: request.id, bitmap } })

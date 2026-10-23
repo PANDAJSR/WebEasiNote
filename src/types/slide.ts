@@ -95,6 +95,8 @@ export type SlideElement = (
   groupId?: string
   groupAncestorIds?: string[]
   staticCacheSafe?: boolean
+  isLocked?: boolean
+  canClone?: boolean
 }
 
 export interface SlideData {

@@ -1,6 +1,7 @@
 import React, { useMemo, useRef } from 'react'
 import { styles } from '../../styles'
 import { SlideRenderer } from '../SlideRenderer'
+import type { PlaybackSelection } from '../../viewer/usePlaybackSelection'
 import type { SlideData, TextLine } from '../../enbx/parser'
 import type { TextStyleCommand, TextStyleState } from '../text-style-commands'
 import {
@@ -28,6 +29,7 @@ interface SlideViewerLayerProps {
   lineRevealProgress: number
   setLayerRef: (index: number, node: HTMLDivElement | null) => void
   isEditMode: boolean
+  playbackSelection?: PlaybackSelection
   elementDisplayStyles?: Record<string, React.CSSProperties>
   elementRenderStates?: Record<string, boolean>
   onElementClick?: (elementId: string) => boolean
@@ -57,6 +59,7 @@ export function SlideViewerLayer({
   lineRevealProgress,
   setLayerRef,
   isEditMode,
+  playbackSelection,
   elementDisplayStyles,
   elementRenderStates,
   onElementClick,
@@ -209,6 +212,7 @@ export function SlideViewerLayer({
           onEditAudioUpdate={isCurrent && isEditMode ? onEditAudioUpdate : undefined}
           onEditTextStyleStateChange={isCurrent && isEditMode ? onEditTextStyleStateChange : undefined}
           isEditMode={isEditMode}
+          playbackSelection={isCurrent ? playbackSelection : undefined}
           selectedElementId={isCurrent && isEditMode ? selectedElementId : null}
           textStyleCommand={isCurrent && isEditMode ? textStyleCommand : null}
         />

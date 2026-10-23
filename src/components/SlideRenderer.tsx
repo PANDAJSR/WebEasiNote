@@ -8,6 +8,9 @@ import { applyTextStyleCommand, resolveTextStyleState } from './text-style-editi
 import { useElementEditInteractions } from './slide-renderer/useElementEditInteractions'
 import { getStaticPlan, isStaticRun } from '../rendering/staticPlan'
 import { StaticRunLayer } from './slide-renderer/StaticRunLayer'
+import { EditSelectionBox } from './slide-renderer/EditSelectionBox'
+import { PlaybackSelectionOverlay } from './selection/PlaybackSelectionOverlay'
+import type { PlaybackSelection } from '../viewer/usePlaybackSelection'
 interface SlideRendererProps {
   slide: SlideData
   scale?: number
@@ -25,6 +28,7 @@ interface SlideRendererProps {
   isEditMode?: boolean
   selectedElementId?: string | null
   textStyleCommand?: TextStyleCommand | null
+  playbackSelection?: PlaybackSelection
 }
 /**
  * 幻灯片渲染器 - 使用 DOM 实现矢量渲染
@@ -45,7 +49,8 @@ export function SlideRenderer({
   onEditTextStyleStateChange,
   isEditMode = false,
   selectedElementId = null,
-  textStyleCommand = null
+  textStyleCommand = null,
+  playbackSelection
 }: SlideRendererProps) {
   const [editingTextElementId, setEditingTextElementId] = useState<string | null>(null)
   const [draftTextLinesMap, setDraftTextLinesMap] = useState<Record<string, TextLine[]>>({})
@@ -55,7 +60,9 @@ export function SlideRenderer({
   const backgroundImageUrl = slide.backgroundImage ? resourceMap[slide.backgroundImage] : null
   const scaledWidth = slide.width * scale
   const scaledHeight = slide.height * scale
-  const renderItems = useMemo(() => isEditMode ? slide.elements : getStaticPlan(slide), [slide, isEditMode])
+  const [selectionPreview, setSelectionPreview] = useState<SlideData['elements'] | null>(null)
+  const renderItems = useMemo(() => isEditMode || playbackSelection?.enabled ? slide.elements : getStaticPlan(slide),
+    [slide, isEditMode, playbackSelection?.enabled])
   const {
     resolveElementBounds,
     handleEditElementMouseDown,
@@ -167,7 +174,7 @@ export function SlideRenderer({
         userSelect: 'none',
         WebkitUserSelect: 'none'
       }}
-      onClickCapture={handleSlideClickCapture}
+      onClickCapture={playbackSelection?.enabled && !isEditMode ? undefined : handleSlideClickCapture}
     >
       <div
         style={{
@@ -185,14 +192,15 @@ export function SlideRenderer({
           transformOrigin: 'top left'
         }}
       >
-        {renderItems.flatMap(item => {
+         {[...renderItems, ...(selectionPreview?.filter(element => !slide.elements.some(source => source.id === element.id)) || [])].flatMap(item => {
           if (isStaticRun(item)) {
             // 外部逐元素样式/可见性变化时回退，不能烘焙过期状态。
             const changed = item.elements.some(element => elementDisplayStyles[element.id]
               || elementRenderStates[element.id] !== undefined)
             if (!changed) return [<StaticRunLayer key={item.id} run={item} width={slide.width} height={slide.height} scale={scale} />]
           }
-          return (isStaticRun(item) ? item.elements : [item]).map(element => {
+           return (isStaticRun(item) ? item.elements : [item]).map(sourceElement => {
+             const element = selectionPreview?.find(preview => preview.id === sourceElement.id) || sourceElement
             if (elementRenderStates[element.id] === false && element.type !== 'audio') return null
             const bounds = resolveElementBounds(element)
             const draftTextLines = draftTextLinesMap[element.id]
@@ -231,6 +239,7 @@ export function SlideRenderer({
               <div
                 key={element.id}
                 data-slide-element='true'
+                data-element-id={element.id}
                 style={{
                   position: 'absolute',
                   left: bounds.x,
@@ -346,50 +355,18 @@ export function SlideRenderer({
             )
           })
         })}
-        {selectedElementId && (() => {
+        {isEditMode && selectedElementId && (() => {
           const selectedElement = slide.elements.find(element => element.id === selectedElementId)
           if (!selectedElement) return null
-          const bounds = resolveElementBounds(selectedElement)
           return (
-            <div
-              style={{
-                position: 'absolute',
-                left: bounds.x,
-                top: bounds.y,
-                width: bounds.width,
-                height: bounds.height,
-                boxSizing: 'border-box',
-                outline: '2px solid #4a90e2',
-                outlineOffset: '2px',
-                borderRadius: '2px',
-                pointerEvents: 'none',
-                zIndex: 2147483647
-              }}
-            >
-              {selectedResizeHandles.map(handle => (
-                <div
-                  key={handle.key}
-                  style={{
-                    position: 'absolute',
-                    left: bounds.width * handle.left,
-                    top: bounds.height * handle.top,
-                    width: 12,
-                    height: 12,
-                    borderRadius: '50%',
-                    border: '2px solid #1890ff',
-                    backgroundColor: '#ffffff',
-                    transform: 'translate(-50%, -50%)',
-                    boxSizing: 'border-box',
-                    pointerEvents: 'auto',
-                    cursor: handle.cursor
-                  }}
-                  onMouseDown={event => handleResizeHandleMouseDown(selectedElement, handle.key, event)}
-                />
-              ))}
-            </div>
+            <EditSelectionBox element={selectedElement} handles={selectedResizeHandles} onResize={handleResizeHandleMouseDown} />
           )
         })()}
       </div>
+      {!isEditMode && playbackSelection?.enabled && <PlaybackSelectionOverlay key={slide.id}
+        slide={slide} scale={scale} selection={playbackSelection} elementDisplayStyles={elementDisplayStyles}
+        resourceMap={resourceMap}
+        elementRenderStates={elementRenderStates} onPreview={setSelectionPreview} />}
     </div>
   )
 }

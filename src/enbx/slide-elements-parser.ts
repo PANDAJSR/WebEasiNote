@@ -17,6 +17,7 @@ import { parseEnglishWordCardElement } from './english-word-cards'
 import { parseHanziCardElement, parsePinyinCardElement } from './chinese-cards'
 import { parseComplexSubject } from './complex-subjects'
 import { getDirectChildElement, getDirectChildText } from './xml-utils'
+import { applySelectionFlags } from './element-selection-flags'
 import { KNOWN_PARAMETERS } from './slide-elements-known-parameters'
 import { isStaticNodeSafe } from '../rendering/staticSafety'
 
@@ -67,7 +68,7 @@ function collectUnknownParameters(
 ) {
   const knownParams = KNOWN_PARAMETERS[elementType]
   Array.from(node.children).forEach(child => {
-    if (knownParams.has(child.tagName)) return
+    if (knownParams.has(child.tagName) || child.tagName === 'IsLocked' || child.tagName === 'CanClone') return
     issues.push({
       kind: 'unknown-parameter',
       slideId,
@@ -96,6 +97,7 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
   allChildNodes.forEach((node, index) => {
     const tagName = node.tagName
     const elementId = getDirectChildText(node, 'Id') || `${tagName.toLowerCase()}-${index}`
+    const parsedStart = parsedElements.length
     // Group 不进入扁平模型，无需重复序列化整个子树。
     const rawXml = tagName === 'Group' ? '' : rawXmlByIndex?.[index] || serializeElementXml(node)
 
@@ -388,6 +390,7 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         break
       }
     }
+    applySelectionFlags(node, parsedElements, parsedStart)
   })
 
   return {

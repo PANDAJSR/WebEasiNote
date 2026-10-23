@@ -5,6 +5,7 @@ import { styles } from '../styles'
 import { SlideViewer } from './SlideViewer'
 import { SlideThumbnail } from './slide-viewer/SlideThumbnail'
 import { ElementXmlPanel } from './ElementXmlPanel'
+import { usePlaybackSelection } from '../viewer/usePlaybackSelection'
 import type { CoursewareMetadata, SlideData, SlideElement, TextLine } from '../enbx/parser'
 import { collectMissingFontIssues } from '../viewer/viewer-font-issues'
 import { ViewerIssuesModal } from './ViewerIssuesModal'
@@ -78,7 +79,7 @@ export function Viewer({
   const selectedElementIdRef = useRef<string | null>(null)
   const currentSlideIdRef = useRef<string>('')
 
-  const resolvedSlides = useMemo(() => {
+  const editedSlides = useMemo(() => {
     if (Object.keys(editedElements).length === 0) return slides
     return slides.map(slide => {
       const resolvedElements = slide.elements.map(element => {
@@ -91,6 +92,8 @@ export function Viewer({
       }
     })
   }, [slides, editedElements])
+
+  const { slides: resolvedSlides, selection: playbackSelection } = usePlaybackSelection(editedSlides, currentIndex, metadata)
 
   const currentSlide = resolvedSlides[currentIndex]
   selectedElementIdRef.current = selectedElementId
@@ -310,6 +313,7 @@ export function Viewer({
     hidePager,
     infoBarHeight,
     isEditMode,
+    playbackSelection,
     selectedElementId,
     onEditElementSelect: handleEditElementSelect,
     onEditElementDrag: handleEditElementDrag,
