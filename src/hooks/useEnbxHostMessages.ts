@@ -19,6 +19,11 @@ export function useEnbxHostMessages({ loadENBXUrlRef, openManifest, viewModeRef,
     if (!isEnbxHostRuntime()) return
     const handleHostMessage = async (message: EnbxHostMessage) => {
       try {
+        if (message.type === 'insert-image' && viewModeRef.current !== 'viewer') {
+          postToEnbxHost({ type: 'image-inserted', requestId: message.requestId,
+            success: false, error: '当前没有可插图的课件页面' })
+          return
+        }
         if (message.type === 'enbx:open') {
           if (message.sourceKind === 'http-manifest' && typeof message.manifestUrl === 'string') {
             openManifest(message.manifestUrl)

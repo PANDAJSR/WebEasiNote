@@ -93,7 +93,8 @@ export function Viewer({
     })
   }, [slides, editedElements])
 
-  const { slides: resolvedSlides, selection: playbackSelection } = usePlaybackSelection(editedSlides, currentIndex, metadata)
+  const { slides: resolvedSlides, selection: playbackSelection, resources: insertedResources } = usePlaybackSelection(editedSlides, currentIndex, metadata)
+  const resolvedResources = useMemo(() => ({ ...resourceMap, ...insertedResources }), [resourceMap, insertedResources])
 
   const currentSlide = resolvedSlides[currentIndex]
   selectedElementIdRef.current = selectedElementId
@@ -306,7 +307,7 @@ export function Viewer({
     currentIndex,
     onSlideChange,
     slideChangeSource,
-    resourceMap,
+    resourceMap: resolvedResources,
     clickToNextEnabled,
     pagerPosition,
     showAnimationProgress,
@@ -351,7 +352,7 @@ export function Viewer({
                   slide={slideItem}
                   index={index}
                   isActive={index === currentIndex}
-                  resourceMap={resourceMap}
+                  resourceMap={resolvedResources}
                   onSlideChange={onSlideChange}
                 />
               ))}

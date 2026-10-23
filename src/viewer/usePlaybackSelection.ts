@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CoursewareMetadata, SlideData, SlideElement } from '../enbx/parser'
 import { postToEnbxHost, subscribeToEnbxHost } from '../platform/host-bridge'
+import { useHostImageInsertion } from './useHostImageInsertion'
 
 export type PlaybackSelectionCommand = 'bring-front' | 'delete'
 export interface PlaybackSelection {
@@ -20,6 +21,7 @@ interface PageChanges {
 export function usePlaybackSelection(slides: SlideData[], currentIndex: number, metadata: CoursewareMetadata) {
   const [enabled, setEnabled] = useState(false)
   const [pages, setPages] = useState<Record<string, PageChanges>>({})
+  const { images, resources } = useHostImageInsertion(slides[currentIndex], metadata, () => setEnabled(true))
   useEffect(() => {
     setPages({})
     setEnabled(false)
@@ -36,13 +38,14 @@ export function usePlaybackSelection(slides: SlideData[], currentIndex: number, 
   }, [metadata])
   const resolvedSlides = useMemo(() => slides.map(slide => {
     const changes = pages[slide.id]
-    if (!changes) return slide
-    const elements = [...slide.elements, ...changes.added].filter(element => !changes.deleted.includes(element.id))
+    const inserted = images.filter(image => image.pageId === slide.id).map(image => image.element)
+    if (!changes) return inserted.length ? { ...slide, elements: [...slide.elements, ...inserted] } : slide
+    const elements = [...slide.elements, ...inserted, ...changes.added].filter(element => !changes.deleted.includes(element.id))
       .map(element => changes.replacements[element.id] || element)
     const front = new Set(changes.front)
     return { ...slide, elements: [...elements.filter(element => !front.has(element.id)),
       ...changes.front.flatMap(id => elements.filter(element => element.id === id))] }
-  }), [slides, pages])
+  }), [slides, pages, images])
   const slideId = slides[currentIndex]?.id
   const updatePage = (update: (page: PageChanges) => PageChanges) => setPages(previous => ({
     ...previous, ...(slideId ? { [slideId]: update(previous[slideId] || { replacements: {}, deleted: [], front: [], added: [] }) } : {})
@@ -57,5 +60,5 @@ export function usePlaybackSelection(slides: SlideData[], currentIndex: number, 
       ? { ...page, deleted: [...new Set([...page.deleted, ...ids])] }
       : { ...page, front: [...page.front.filter(id => !ids.includes(id)), ...ids] })
   }
-  return { slides: resolvedSlides, selection }
+  return { slides: resolvedSlides, selection, resources }
 }
