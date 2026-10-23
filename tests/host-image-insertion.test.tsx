@@ -42,11 +42,35 @@ test('宿主传图提交当前页、回执、选择变换、跨页保留及失�
     for (const listener of listeners) listener({ data: { type: 'insert-image', requestId, dataUrl, name: '手机.png' } })
   })
   const receipt = (id: string) => messages.filter(message => message.type === 'image-inserted' && message.requestId === id)
+  const cancel = async (requestId: string) => act(async () => {
+    for (const listener of listeners) listener({ data: { type: 'cancel-image', requestId } })
+  })
+  await send('cancelled')
+  const cancelledDecoder = decoders.at(-1)!
+  // 模拟解码事件已排队，即使解绑事件后仍有旧回调抵达。
+  const lateLoad = cancelledDecoder.onload!
+  const lateError = cancelledDecoder.onerror!
   await send('ok')
+  await cancel('cancelled')
+  assert.deepEqual(receipt('cancelled'), [{ type: 'image-inserted', requestId: 'cancelled',
+    success: false, error: '图片插入已取消' }])
+  assert.equal(cancelledDecoder.onload, null)
+  assert.equal(cancelledDecoder.onerror, null)
+  await act(async () => { lateLoad(); lateError() })
+  await cancel('cancelled')
+  await cancel('unknown')
+  assert.equal(receipt('cancelled').length, 1)
+  assert.equal(receipt('unknown').length, 0)
+  assert.equal(state!.slides[0].elements.length, 0)
+  assert.deepEqual(state!.resources, {})
+  assert.equal(state!.selection.enabled, false)
   assert.equal(receipt('ok').length, 0)
   await act(async () => decoders.at(-1)!.onload!())
   assert.deepEqual(receipt('ok'), [{ type: 'image-inserted', requestId: 'ok', success: true }])
   const picture = state!.slides[0].elements[0]
+  await cancel('ok')
+  assert.equal(receipt('ok').length, 1)
+  assert.equal(state!.slides[0].elements.length, 1)
   assert.equal(picture.type, 'picture')
   assert.deepEqual([picture.x, picture.y, picture.width, picture.height], [80, 220, 640, 160])
   assert.equal(state!.selection.enabled, true)

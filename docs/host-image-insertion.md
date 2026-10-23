@@ -23,3 +23,11 @@
 ```
 
 宿主应等待 `enbx:document-loaded` 和 `enbx:interaction-ready` 后发送命令。本地 ENBX 和 HTTP manifest 课件共用 Viewer 中的处理逻辑。
+
+宿主超时、用户取消或结束放映时，可发送以下命令取消尚在解码的请求：
+
+```json
+{ "type": "cancel-image", "requestId": "unique-request-id" }
+```
+
+匹配的待解码请求立即返回一次 `{ "type": "image-inserted", "requestId": "unique-request-id", "success": false, "error": "图片插入已取消" }`。迟到的解码成功或失败回调均被忽略，不会插图或再次回执。取消只影响匹配的请求，不影响其他并行请求。重复取消、未知请求和已完成请求的取消均忽略，不撤回已经插入的图片。

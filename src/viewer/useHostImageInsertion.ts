@@ -27,11 +27,17 @@ export function useHostImageInsertion(slide: SlideData | undefined, metadata: Co
   useEffect(() => {
     setImages([])
     let active = true
-    const decoding = new Set<() => void>()
+    const decoding = new Map<(error?: string) => void, string>()
     const fail = (requestId: unknown, error: string) => postToEnbxHost({
       type: 'image-inserted', requestId, success: false, error
     })
     const unsubscribe = subscribeToEnbxHost(message => {
+      if (message.type === 'cancel-image') {
+        for (const [cancel, requestId] of decoding) {
+          if (requestId === message.requestId) cancel('图片插入已取消')
+        }
+        return
+      }
       if (message.type !== 'insert-image') return
       const { requestId, dataUrl, name } = message
       const page = latest.current.slide
@@ -58,10 +64,11 @@ export function useHostImageInsertion(slide: SlideData | undefined, metadata: Co
         image.onerror = null
         if (error) fail(requestId, error)
       }
-      const cancel = () => finish('课件已关闭或切换')
-      decoding.add(cancel)
+      const cancel = (error = '课件已关闭或切换') => finish(error)
+      decoding.set(cancel, requestId)
       image.onerror = () => finish('图片解码失败')
       image.onload = () => {
+        if (settled) return
         if (!active || latest.current.slide?.id !== page.id) {
           finish('当前页面已切换，请重试')
           return
@@ -90,7 +97,7 @@ export function useHostImageInsertion(slide: SlideData | undefined, metadata: Co
     return () => {
       active = false
       unsubscribe()
-      for (const cancel of decoding) cancel()
+      for (const cancel of decoding.keys()) cancel()
       for (const image of pending.current) fail(image.requestId, '课件已关闭或切换')
       pending.current.clear()
     }
