@@ -2,6 +2,8 @@ import type { TextElement, TextLine } from '../types'
 import { getDirectChildElement, getDirectChildText, parseColor } from './xml-utils'
 import { parseRichTextNode } from './text-parser'
 
+const HANDWRITING_FONT = 'SeewoEnglishHandwriting'
+
 function parseNumber(value: string | null, fallback = 0): number {
   if (!value) return fallback
   const parsed = parseFloat(value)
@@ -35,9 +37,9 @@ export function parseRuledPaperElement(node: Element): TextElement | null {
     const words = getDirectChildText(node, 'Words') || ''
     const wordLines = words.split(/\r\n|\r|\n/)
     const fallbackLines: TextLine[] = wordLines.map(text => ({
-      textAlignment: 'Center',
-      textRuns: [{ text, fontFamily: 'Arial',
-        fontSize: Math.max(1, height * 0.56 / wordLines.length),
+      textAlignment: 'Left',
+      textRuns: [{ text, fontFamily: HANDWRITING_FONT,
+        fontSize: 96,
         fontStyle: 'normal', fontWeight: 'normal', color: '#000000' }]
     }))
     const parsedRichText = richTextNode ? parseRichTextNode(richTextNode) : {
@@ -55,7 +57,9 @@ export function parseRuledPaperElement(node: Element): TextElement | null {
       arrangingType: parsedRichText.arrangingType,
       sizeToContent: parsedRichText.sizeToContent,
       verticalTextAlignment: parsedRichText.verticalTextAlignment,
-      textLines: parsedRichText.textLines,
+      // 官方 SetSaveInfo 在应用 RichText 后再次设置 EnglishHandwriteFontFamily。
+      textLines: parsedRichText.textLines.map(line => ({ ...line,
+        textRuns: line.textRuns.map(run => ({ ...run, fontFamily: HANDWRITING_FONT })) })),
       ruledPaper: {
         lineColor,
         backgroundColor,

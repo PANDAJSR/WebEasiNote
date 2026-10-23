@@ -5,15 +5,12 @@ import { convertSeewoLineSpacingToMultiplier } from '../../text/line-spacing'
 import {
   buildTextGradient,
   getShadowStyle,
-  getTextStrokeStyle,
-  mergeOpacityToColor
+  getTextStrokeStyle
 } from './text-style-utils'
 import { resolveTextMarkers } from '../../text/text-markers'
 import { TextMarkerSpan } from './TextMarkerSpan'
 import { measureRunWidth, sliceLineRunsByLineProperties } from './text-layout-utils'
-
-const RULED_PAPER_TEXT_VERTICAL_OFFSET_RATIO = -0.12
-const RULED_PAPER_CONTENT_PADDING_RATIO = 0.08
+import { RuledPaperRenderer } from './RuledPaperRenderer'
 
 export function TextElementRenderer({ element, scale }: { element: TextElement; scale: number }) {
   const contentScale = element.playbackContentScale || 1
@@ -21,7 +18,9 @@ export function TextElementRenderer({ element, scale }: { element: TextElement; 
   const layoutElement = contentScale === 1 ? element : { ...element,
     x: element.x / contentScale, y: element.y / contentScale,
     width: element.width / contentScale, height: element.height / contentScale }
-  return <TextElementContent element={layoutElement} scale={scale * contentScale} />
+  return element.ruledPaper
+    ? <RuledPaperRenderer element={layoutElement} scale={scale * contentScale} />
+    : <TextElementContent element={layoutElement} scale={scale * contentScale} />
 }
 
 function TextElementContent({ element, scale }: { element: TextElement; scale: number }) {
@@ -29,19 +28,10 @@ function TextElementContent({ element, scale }: { element: TextElement; scale: n
   const enableAutoWrap = !element.ruledPaper && element.arrangingType !== 'Vertical'
   const markers = resolveTextMarkers(textLines)
   const textOuterPadding = 10 * scale
-  const ruledPaper = element.ruledPaper
   const mainHeight = height * scale
-  const baseWidth = ruledPaper ? width * scale : (width + 2) * scale
-  const ruledContentPadding = ruledPaper ? mainHeight * RULED_PAPER_CONTENT_PADDING_RATIO : 0
-  const ruledRowCount = ruledPaper ? Math.max(1, textLines.length || 1) : 0
-  const ruledUsableHeight = ruledPaper ? Math.max(1, mainHeight - ruledContentPadding * 2) : 0
-  const ruledRowHeight = ruledPaper ? ruledUsableHeight / ruledRowCount : 0
-  const containerPadding = ruledPaper ? ruledContentPadding : textOuterPadding
-  const ruledTextVerticalOffset = ruledPaper ? ruledRowHeight * RULED_PAPER_TEXT_VERTICAL_OFFSET_RATIO : 0
+  const baseWidth = (width + 2) * scale
+  const containerPadding = textOuterPadding
   const getLineHeight = (line: TextElement['textLines'][number]): string => {
-    if (ruledPaper) {
-      return '1'
-    }
     if (line.fixedLineSpacing && line.fixedLineSpacing > 0) {
       return `${line.fixedLineSpacing * scale}px`
     }
@@ -77,9 +67,6 @@ function TextElementContent({ element, scale }: { element: TextElement; scale: n
   const reflectionDepth = hasReflection ? Math.min(1, Math.max(reflectionEffect.depth, 0.1)) : 0
   const estimateLineContentHeight = (line: TextElement['textLines'][number]): number => {
     const maxRunFontSize = Math.max(...line.textRuns.map(run => run.fontSize * scale), 16 * scale)
-    if (ruledPaper) {
-      return ruledRowHeight
-    }
     if (line.fixedLineSpacing && line.fixedLineSpacing > 0) {
       return line.fixedLineSpacing * scale
     }
@@ -95,7 +82,6 @@ function TextElementContent({ element, scale }: { element: TextElement; scale: n
   )
   const availableHeight = Math.max(mainHeight - containerPadding * 2, 0)
   const contentTopOffset = (() => {
-    if (ruledPaper) return 0
     if (element.sizeToContent !== 'Manual' || availableHeight <= contentHeight) return containerPadding
     switch (element.verticalTextAlignment) {
       case 'Center':
@@ -111,8 +97,7 @@ function TextElementContent({ element, scale }: { element: TextElement; scale: n
   const reflectionFadeStop = hasReflection
     ? Math.min(95, Math.max(20, (1 - reflectionDepth) * 100))
     : 0
-  const widthAndHeightAutoSizing = !ruledPaper
-    && element.arrangingType !== 'Vertical'
+  const widthAndHeightAutoSizing = element.arrangingType !== 'Vertical'
     && element.sizeToContent === 'WidthAndHeight'
   const maxMeasuredLineWidth = widthAndHeightAutoSizing
     ? textLines.reduce((maxWidth, line) => {
@@ -139,67 +124,16 @@ function TextElementContent({ element, scale }: { element: TextElement; scale: n
     border: element.borderType && element.borderType !== 'None' && (element.borderThickness || 0) > 0 && element.borderColor && element.borderColor !== 'transparent' && element.borderColor !== 'rgba(0, 0, 0, 0)'
       ? `${(element.borderThickness || 0) * scale}px solid ${element.borderColor}`
       : undefined,
-    backgroundColor: element.backgroundColor || ruledPaper?.backgroundColor,
-    boxShadow: ruledPaper ? `0 ${(10 * scale).toFixed(2)}px ${(24 * scale).toFixed(2)}px rgba(0, 0, 0, 0.18)` : undefined,
+    backgroundColor: element.backgroundColor,
     transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
     transformOrigin: 'center center',
     writingMode: element.arrangingType === 'Vertical' ? 'vertical-rl' : 'horizontal-tb'
   }
-  const renderRuledPaperGuides = () => {
-    if (!ruledPaper) return null
-    const rowCount = ruledRowCount
-    const rowHeight = ruledRowHeight
-    const segment = rowHeight / 3
-    const strokeColor = mergeOpacityToColor(ruledPaper.lineColor, ruledPaper.opacity)
-    const strokeWidth = Math.max(1, scale)
-    const lineY: number[] = []
-    for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
-      const rowStart = rowIndex * rowHeight
-      lineY.push(
-        ruledContentPadding + rowStart,
-        ruledContentPadding + rowStart + segment,
-        ruledContentPadding + rowStart + segment * 2,
-        ruledContentPadding + rowStart + rowHeight
-      )
-    }
-    return (
-      <div
-        style={{
-          position: 'absolute',
-          left: ruledContentPadding,
-          top: 0,
-          width: Math.max(0, renderedWidth - ruledContentPadding * 2),
-          height: mainHeight,
-          pointerEvents: 'none'
-        }}
-      >
-        {lineY.map((yPos, index) => (
-          (() => {
-            const lineIndexInGroup = index % 4
-            const lineThickness = lineIndexInGroup === 2 ? strokeWidth * 1.6 : strokeWidth
-            return (
-              <div
-                key={index}
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  top: yPos - lineThickness / 2,
-                  width: '100%',
-                  height: lineThickness,
-                  backgroundColor: strokeColor
-                }}
-              />
-            )
-          })()
-        ))}
-      </div>
-    )
-  }
   const renderTextContent = () => (
     <>
       {textLines.map((line, lineIndex) => {
-        const alignment = ruledPaper ? 'center' : (line.textAlignment.toLowerCase() as 'left' | 'center' | 'right')
-        const basePaddingLeft = ruledPaper ? 0 : (line.marginLeft || 0) * scale
+        const alignment = line.textAlignment.toLowerCase() as 'left' | 'center' | 'right'
+        const basePaddingLeft = (line.marginLeft || 0) * scale
         const alignmentPaddingLeft = 0
         const alignmentPaddingRight = 0
         const hasRenderableText = line.textRuns.some(run => run.text.replace(/[\r\n]/g, '').length > 0)
@@ -211,21 +145,15 @@ function TextElementContent({ element, scale }: { element: TextElement; scale: n
               position: 'relative',
               paddingLeft: basePaddingLeft + alignmentPaddingLeft,
               paddingRight: alignmentPaddingRight,
-              minHeight: ruledPaper ? ruledRowHeight : undefined,
-              height: ruledPaper ? ruledRowHeight : undefined,
-              display: ruledPaper ? 'flex' : undefined,
-              alignItems: ruledPaper ? 'center' : undefined,
-              justifyContent: ruledPaper ? 'center' : undefined,
-              transform: ruledPaper ? `translateY(${ruledTextVerticalOffset}px)` : undefined,
               textAlign: alignment,
               lineHeight: getLineHeight(line),
               whiteSpace: enableAutoWrap ? 'pre-wrap' : 'nowrap',
               wordBreak: enableAutoWrap ? 'break-word' : 'keep-all',
               overflowWrap: enableAutoWrap ? 'anywhere' : undefined,
-              marginTop: ruledPaper ? 0 : (line.spaceBefore || 0) * scale,
-              marginBottom: ruledPaper ? 0 : (line.spaceAfter || 0) * scale,
+              marginTop: (line.spaceBefore || 0) * scale,
+              marginBottom: (line.spaceAfter || 0) * scale,
               direction: line.direction === 'RightToLeft' ? 'rtl' : 'ltr',
-              textIndent: !ruledPaper && line.indentType === 'FirstLine' && (line.indent || 0) !== 0
+              textIndent: line.indentType === 'FirstLine' && (line.indent || 0) !== 0
                 ? `${(line.indent || 0) * scale}px`
                 : undefined
             }}
@@ -353,11 +281,10 @@ function TextElementContent({ element, scale }: { element: TextElement; scale: n
           position: 'absolute',
           left: 0,
           top: 0,
-          overflow: ruledPaper ? 'hidden' : 'visible',
+          overflow: 'visible',
           ...textContainerStyle
         }}
       >
-        {renderRuledPaperGuides()}
         {renderTextContent()}
       </div>
       {hasReflection && (

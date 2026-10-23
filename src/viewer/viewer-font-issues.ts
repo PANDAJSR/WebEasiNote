@@ -6,6 +6,8 @@ export function collectMissingFontIssues(slides: SlideData[]): SlideIssue[] {
   const seen = new Set<string>()
   slides.forEach(slide => {
     slide.elements.forEach(element => {
+      // 练习纸由专用渲染器加载内嵌字体，不依赖系统字体检测。
+      if (element.type === 'text' && element.ruledPaper) return
       const textLines = (() => {
         if (element.type === 'text') return element.textLines
         if (element.type === 'shape') return element.inlineText || []
