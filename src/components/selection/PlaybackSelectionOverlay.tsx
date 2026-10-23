@@ -3,12 +3,13 @@ import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import type { SlideData, SlideElement } from '../../types'
 import type { PlaybackSelection } from '../../viewer/usePlaybackSelection'
 import { handlePosition, resizeSelection, rotatePoint, selectionBounds,
-  selectionHandles, selectionMembers, snapSelectionRotation, transformSelection,
+  selectionContains, selectionHandles, selectionMembers, snapSelectionRotation, transformSelection,
   type SelectionBounds, type SelectionHandle, type SelectionPoint } from '../../viewer/selection-geometry'
 import { selectionStyles as styles } from './styles'
 import { hitSelectionElement } from '../../viewer/selection-hit-test'
 import { SelectionActionBar } from './SelectionActionBar'
 import { cloneSelection } from '../../viewer/selection-clone'
+import { lassoSelection } from '../../viewer/selection-lasso'
 
 interface PlaybackSelectionOverlayProps {
   slide: SlideData
@@ -20,6 +21,7 @@ interface PlaybackSelectionOverlayProps {
   resourceMap: Record<string, string>
 }
 interface Gesture {
+  kind: 'transform'
   pointerId: number
   start: SelectionPoint
   original: SlideElement[]
@@ -28,16 +30,22 @@ interface Gesture {
   next: SlideElement[] | null
   clones: SlideElement[] | null
 }
+interface LassoGesture {
+  kind: 'lasso'
+  pointerId: number
+  points: SelectionPoint[]
+  additive: boolean
+}
 
 export function PlaybackSelectionOverlay({ slide, scale, selection, elementDisplayStyles,
   elementRenderStates, onPreview, resourceMap }: PlaybackSelectionOverlayProps) {
   const surface = useRef<HTMLDivElement>(null)
-  const gesture = useRef<Gesture | null>(null)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const gesture = useRef<Gesture | LassoGesture | null>(null)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [lasso, setLasso] = useState<SelectionPoint[] | null>(null)
   const [preview, setPreview] = useState<SlideElement[] | null>(null)
   const [previewBounds, setPreviewBounds] = useState<SelectionBounds | null>(null)
-  const selected = slide.elements.find(element => element.id === selectedId)
-  const members = selected ? selectionMembers(slide.elements, selected) : []
+  const members = slide.elements.filter(element => selectedIds.includes(element.id))
   const bounds = members.length ? previewBounds || selectionBounds(members) : null
   const onPreviewRef = useRef(onPreview)
   onPreviewRef.current = onPreview
@@ -48,9 +56,10 @@ export function PlaybackSelectionOverlay({ slide, scale, selection, elementDispl
   }, [slide.id])
 
   useEffect(() => {
-    if (!selectedId || slide.elements.some(element => element.id === selectedId)) return
-    setSelectedId(null)
-  }, [selectedId, slide.elements])
+    setSelectedIds(ids => ids.filter(id => slide.elements.some(element => element.id === id)))
+  }, [slide.elements])
+
+  useEffect(() => { setSelectedIds([]); setLasso(null) }, [slide.id])
 
   const point = (event: ReactPointerEvent): SelectionPoint => {
     const rect = surface.current!.getBoundingClientRect()
@@ -62,13 +71,15 @@ export function PlaybackSelectionOverlay({ slide, scale, selection, elementDispl
     if (active && surface.current?.hasPointerCapture(active.pointerId)) surface.current.releasePointerCapture(active.pointerId)
     setPreview(null)
     setPreviewBounds(null)
+    setLasso(null)
     onPreview(null)
   }
   const visible = (element: SlideElement) => {
     if (element.isLocked || element.type === 'unknown') return false
     if (selectionMembers(slide.elements, element).some(member => member.isLocked)) return false
     const style = elementDisplayStyles[element.id]
-    if (elementRenderStates[element.id] === false || Number(style?.opacity ?? 1) <= 0) return false
+    if (elementRenderStates[element.id] === false || Number(style?.opacity ?? 1) <= 0
+      || style?.display === 'none' || style?.visibility === 'hidden') return false
     // 正在运动的元素等动画结束后才允许变换，避免在动画坐标和页面坐标之间跳动。
     const node = surface.current?.parentElement?.querySelector<HTMLElement>(`[data-element-id="${CSS.escape(element.id)}"]`)
     return !node || !node.getAnimations?.().some(animation => animation.playState === 'running')
@@ -79,15 +90,28 @@ export function PlaybackSelectionOverlay({ slide, scale, selection, elementDispl
     event.stopPropagation()
     surface.current?.focus({ preventScroll: true })
     const start = point(event)
-    let target = selected
+    let original = members
     if (!handle) {
-      target = [...slide.elements].reverse().find(element => visible(element) && hitSelectionElement(element, start, scale))
-      setSelectedId(target?.id || null)
+      const target = [...slide.elements].reverse().find(element => visible(element)
+        && selectionMembers(slide.elements, element).every(visible) && hitSelectionElement(element, start, scale))
+      const additive = event.shiftKey || event.ctrlKey || event.metaKey
+      if (target) {
+        const hitMembers = selectionMembers(slide.elements, target)
+        original = additive ? slide.elements.filter(element => selectedIds.includes(element.id)
+          || hitMembers.some(member => member.id === element.id))
+          : selectedIds.includes(target.id) ? members : hitMembers
+      } else if (!additive && bounds && selectionContains(bounds, start)) {
+        original = members
+      } else {
+        gesture.current = { kind: 'lasso', pointerId: event.pointerId, points: [start], additive }
+        setLasso([start])
+        surface.current?.setPointerCapture(event.pointerId)
+        return
+      }
     }
-    if (!target) return
-    const original = selectionMembers(slide.elements, target)
-    if (!original.every(visible)) return
-    gesture.current = { pointerId: event.pointerId, start, original, bounds: selectionBounds(original),
+    if (!original.length || !original.every(visible)) return
+    setSelectedIds(original.map(element => element.id))
+    gesture.current = { kind: 'transform', pointerId: event.pointerId, start, original, bounds: selectionBounds(original),
       handle: handle || 'move', next: null, clones: null }
     surface.current?.setPointerCapture(event.pointerId)
   }
@@ -96,6 +120,14 @@ export function PlaybackSelectionOverlay({ slide, scale, selection, elementDispl
     if (!active || event.pointerId !== active.pointerId) return
     event.preventDefault()
     const position = point(event)
+    if (active.kind === 'lasso') {
+      const last = active.points[active.points.length - 1]
+      if (Math.hypot(position.x - last.x, position.y - last.y) * scale >= 2) {
+        active.points.push(position)
+        setLasso([...active.points])
+      }
+      return
+    }
     const delta = { x: position.x - active.start.x, y: position.y - active.start.y }
     if (Math.hypot(delta.x, delta.y) * scale < 3 && !active.next) return
     const from = active.bounds
@@ -123,17 +155,24 @@ export function PlaybackSelectionOverlay({ slide, scale, selection, elementDispl
   }
   const handleEnd = (event: ReactPointerEvent) => {
     if (gesture.current?.pointerId !== event.pointerId) return
-    const { next, clones } = gesture.current
+    const active = gesture.current
+    if (active.kind === 'lasso') {
+      const enclosed = lassoSelection(slide.elements, [...active.points, point(event)], visible).map(element => element.id)
+      setSelectedIds(ids => active.additive ? [...new Set([...ids, ...enclosed])] : enclosed)
+      clearGesture()
+      return
+    }
+    const { next, clones } = active
     clearGesture()
     if (next) {
-      if (clones) selection.onDuplicate(next)
+      if (clones) { selection.onDuplicate(next); setSelectedIds(next.map(element => element.id)) }
       else selection.onChange(next)
     }
   }
   const handleCommand = (command: 'bring-front' | 'delete') => {
     clearGesture()
     selection.onCommand(command, members.map(element => element.id))
-    if (command === 'delete') setSelectedId(null)
+    if (command === 'delete') setSelectedIds([])
   }
 
   const corners = bounds ? [[-1, -1], [-1, 1], [1, -1], [1, 1]].map(([x, y]) => {
@@ -142,21 +181,27 @@ export function PlaybackSelectionOverlay({ slide, scale, selection, elementDispl
       y: (bounds.y + bounds.height / 2 + offset.y) * scale }
   }) : []
   const bottom = Math.max(...corners.map(corner => corner.y)) + 16
-  const menuTop = bottom + 48 < slide.height * scale - 90 ? bottom
-    : Math.max(6, Math.min(...corners.map(corner => corner.y)) - 56)
+  const menuTop = bottom + 56 < slide.height * scale - 90 ? bottom
+    : Math.max(6, Math.min(...corners.map(corner => corner.y)) - 72)
 
   return <div ref={surface} style={styles.surface} tabIndex={0} data-playback-selection
     onPointerDown={event => handleStart(event)} onPointerMove={handleMove} onPointerUp={handleEnd}
-    onPointerCancel={clearGesture} onLostPointerCapture={() => { if (gesture.current) clearGesture() }}
+    onPointerCancel={event => { if (gesture.current?.pointerId === event.pointerId) clearGesture() }}
+    onLostPointerCapture={event => { if (gesture.current?.pointerId === event.pointerId) clearGesture() }}
     onBlur={clearGesture} onClick={event => { event.preventDefault(); event.stopPropagation() }}
     onDoubleClick={event => { event.preventDefault(); event.stopPropagation() }}
     onContextMenu={event => event.preventDefault()}
     onKeyDown={event => {
       if ((event.target as HTMLElement).closest('input, textarea, select, button, [role="slider"]')) return
-      if (event.key === 'Escape') { clearGesture(); setSelectedId(null); event.stopPropagation() }
-      if (event.key === 'Delete' && members.length) { handleCommand('delete'); event.stopPropagation() }
+      if (event.key === 'Escape') { clearGesture(); setSelectedIds([]); event.preventDefault(); event.stopPropagation() }
+      if (event.key === 'Delete' && members.length) { handleCommand('delete'); event.preventDefault(); event.stopPropagation() }
     }}>
-    {bounds && <>
+    {lasso && <svg data-selection-lasso aria-hidden='true' width='100%' height='100%'
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+      <polygon points={lasso.map(point => `${point.x * scale},${point.y * scale}`).join(' ')}
+        fill='#168cff14' stroke='#168cff' strokeWidth={1.5} strokeDasharray='5 3' />
+    </svg>}
+    {bounds && !lasso && <>
       <div style={{ ...styles.box, left: bounds.x * scale, top: bounds.y * scale,
         width: bounds.width * scale, height: bounds.height * scale, transform: `rotate(${bounds.rotation || 0}deg)` }}>
         {selectionHandles.map(handle => {
@@ -170,8 +215,8 @@ export function PlaybackSelectionOverlay({ slide, scale, selection, elementDispl
           onPointerDown={event => handleStart(event, 'rotate')} />
       </div>
       {!preview && <SelectionActionBar members={members} selection={selection} top={menuTop}
-        resourceMap={resourceMap}
-        left={Math.max(6, Math.min(slide.width * scale - 380, (bounds.x + bounds.width / 2) * scale - 190))}
+        resourceMap={resourceMap} viewportWidth={slide.width * scale}
+        left={(bounds.x + bounds.width / 2) * scale}
         onDelete={() => handleCommand('delete')} />}
     </>}
   </div>

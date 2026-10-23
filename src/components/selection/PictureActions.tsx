@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Button, Modal, Slider } from 'antd'
 import type { PictureElement } from '../../types'
-import { selectionStyles as styles } from './styles'
+import { SelectionActionButton } from './SelectionActionButton'
 import { PictureRenderer } from '../PictureRenderer'
 import { cropSelectionPicture } from '../../viewer/selection-picture'
 
@@ -43,10 +43,10 @@ export function PictureActions({ picture, resourceMap, onChange }: PictureAction
     }
   }
   return <>
-    <button style={styles.button} disabled={!source} onClick={() => void handleExport()}>导出</button>
-    <button style={styles.button} disabled={!source} onClick={() => {
+    <SelectionActionButton icon='Export' label='导出' disabled={!source} onClick={() => void handleExport()} />
+    <SelectionActionButton icon='Clip' label='裁剪' disabled={!source} onClick={() => {
       setRange({ left: 0, top: 0, right: 100, bottom: 100 }); setCropping(true)
-    }}>裁剪</button>
+    }} />
     <Modal title='裁剪图片' open={cropping} onCancel={() => setCropping(false)}
       footer={<><Button onClick={() => setCropping(false)}>取消</Button><Button type='primary' onClick={() => void handleCrop()}>应用</Button></>}>
       <div style={{ position: 'relative', marginBottom: 16,
