@@ -8,6 +8,7 @@ import type {
 import { parseXML, getElementText, getDirectChildElement, getDirectChildText, parseColor } from './xml-utils'
 import { parseSlideElements } from './slide-elements-parser'
 import { parseSlideAnimations } from './slide-animations'
+import { parseActivities } from './activities/activity-parser'
 
 export type {
 CoursewareMetadata,
@@ -336,6 +337,7 @@ export function parseSlideXML(xmlString: string): SlideData {
     console.log(`[Slide ${id}] 没有找到 Elements 节点`)
   }
 
+  const activities = parseActivities(slideElement, elements, id, issues)
   return {
     id,
     width,
@@ -350,6 +352,7 @@ export function parseSlideXML(xmlString: string): SlideData {
     animationOrders,
     animations,
     issues,
-    elements
+    elements,
+    activities
   }
 }

@@ -1,4 +1,5 @@
 import type { CoursewareMetadata } from './courseware'
+import type { ActivityDefinition, ActivityElement } from './activities'
 import type { TextElement } from './text'
 import type {
   ShapeElement,
@@ -90,6 +91,7 @@ export type SlideElement = (
   | ChartElement
   | MathFunctionElement
   | SolarSystemElement
+  | ActivityElement
   | UnknownElement
 ) & {
   groupId?: string
@@ -117,6 +119,7 @@ export interface SlideData {
   animations: ElementAnimation[]
   issues: SlideIssue[]
   elements: SlideElement[]
+  activities?: ActivityDefinition[]
 }
 
 export interface CoursewareData {

@@ -10,6 +10,7 @@ import { hitSelectionElement } from '../../viewer/selection-hit-test'
 import { SelectionActionBar } from './SelectionActionBar'
 import { cloneSelection } from '../../viewer/selection-clone'
 import { lassoSelection } from '../../viewer/selection-lasso'
+import { pointerToSlide } from '../../viewer/pointer-coordinates'
 
 interface PlaybackSelectionOverlayProps {
   slide: SlideData
@@ -63,7 +64,7 @@ export function PlaybackSelectionOverlay({ slide, scale, selection, elementDispl
 
   const point = (event: ReactPointerEvent): SelectionPoint => {
     const rect = surface.current!.getBoundingClientRect()
-    return { x: (event.clientX - rect.left) / scale, y: (event.clientY - rect.top) / scale }
+    return pointerToSlide(event, rect, scale)
   }
   const clearGesture = () => {
     const active = gesture.current
@@ -75,8 +76,8 @@ export function PlaybackSelectionOverlay({ slide, scale, selection, elementDispl
     onPreview(null)
   }
   const visible = (element: SlideElement) => {
-    if (element.isLocked || element.type === 'unknown') return false
-    if (selectionMembers(slide.elements, element).some(member => member.isLocked)) return false
+    if (element.isLocked || element.type === 'unknown' || element.type === 'activity') return false
+    if (selectionMembers(slide.elements, element).some(member => member.isLocked || member.type === 'activity')) return false
     const style = elementDisplayStyles[element.id]
     if (elementRenderStates[element.id] === false || Number(style?.opacity ?? 1) <= 0
       || style?.display === 'none' || style?.visibility === 'hidden') return false

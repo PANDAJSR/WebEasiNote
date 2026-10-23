@@ -147,6 +147,7 @@ export function SlideViewer({
       return
     }
     if (playbackSelection?.enabled || !clickToNextEnabled) return
+    if (target.closest('[data-activity-control="true"]')) return
     if (target.closest('[data-slide-element="true"]')) return
     handleNextSlide('click')
   }

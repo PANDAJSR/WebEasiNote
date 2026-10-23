@@ -1,4 +1,4 @@
-import type { SlideData } from '../types'
+import type { SlideData, SlideElement } from '../types'
 
 /** 仅补读学科卡片显式引用的逻辑路径，不扫描或预加载整个资源目录。 */
 export function subjectResourcePaths(slides: SlideData[]) {
@@ -8,7 +8,14 @@ export function subjectResourcePaths(slides: SlideData[]) {
     if (!path || /[:?#]/.test(path) || path.split('/').some(part => !part || part === '.' || part === '..')) return
     paths.add(path)
   }
-  for (const slide of slides) for (const element of slide.elements) {
+  const visit = (elements: SlideElement[]): SlideElement[] => elements.flatMap(element => {
+    if (element.type !== 'activity') return [element]
+    for (const brush of [element.background, element.stroke]) if (brush?.type === 'image') add(brush.sourceId)
+    // 活动嵌套元素可能直接保存相对路径，Reference.xml 中未必有对应项。
+    for (const content of element.contents) if ('sourceId' in content) add(content.sourceId)
+    return visit(element.contents)
+  })
+  for (const slide of slides) for (const element of visit(slide.elements)) {
     if (element.type === 'englishWordCard') {
       add(element.pronounceSource)
       element.synonyms.forEach(item => add(item.pronounceSource))

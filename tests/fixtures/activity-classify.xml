@@ -1,0 +1,39 @@
+<!-- 根据官方 5.2.4.10148 的保存契约构造，非官方导出样例。 -->
+<Slide>
+  <Id>classification-page</Id><Width>800</Width><Height>600</Height>
+  <Elements>
+    <ActivityItem>
+      <Id>fruit</Id><X>20</X><Y>20</Y><Width>200</Width><Height>180</Height>
+      <ResourceType>Container</ResourceType><ActivityId>theme</ActivityId><ResourceId>fruit-template</ResourceId>
+      <Background><ColorBrush>#ffdbf4d5</ColorBrush></Background>
+      <RichText><RichText><Text>水果</Text></RichText></RichText>
+    </ActivityItem>
+    <ActivityItem>
+      <Id>animal</Id><X>300</X><Y>20</Y><Width>200</Width><Height>180</Height>
+      <ResourceType>1</ResourceType><ActivityId>theme</ActivityId><ResourceId>animal-template</ResourceId>
+      <Background><ColorBrush>#ffdaeaff</ColorBrush></Background>
+      <Text><RichText><Text>动物</Text></RichText></Text>
+    </ActivityItem>
+    <ActivityItem>
+      <Id>apple</Id><X>40</X><Y>300</Y><Width>80</Width><Height>60</Height>
+      <ResourceType>2</ResourceType><ActivityId>theme</ActivityId><ResourceId>shared-material-template</ResourceId>
+      <IsLocked>true</IsLocked><CanClone>true</CanClone>
+      <Background><ColorBrush>#fffce7ad</ColorBrush></Background>
+      <RichText><RichText><Text>苹果</Text></RichText></RichText>
+      <Contents><Shape><Id>decoration</Id><X>2</X><Y>2</Y><Width>8</Width><Height>8</Height><Background><ColorBrush>#ffff0000</ColorBrush></Background></Shape></Contents>
+    </ActivityItem>
+    <ActivityItem>
+      <Id>cat</Id><X>300</X><Y>300</Y><Width>80</Width><Height>60</Height>
+      <ResourceType>Material</ResourceType><ActivityId>theme</ActivityId><ResourceId>shared-material-template</ResourceId>
+      <Background><ColorBrush>#fffce7ad</ColorBrush></Background>
+      <RichText><RichText><Text>小猫</Text></RichText></RichText>
+    </ActivityItem>
+  </Elements>
+  <Extensions><Activity>
+    <Id>theme</Id><Key>Classify</Key><IsPlayAudio>true</IsPlayAudio>
+    <Config><ClassifyConfig><ClassifyActivityMode>Classical</ClassifyActivityMode><Classifies>
+      <Classify><Id>fruit</Id><Name>水果</Name><Items><Item><Id>apple</Id><Name>苹果</Name></Item></Items></Classify>
+      <Classify><Id>animal</Id><Name>动物</Name><Items><Item><Id>cat</Id><Name>小猫</Name></Item></Items></Classify>
+    </Classifies></ClassifyConfig></Config>
+  </Activity></Extensions>
+</Slide>

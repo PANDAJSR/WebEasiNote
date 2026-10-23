@@ -27,6 +27,7 @@ import { DictationCardRenderer } from '../subject-cards/DictationCardRenderer'
 import { ChartRenderer } from '../subject-cards/ChartRenderer'
 import { MathFunctionRenderer } from '../subject-cards/MathFunctionRenderer'
 import { SolarSystemRenderer } from '../subject-cards/SolarSystemRenderer'
+import { ActivityElementRenderer } from '../activities/ActivityElementRenderer'
 
 interface ElementRendererProps {
   element: SlideElement
@@ -54,6 +55,9 @@ export function ElementRenderer({
   slideHeight = 720
 }: ElementRendererProps) {
   switch (element.type) {
+    case 'activity':
+      return <ActivityElementRenderer element={element} scale={scale} resourceMap={resourceMap}
+        slideIndex={slideIndex} currentIndex={currentIndex} isEditMode={isEditMode} />
     case 'mathFunction':
       return <MathFunctionRenderer element={element} scale={scale} active={slideIndex === currentIndex && isVisible && !isEditMode} />
     case 'solarSystem':

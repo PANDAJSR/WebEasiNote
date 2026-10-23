@@ -33,3 +33,4 @@ export type {
   CoursewareData
 } from './types/slide'
 export * from './types/complex-subjects'
+export type { ActivityDefinition, ActivityElement, ActivityCategory } from './types/activities'

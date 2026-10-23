@@ -20,6 +20,7 @@ import { getDirectChildElement, getDirectChildText } from './xml-utils'
 import { applySelectionFlags } from './element-selection-flags'
 import { KNOWN_PARAMETERS } from './slide-elements-known-parameters'
 import { isStaticNodeSafe } from '../rendering/staticSafety'
+import { parseActivityElement } from './activities/activity-element'
 
 interface ParseElementsOptions {
   slideId: string
@@ -347,6 +348,13 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         break
       }
       default: {
+        if (tagName === 'ActivityItem') {
+          collectUnknownParameters(node, tagName, slideId, elementId, issues)
+          const activity = parseActivityElement(node, contents => parseSlideElements(contents, { slideId }))
+          parsedElements.push({ ...applyOffset(activity.element, offsetX, offsetY), rawXml })
+          issues.push(...activity.issues)
+          break
+        }
         const subject = parseComplexSubject(node)
         if (subject) {
           collectUnknownParameters(node, tagName, slideId, elementId, issues)
@@ -366,16 +374,8 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
           elementId,
           name: tagName
         })
-        Array.from(node.children).forEach(child => {
-          issues.push({
-            kind: 'unknown-parameter',
-            slideId,
-            elementType: tagName,
-            elementId,
-            name: child.tagName,
-            value: previewValue(child)
-          })
-        })
+        Array.from(node.children).forEach(child => issues.push({ kind: 'unknown-parameter', slideId,
+          elementType: tagName, elementId, name: child.tagName, value: previewValue(child) }))
 
         parsedElements.push({
           type: 'unknown',

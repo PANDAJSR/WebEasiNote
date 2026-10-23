@@ -1,6 +1,11 @@
 import { COMPLEX_SUBJECT_PARAMETERS } from './complex-subject-parameters'
 
 export const KNOWN_PARAMETERS: Record<string, Set<string>> = {
+  ActivityItem: new Set(['Id', 'X', 'Y', 'Width', 'Height', 'Rotation', 'Animations', 'ResourceType',
+    'ActivityId', 'ResourceId', 'Source', 'Background', 'Text', 'RichText', 'TextVerticalAlignment',
+    'VerticalAlignment', 'TextHorizontalAlignment', 'HorizontalAlignment', 'TextVerticalOffset',
+    'VerticalOffset', 'TextHorizontalOffset', 'HorizontalOffset', 'StrokeThickness', 'Stroke',
+    'RoundRadius', 'TextEditorWidth', 'Contents']),
   ...COMPLEX_SUBJECT_PARAMETERS,
   Text: new Set([
     'Id',

@@ -11,6 +11,8 @@ import { StaticRunLayer } from './slide-renderer/StaticRunLayer'
 import { EditSelectionBox } from './slide-renderer/EditSelectionBox'
 import { PlaybackSelectionOverlay } from './selection/PlaybackSelectionOverlay'
 import type { PlaybackSelection } from '../viewer/usePlaybackSelection'
+import { useActivityPlayback } from '../viewer/activities/useActivityPlayback'
+import { ActivityControls } from './activities/ActivityControls'
 interface SlideRendererProps {
   slide: SlideData
   scale?: number
@@ -61,6 +63,8 @@ export function SlideRenderer({
   const scaledWidth = slide.width * scale
   const scaledHeight = slide.height * scale
   const [selectionPreview, setSelectionPreview] = useState<SlideData['elements'] | null>(null)
+  const activity = useActivityPlayback(slide, scale, !isEditMode && !playbackSelection?.enabled
+    && slideIndex === currentIndex, elementDisplayStyles, elementRenderStates)
   const renderItems = useMemo(() => isEditMode || playbackSelection?.enabled ? slide.elements : getStaticPlan(slide),
     [slide, isEditMode, playbackSelection?.enabled])
   const {
@@ -240,6 +244,7 @@ export function SlideRenderer({
                 key={element.id}
                 data-slide-element='true'
                 data-element-id={element.id}
+                {...activity.handlers(element)}
                 style={{
                   position: 'absolute',
                   left: bounds.x,
@@ -252,10 +257,11 @@ export function SlideRenderer({
                       ? 'text'
                       : 'move'
                     : undefined,
-                  ...elementDisplayStyles[element.id]
+                  ...elementDisplayStyles[element.id],
+                  ...(!isEditMode ? activity.style(element) : {})
                 }}
                 onMouseDown={event => handleEditElementMouseDown(element, event)}
-                onClick={() => handleEditElementClick(element.id)}
+                onClick={() => { if (isEditMode || element.type !== 'activity') handleEditElementClick(element.id) }}
                 onDoubleClick={event => {
                   if (!isEditMode || !canEditText) return
                   event.stopPropagation()
@@ -367,6 +373,7 @@ export function SlideRenderer({
         slide={slide} scale={scale} selection={playbackSelection} elementDisplayStyles={elementDisplayStyles}
         resourceMap={resourceMap}
         elementRenderStates={elementRenderStates} onPreview={setSelectionPreview} />}
+      {!isEditMode && slideIndex === currentIndex && <ActivityControls playback={activity} paused={!!playbackSelection?.enabled} />}
     </div>
   )
 }

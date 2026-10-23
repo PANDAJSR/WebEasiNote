@@ -1,18 +1,21 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import type { SlideData } from '../../enbx/parser'
+import type { SlideElement } from '../../types'
 import { SlideRenderer } from '../SlideRenderer'
 import { thumbnailHeight, thumbnailWidth } from './constants'
 
 export const SlidePreviewLoader = createContext<((index: number, signal: AbortSignal) => Promise<SlideData>) | undefined>(undefined)
 
 const previews = new WeakMap<SlideData, SlideData>()
+const staticElements = (elements: SlideElement[]): SlideElement[] => elements
+  .filter(element => element.type !== 'audio' && element.type !== 'video' && element.type !== 'flash')
+  .map(element => element.type === 'activity' ? { ...element, contents: staticElements(element.contents) } : element)
 
 /** 预览只复用静态元素，绝不挂载媒体播放器或 Flash 运行时。 */
 export function staticPreview(slide: SlideData): SlideData {
   let preview = previews.get(slide)
   if (!preview) {
-    preview = { ...slide, elements: slide.elements.filter(element =>
-      element.type !== 'audio' && element.type !== 'video' && element.type !== 'flash') }
+    preview = { ...slide, elements: staticElements(slide.elements), activities: undefined }
     previews.set(slide, preview)
   }
   return preview

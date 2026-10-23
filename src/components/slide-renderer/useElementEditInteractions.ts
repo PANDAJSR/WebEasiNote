@@ -248,7 +248,7 @@ export function useElementEditInteractions({
   }
 
   const handleSlideClickCapture = (event: ReactMouseEvent<HTMLDivElement>) => {
-    if ((event.target as HTMLElement).closest?.('[data-audio-control="true"], [data-subject-control="true"]')) return
+    if ((event.target as HTMLElement).closest?.('[data-audio-control="true"], [data-subject-control="true"], [data-activity-control="true"]')) return
     if (editingTextElementId) return
     if (!onElementClick) return
     const rect = event.currentTarget.getBoundingClientRect()
