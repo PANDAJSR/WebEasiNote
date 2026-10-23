@@ -302,6 +302,9 @@ test('播放选择消费点击、取消预览；提交、置顶、删除跨页�
   await pointer('pointerup', 100, 80)
   assert.equal(selection!.slides[0].elements[0].x, 80)
   assert.equal(pages[0].elements[0].x, 40)
+  assert.equal(container.querySelector('[aria-label="旋转"]'), null)
+  await pointer('pointerdown', 100, 80)
+  await pointer('pointerup', 100, 80)
   const resizeHandle = container.querySelector('[aria-label="缩放 e"]')!
   await act(async () => resizeHandle.dispatchEvent(new window.PointerEvent('pointerdown',
     { bubbles: true, pointerId: 1, button: 0, clientX: 180, clientY: 100 })))
