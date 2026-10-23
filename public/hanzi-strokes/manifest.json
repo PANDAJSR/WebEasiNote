@@ -1,0 +1,11 @@
+{
+  "fontSha256": "028fa9a4fed2407cb2c3d0e7bd425881ffb530429dd3fd21b588e2b3d3e52a1a",
+  "databaseSha256": "eabb7db484c4bfb44bb4acfded2abdccb230f2aecea0080fb0a5e7f1c1336056",
+  "characters": 4941,
+  "missingFont": 584,
+  "rejected": [],
+  "shards": 81,
+  "emSize": 300,
+  "offsetX": -45,
+  "format": "character -> [outline SVG path, animation SVG polyline][] in writing order"
+}

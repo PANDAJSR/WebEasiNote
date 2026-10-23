@@ -22,6 +22,7 @@ export const subjectStyles: Record<string, CSSProperties> = {
   secondary: { color: '#626773' },
   grid: { position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   hanzi: { fontFamily: '"华文楷体", STKaiti, KaiTi, serif', fontSize: 130, zIndex: 1, lineHeight: 1 },
+  hanziStroke: { position: 'relative', zIndex: 1, overflow: 'visible', flexShrink: 0 },
   footer: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 },
   popup: { position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', background: '#ffffff',
     boxShadow: '0 2px 12px #00000024', borderRadius: 4, padding: '4px 8px', zIndex: 10 },

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { HanziCardElement, HanziInfo, PronounceResource } from '../../types'
 import { PronounceButton } from './PronounceButton'
 import { SubjectCardFrame } from './SubjectCardFrame'
+import { HanziStrokeDisplay } from './HanziStrokeDisplay'
 import { findPronounceSource } from './chinese-pronunciation'
 import { chineseFont, subjectStyles as styles } from './styles'
 export { PinyinCardRenderer } from './PinyinCardRenderer'
@@ -21,20 +22,11 @@ function HanziCharacter({ info, resources, resourceMap, active }: {
       <PronounceButton source={findPronounceSource(resources, pinyin)} resourceMap={resourceMap} active={active}
         label={`播放 ${info.hanzi} 发音`} />
     </div>
-    <div style={{ ...styles.grid, width: 156, height: 156, margin: '0 12px 3px' }}>
-      <svg aria-hidden="true" viewBox="0 0 156 156" width="156" height="156" style={{ position: 'absolute', inset: 0 }}>
-        <rect x="1" y="1" width="154" height="154" fill="none" stroke="#00c881" strokeWidth="2" />
-        <path d="M78 1V155M1 78H155" fill="none" stroke="#00c881" strokeWidth="2" strokeDasharray="3 3" />
-      </svg>
-      <span style={styles.hanzi}>{info.hanzi}</span>
-    </div>
-    <div style={{ height: 46, display: 'flex', alignItems: 'center', padding: '0 12px', gap: 10 }}>
+    <HanziStrokeDisplay key={info.hanzi} character={info.hanzi} active={active}>
       <div style={{ fontSize: 10, lineHeight: '18px', color: '#626773', minWidth: 58 }}>
         <div>笔画：{info.strokeCount || ''}</div><div>部首：{info.radical}</div>
       </div>
-      <button type="button" disabled title="课件未包含笔顺数据" style={{ ...styles.button, width: 40, height: 26 }}>连写</button>
-      <button type="button" disabled title="课件未包含笔顺数据" style={{ ...styles.button, width: 40, height: 26 }}>单步</button>
-    </div>
+    </HanziStrokeDisplay>
   </div>
 }
 
