@@ -11,6 +11,7 @@ import type { ActivityElement } from '../src/types'
 import { staticPreview } from '../src/components/slide-viewer/SlidePreview'
 import { subjectResourcePaths } from '../src/courseware/subject-resources'
 import { playClassificationFeedback } from '../src/viewer/activities/classification-feedback'
+import { parseBrush } from '../src/enbx/brushes'
 
 const window = new Window()
 Object.assign(globalThis, { window, document: window.document, DOMParser: window.DOMParser,
@@ -22,6 +23,21 @@ window.HTMLElement.prototype.setPointerCapture = function (id: number) { capture
 window.HTMLElement.prototype.hasPointerCapture = function (id: number) { return captures.has(id) }
 window.HTMLElement.prototype.releasePointerCapture = function (id: number) { captures.delete(id) }
 const xml = readFileSync(new URL('./fixtures/activity-classify.xml', import.meta.url), 'utf8')
+
+test('真实活动 ImageBrush/Source 独立读取，不把 Stretch/矩阵等字段拼入资源 ID', async () => {
+  const brushXml = readFileSync(new URL('./fixtures/activity-image-brush.xml', import.meta.url), 'utf8')
+  const brush = parseBrush(new DOMParser().parseFromString(brushXml, 'text/xml').documentElement)
+  assert.deepEqual(brush, { type: 'image', sourceId: '9d4ae8f4c02eed926eafce20d89b28e7',
+    stretch: 'Fill', tileMode: 'None', opacity: 1 })
+  const slide = parseSlideXML(xml.replace('<Background><ColorBrush>#ffdbf4d5</ColorBrush></Background>',
+    brushXml.replace(/<!--[\s\S]*?-->/, '')))
+  const container = document.createElement('div')
+  const root = createRoot(container as unknown as HTMLElement)
+  await act(async () => root.render(<SlideRenderer slide={slide}
+    resourceMap={{ '9d4ae8f4c02eed926eafce20d89b28e7': 'https://example.test/island.png' }} />))
+  assert.equal(container.querySelector('[data-element-id="fruit"] img')?.getAttribute('src'), 'https://example.test/island.png')
+  await act(async () => root.unmount())
+})
 
 test('活动保存契约：角色、嵌套富文本/内容、ID 关联、旧 JSON 和诊断', () => {
   const slide = parseSlideXML(xml)
@@ -156,6 +172,8 @@ test('分类拖动缩放、取消、判题、选择切换、重置和跨挂载�
   assert.equal(node().style.pointerEvents, 'none')
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 420)) })
   assert.equal(node().style.visibility, 'hidden')
+  // 内层必须继承隐藏状态；显式 visible 会让答对后的图片/文字继续显示。
+  assert.equal((node().firstElementChild as HTMLElement).style.visibility, '')
   assert.ok(container.textContent?.includes('已分类 1 / 2'))
   await act(async () => node('fruit').dispatchEvent(new window.MouseEvent('click', { bubbles: true }) as unknown as Event))
   assert.equal(animationClicks, 0)
@@ -170,6 +188,7 @@ test('分类拖动缩放、取消、判题、选择切换、重置和跨挂载�
   await act(async () => (container.querySelector('button') as unknown as HTMLButtonElement).click())
   assert.equal(node().style.visibility, '')
   assert.equal(node('cat').style.visibility, '')
+  assert.equal((node().firstElementChild as HTMLElement).style.visibility, '')
   assert.equal(JSON.stringify(slide), snapshot)
   await act(async () => root.unmount())
   container.remove()

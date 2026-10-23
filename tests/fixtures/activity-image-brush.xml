@@ -1,0 +1,14 @@
+<!-- 从用户“测试课堂活动1.enbx”第 2 页提取的画刷结构，保留真实字段和资源 ID。 -->
+<Background>
+  <ImageBrush>
+    <Source>id://9d4ae8f4c02eed926eafce20d89b28e7</Source>
+    <Stretch>Fill</Stretch>
+    <TileMode>None</TileMode>
+    <Opacity>1</Opacity>
+    <ViewboxUnits>RelativeToBoundingBox</ViewboxUnits>
+    <ViewportUnits>RelativeToBoundingBox</ViewportUnits>
+    <Viewbox>0,0,1,1</Viewbox>
+    <Viewport>0,0,1,1</Viewport>
+    <RelativeMatrixTransform>1,0,0,1,0,0</RelativeMatrixTransform>
+  </ImageBrush>
+</Background>

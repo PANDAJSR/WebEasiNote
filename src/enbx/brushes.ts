@@ -189,6 +189,7 @@ export function parseBrush(node: Element | null | undefined): Brush | null {
       imageNode.getAttribute('ImageSource') ||
       getDirectChildText(imageNode, 'ImageUri') ||
       getDirectChildText(imageNode, 'ImageSource') ||
+      getDirectChildText(imageNode, 'Source') ||
       imageNode.textContent?.trim() ||
       ''
     const sourceId = rawUri.replace(/^id:\/\//i, '').replace(/\\/g, '/')

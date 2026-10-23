@@ -275,7 +275,7 @@ export function SlideRenderer({
                     position: 'absolute',
                     left: -bounds.x,
                     top: -bounds.y,
-                    visibility: hideReadOnlyTextLayer ? 'hidden' : 'visible'
+                    visibility: hideReadOnlyTextLayer ? 'hidden' : undefined
                   }}
                 >
                   <ElementRenderer
