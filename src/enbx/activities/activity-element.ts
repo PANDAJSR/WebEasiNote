@@ -21,6 +21,10 @@ export function parseActivityElement(node: Element, parseContents: ParseContents
   const parsedText = richText ? parseRichTextNode(richText) : undefined
   const editorWidth = number(node, 'TextEditorWidth')
   const width = editorWidth > 0 ? editorWidth : Math.max(1, bounds.width - 20)
+  const right = horizontal === 'Right' || horizontal === '2'
+  const bottom = vertical === 'Bottom' || vertical === '2'
+  const offsetX = number(node, 'TextHorizontalOffset', number(node, 'HorizontalOffset'))
+  const offsetY = number(node, 'TextVerticalOffset', number(node, 'VerticalOffset'))
   const element: ActivityElement = {
     ...bounds, type: 'activity', activityId: text(node, 'ActivityId'), resourceId: text(node, 'ResourceId'), role,
     background: parseBrush(child(node, 'Background')) || undefined,
@@ -30,11 +34,12 @@ export function parseActivityElement(node: Element, parseContents: ParseContents
     text: parsedText ? { ...bounds, ...parsedText, type: 'text', id: `${bounds.id}:text`, rotation: 0,
       width, x: (horizontal === 'Left' || horizontal === '0' ? 0
         : horizontal === 'Right' || horizontal === '2' ? bounds.width - width : (bounds.width - width) / 2)
-        + number(node, 'TextHorizontalOffset', number(node, 'HorizontalOffset')),
-      y: number(node, 'TextVerticalOffset', number(node, 'VerticalOffset')),
+        + (right ? -offsetX : offsetX),
+      y: bottom ? -offsetY : offsetY,
       verticalTextAlignment: vertical === 'Top' || vertical === '0' ? 'Top'
         : vertical === 'Bottom' || vertical === '2' ? 'Bottom' : 'Center',
-      textLines: parsedText.textLines } : undefined
+      textLines: parsedText.textLines.map(line => ({ ...line,
+        textAlignment: richText?.querySelector('TextAlignment') ? line.textAlignment : 'Center' })) } : undefined
   }
   return { element, issues: parsed.issues }
 }

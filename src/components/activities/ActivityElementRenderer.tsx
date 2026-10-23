@@ -19,8 +19,17 @@ export function ActivityElementRenderer({ element, scale, resourceMap, slideInde
     {image && <img src={image} alt='' draggable={false} style={{ ...styles.image,
       objectFit: element.background?.type === 'image' && element.background.stretch === 'Uniform' ? 'contain' : 'fill',
       opacity: element.background?.opacity ?? 1, borderRadius: 'inherit' }} />}
-    {element.text && <TextElementRenderer element={element.text} scale={scale} />}
-    {element.contents.map(content => <ElementRenderer key={content.id} element={content} scale={scale}
-      resourceMap={resourceMap} slideIndex={slideIndex} currentIndex={currentIndex} isEditMode={isEditMode} />)}
+    {!element.contents.length && element.text && <TextElementRenderer element={element.text} scale={scale} />}
+    {element.contents.slice(0, 1).map(content => {
+      // 官方旧 Contents 只取首个元素，重置其坐标并逐轴限制到活动框尺寸。
+      const width = Math.min(content.width, element.width)
+      const height = Math.min(content.height, element.height)
+      const text = element.text
+      const x = (text?.x ?? 0) + ((text?.width ?? element.width) - width) / 2
+      const y = (text?.y ?? 0) + (text?.verticalTextAlignment === 'Top' ? 0
+        : text?.verticalTextAlignment === 'Bottom' ? element.height - height : (element.height - height) / 2)
+      return <ElementRenderer key={content.id} element={{ ...content, x, y, width, height }} scale={scale}
+        resourceMap={resourceMap} slideIndex={slideIndex} currentIndex={currentIndex} isEditMode={isEditMode} />
+    })}
   </div>
 }

@@ -10,6 +10,7 @@ import { SlideRenderer } from '../src/components/SlideRenderer'
 import type { ActivityElement } from '../src/types'
 import { staticPreview } from '../src/components/slide-viewer/SlidePreview'
 import { subjectResourcePaths } from '../src/courseware/subject-resources'
+import { playClassificationFeedback } from '../src/viewer/activities/classification-feedback'
 
 const window = new Window()
 Object.assign(globalThis, { window, document: window.document, DOMParser: window.DOMParser,
@@ -54,6 +55,36 @@ test('分类按中心和最上层容器判题，ResourceId 相同不影响答案
   assert.equal(classificationDrop(definition, slide.elements, apple, 210, 30), 'outside')
   const overlapping = [...slide.elements, { ...slide.elements[1], x: 20 }]
   assert.equal(classificationDrop(definition, overlapping, apple, 20, 30), 'wrong')
+  const cat = slide.elements[3] as ActivityElement
+  assert.equal(classificationDrop(definition, slide.elements, { ...cat, text: { ...cat.text!,
+    textLines: [{ ...cat.text!.textLines[0], textRuns: [{ ...cat.text!.textLines[0].textRuns[0], text: ' 苹果 ' }] }] } }, 20, 30), 'wrong')
+  const textApple = { ...apple, contents: [] }
+  const sameText = { ...cat, text: textApple.text }
+  assert.equal(classificationDrop(definition, [slide.elements[0], textApple, sameText], sameText, 20, 30), 'correct')
+})
+
+test('官方反馈时序：答对 400ms 缩小、答错 500ms 弹跳后 200ms 返回，结束清理全部动画', () => {
+  const calls: { frames: Keyframe[]; options: KeyframeAnimationOptions }[] = []
+  let cancelled = 0
+  let completed = 0
+  const target = { animate(frames: Keyframe[], options: KeyframeAnimationOptions) {
+    calls.push({ frames, options })
+    return { cancel() { cancelled++ }, effect: { updateTiming() {} } }
+  } } as unknown as HTMLElement
+  const finish = playClassificationFeedback(target, target, true, { x: 0, y: 0 }, () => completed++)
+  assert.deepEqual(calls.map(call => call.options.duration), [300, 400])
+  assert.deepEqual(calls[0].frames.map(frame => frame.scale), ['1.2', '1.3', '0.8', '1'])
+  finish()
+  finish()
+  assert.equal(cancelled, 2)
+  assert.equal(completed, 1)
+  calls.length = 0
+  const finishWrong = playClassificationFeedback(target, target, false, { x: -10, y: 40 }, () => completed++)
+  assert.deepEqual(calls.map(call => call.options.duration), [700, 500, 200])
+  assert.equal(calls[2].options.delay, 500)
+  assert.equal(calls[2].frames[1].translate, '-10px 40px')
+  finishWrong()
+  assert.equal(completed, 2)
 })
 
 test('活动预览递归去除媒体和答题状态，直接背景路径参与资源加载', () => {
@@ -84,8 +115,15 @@ test('分类拖动缩放、取消、判题、选择切换、重置和跨挂载�
   const pointer = (type: string, x: number, y: number, id = 1, material = 'apple') => act(async () => node(material).dispatchEvent(
     new window.PointerEvent(type, { bubbles: true, pointerId: id, button: 0, clientX: x, clientY: y }) as unknown as Event))
   await render()
+  // 容器外松手保留位置，下一次答错应返回新的拖动起点。
+  await pointer('pointerdown', 30, 160)
+  await pointer('pointerup', 40, 170)
+  assert.equal(node().style.left, '60px')
+  assert.equal(node().style.top, '320px')
+  await act(async () => (container.querySelector('button') as unknown as HTMLButtonElement).click())
   await pointer('pointerdown', 30, 160)
   await pointer('pointermove', 40, 30)
+  assert.equal(node('fruit').style.scale, '1.2')
   assert.equal(node().style.top, '40px')
   await pointer('pointerup', 40, 30, 2)
   assert.equal(node().style.top, '40px')
@@ -95,6 +133,7 @@ test('分类拖动缩放、取消、判题、选择切换、重置和跨挂载�
   await pointer('pointerdown', 30, 160)
   await pointer('pointerup', 170, 30)
   assert.ok(container.textContent?.includes('分类不正确'))
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 720)) })
   assert.equal(node().style.visibility, '')
   await pointer('pointerdown', 30, 160)
   await pointer('pointermove', 40, 30)
@@ -113,6 +152,9 @@ test('分类拖动缩放、取消、判题、选择切换、重置和跨挂载�
   await render()
   await pointer('pointerdown', 30, 160)
   await pointer('pointerup', 40, 30)
+  assert.notEqual(node().style.visibility, 'hidden')
+  assert.equal(node().style.pointerEvents, 'none')
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 420)) })
   assert.equal(node().style.visibility, 'hidden')
   assert.ok(container.textContent?.includes('已分类 1 / 2'))
   await act(async () => node('fruit').dispatchEvent(new window.MouseEvent('click', { bubbles: true }) as unknown as Event))
@@ -123,6 +165,7 @@ test('分类拖动缩放、取消、判题、选择切换、重置和跨挂载�
   assert.equal(node().style.visibility, 'hidden')
   await pointer('pointerdown', 160, 160, 1, 'cat')
   await pointer('pointerup', 170, 30, 1, 'cat')
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 420)) })
   assert.ok(container.textContent?.includes('分类完成！'))
   await act(async () => (container.querySelector('button') as unknown as HTMLButtonElement).click())
   assert.equal(node().style.visibility, '')
