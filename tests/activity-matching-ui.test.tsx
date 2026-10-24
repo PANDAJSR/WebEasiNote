@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client'
 import { Window } from 'happy-dom'
 import { SlideRenderer } from '../src/components/SlideRenderer'
 import { parseSlideXML } from '../src/enbx/parser'
+import { matchingSession } from '../src/viewer/activities/matching-session'
 
 const window = new Window()
 Object.assign(globalThis, { window, document: window.document, DOMParser: window.DOMParser,
@@ -37,15 +38,16 @@ for (const [key, config] of [['TextMatch', pairConfig], ['GapFilling', gapConfig
       await act(async () => node.click())
     }
     await render()
-    await clickText('开始答题')
+    assert.ok(host.querySelector('[data-activity-canvas]'))
+    assert.equal(host.querySelector('[data-element-id="m"]'), null)
     await click('[data-matching-material="d"]')
     await click('[data-matching-target]')
-    assert.equal(host.querySelector('[data-matching-material="d"]'), null)
+    assert.ok(host.querySelector('[data-matching-material="d"]'))
     assert.ok(!host.textContent?.includes('正确 0'))
     await clickText('检查答案')
     assert.ok(host.textContent?.includes('正确 0 / 1'))
     if (key === 'TextMatch') assert.ok(host.querySelector('[data-matching-material="d"]'))
-    else assert.equal(host.querySelector('[data-matching-material="d"]'), null)
+    else assert.ok(host.querySelector('[data-matching-material="d"]'))
     await click('[data-matching-material="m"]')
     await click('[data-matching-target]')
     await clickText('检查答案')
@@ -53,11 +55,10 @@ for (const [key, config] of [['TextMatch', pairConfig], ['GapFilling', gapConfig
     await act(async () => root.unmount())
     root = createRoot(host as unknown as HTMLElement)
     await render()
-    await clickText('开始答题')
     assert.ok(host.textContent?.includes('活动完成'))
     await render(true)
-    assert.ok(host.textContent?.includes('活动已暂停'))
-    assert.equal((host.querySelector('[data-matching-target]') as HTMLButtonElement).disabled, true)
+    assert.equal(host.querySelector('[data-activity-canvas]'), null)
+    assert.ok(host.querySelector('[data-element-id="m"]'))
     await render()
     await clickText('重新开始')
     assert.ok(host.querySelector('[data-matching-material="m"]'))
@@ -73,4 +74,50 @@ test('matching 缺失关联元素降级静态展示，选择题通过页面配�
   const slide = parseSlideXML(slideXml('Choice', choice))
   assert.equal(slide.activities![0].playable, true)
   assert.equal(slide.activities![0].questions![0].options.length, 2)
+})
+
+test('画布素材在半倍缩放下拖放、取消、错误退回及重新抓取，不修改保存坐标', async () => {
+  const slide = parseSlideXML(slideXml('TextMatch', pairConfig))
+  const saved = JSON.stringify(slide)
+  const host = document.createElement('div')
+  document.body.appendChild(host)
+  const root = createRoot(host as unknown as HTMLElement)
+  await act(async () => root.render(<SlideRenderer slide={slide} scale={0.5} />))
+  const canvas = host.querySelector('[data-activity-canvas]') as unknown as HTMLElement
+  assert.equal(canvas.parentElement?.style.transform, 'scale(0.5)')
+  assert.equal(host.querySelector('[data-element-id="m"]'), null)
+  const target = host.querySelector('[data-matching-target]') as unknown as HTMLElement
+  target.getBoundingClientRect = () => ({ left: 100, top: 50, right: 160, bottom: 80,
+    width: 60, height: 30, x: 100, y: 50, toJSON() {} })
+  const material = (id: string) => host.querySelector(`[data-matching-material="${id}"]`) as unknown as HTMLElement
+  const pointer = async (id: string, type: string, x: number, y: number) => act(async () => {
+    material(id).dispatchEvent(new window.PointerEvent(type, { bubbles: true, pointerId: 3, button: 0,
+      clientX: x, clientY: y }) as unknown as Event)
+  })
+  await pointer('d', 'pointerdown', 0, 0)
+  await pointer('d', 'pointermove', 40, 20)
+  assert.equal(material('d').style.left, '80px')
+  assert.equal(material('d').style.top, '40px')
+  await pointer('d', 'pointercancel', 40, 20)
+  assert.equal(material('d').style.left, '0px')
+  assert.deepEqual(matchingSession(slide.activities![0]).placements, {})
+  await pointer('d', 'pointerdown', 0, 0)
+  await pointer('d', 'pointerup', 120, 60)
+  // 浏览器拖放后的合成点击不得重新选中已放置素材。
+  await act(async () => material('d').click())
+  const session = matchingSession(slide.activities![0])
+  assert.deepEqual(session.placements, { c: 'd' })
+  assert.equal(session.selectedId, null)
+  const check = Array.from(host.querySelectorAll('button')).find(button => button.textContent === '检查答案')!
+  await act(async () => check.click())
+  assert.deepEqual(session.placements, {})
+  await pointer('m', 'pointerdown', 0, 0)
+  await pointer('m', 'pointerup', 120, 60)
+  assert.deepEqual(session.placements, { c: 'm' })
+  await pointer('m', 'pointerdown', 120, 60)
+  await pointer('m', 'pointerup', 300, 200)
+  assert.deepEqual(session.placements, {})
+  assert.equal(JSON.stringify(slide), saved)
+  await act(async () => root.unmount())
+  host.remove()
 })

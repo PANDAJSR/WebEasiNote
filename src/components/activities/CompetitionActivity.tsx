@@ -9,8 +9,7 @@ import { competitionStyles as styles } from './competition-styles'
 export function CompetitionActivity({ definition, elements, resourceMap, active }: {
   definition: ActivityDefinition; elements: SlideElement[]; resourceMap: Record<string, string>; active: boolean
 }) {
-  const [open, setOpen] = useState(false)
-  const [count, setCount] = useState<2 | 4>(2)
+  const [count, setCount] = useState<2 | 4>(() => competitionSession(definition).players.length === 4 ? 4 : 2)
   const [, refresh] = useReducer(value => value + 1, 0)
   const session = competitionSession(definition)
   const config = definition.competition!
@@ -18,13 +17,13 @@ export function CompetitionActivity({ definition, elements, resourceMap, active 
     const pause = () => {
       if (session.state === 'running') { session.state = 'paused'; refresh() }
     }
-    if (!active || !open) pause()
+    if (!active) pause()
     window.addEventListener('blur', pause)
     document.addEventListener('visibilitychange', pause)
     return () => { pause(); window.removeEventListener('blur', pause); document.removeEventListener('visibilitychange', pause) }
-  }, [active, open, definition])
+  }, [active, definition])
   useEffect(() => {
-    if (!active || !open || session.state !== 'running') return
+    if (!active || session.state !== 'running') return
     let last = performance.now()
     const timer = window.setInterval(() => {
       const now = performance.now()
@@ -33,7 +32,7 @@ export function CompetitionActivity({ definition, elements, resourceMap, active 
       refresh()
     }, 50)
     return () => window.clearInterval(timer)
-  }, [active, open, session.state, definition])
+  }, [active, session.state, definition])
   const start = () => {
     session.players = createCompetitionPlayers(config, count)
     session.elapsed = 0
@@ -50,11 +49,8 @@ export function CompetitionActivity({ definition, elements, resourceMap, active 
         resourceMap={resourceMap} slideIndex={0} currentIndex={0} isEditMode={false} />
     </span>
   }
-  if (!open) return <div style={styles.launcher} data-activity-control='true' data-prevent-swipe='true'>
-    <Button disabled={!active} onClick={() => setOpen(true)}>分组竞争 · 开始活动</Button>
-  </div>
   const timing = competitionTiming[session.difficulty]
-  return <section style={styles.panel} aria-label='分组竞争' data-activity-control='true' data-prevent-swipe='true'
+  return <section style={styles.panel} aria-label='分组竞争' data-activity-canvas='GroupCompetition' data-activity-control='true' data-prevent-swipe='true'
     onClick={event => event.stopPropagation()} onPointerDown={event => event.stopPropagation()}>
     <div style={styles.header}><strong>分组竞争</strong>
       <Radio.Group aria-label='组数' value={count} disabled={session.state === 'running' || !active}
@@ -65,14 +61,13 @@ export function CompetitionActivity({ definition, elements, resourceMap, active 
       <Button disabled={!active} onClick={start}>{session.state === 'ready' ? '开始' : '重新开始'}</Button>
       {session.state === 'running' && <Button onClick={() => { session.state = 'paused'; refresh() }}>暂停</Button>}
       {session.state === 'paused' && <Button disabled={!active} onClick={() => { session.state = 'running'; refresh() }}>继续</Button>}
-      <Button onClick={() => setOpen(false)}>返回课件</Button>
       {session.players.length > 0 && <span role='timer'>剩余 {Math.ceil((competitionDuration(session) - session.elapsed) / 1000)} 秒</span>}
     </div>
     <span>点击本组下落的正确素材，避开错误素材。</span>
     <div style={styles.board}>
-      {session.players.map((player, playerIndex) => <div key={playerIndex} style={styles.lane}>
-        <div style={styles.score}>第 {playerIndex + 1} 组 · {player.score} 分 · 连击 {player.combo}</div>
-        {player.drops.map((item, i) => {
+      {(session.players.length ? session.players : Array.from({ length: count }, () => null)).map((player, playerIndex) => <div key={playerIndex} style={styles.lane}>
+        <div style={styles.score}>第 {playerIndex + 1} 组 · {player?.score || 0} 分 · 连击 {player?.combo || 0}</div>
+        {player?.drops.map((item, i) => {
           const progress = (session.elapsed - i * timing.interval) / timing.drop
           if (item.hit || progress < 0 || progress >= 1) return null
           return <Button key={item.id} style={{ ...styles.drop, left: i % 2 ? '52%' : '2%',
@@ -86,7 +81,7 @@ export function CompetitionActivity({ definition, elements, resourceMap, active 
             {content(item.id, item.text)}{item.double && <span>双倍</span>}
           </Button>
         })}
-        {session.state === 'finished' && <div style={styles.summary}>
+        {player && session.state === 'finished' && <div style={styles.summary}>
           <strong>第 {playerIndex + 1} 组：{player.score} 分</strong>
           <span>正确 {player.right} · 错误 {player.wrong}</span><span>最高连击 {player.maximumCombo}</span>
         </div>}

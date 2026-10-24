@@ -18,6 +18,6 @@
 
 `parseQuestionConfig(key, config)` 返回 `{ questions, diagnostics }`，支持类型化 XML 和 Config 中的旧 JSON。任何题目无效时返回空列表和诊断；拒绝缺失或非布尔答案、空题目、选择题没有正确选项、重复 XML 字段、未知列表条目。Judge 非空 Contents 无法保证完整展示，因此关闭答题；不推测元素引用。
 
-答题面板实现完整集合匹配的选择题评分、判断题布尔答案、逐题提交与下一题、进度、完成统计和重置。WeakMap 按 ActivityDefinition 对象保存会话，不写回保存定义。当前面板是独立的纯文字交互界面，不复刻官方模板、音频、Interval 计时、双方竞赛、动画或排行榜。
+题目与选项直接呈现在幻灯片坐标层，随画布缩放，无独立弹出面板。实现完整集合匹配的选择题评分、判断题布尔答案、逐题提交与下一题、进度、完成统计和重置。WeakMap 按 ActivityDefinition 对象保存会话，不写回保存定义。Choice/Judge 题目没有保存元素 ID，当前使用画布内文字布局，不复刻官方模板、音频、Interval 计时、双方竞赛、动画或排行榜。
 
 Choice 的集合判分依据为 `Choice.Strategy.ChoiceActivityScoreCalcRule.IsCorrect`：未选返回 null；选中数量必须与正确选项数量相同，且每个选中索引必须在正确索引中。网页实现另外拒绝重复或未知局部选项 ID。官方增加分数为每题 100，网页只显示答对题数，不复制双方计分。

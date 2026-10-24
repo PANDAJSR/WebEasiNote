@@ -9,7 +9,7 @@ interface QuestionActivityProps {
   active: boolean
 }
 
-/** 答题面板只读取保存定义；会话跨页面重新挂载保留。 */
+/** 题目与选项直接位于幻灯片坐标层，会话跨页面重新挂载保留。 */
 export function QuestionActivity({ definition, active }: QuestionActivityProps) {
   const [, refresh] = useReducer(value => value + 1, 0)
   const questions = definition.questions || []
@@ -46,7 +46,7 @@ export function QuestionActivity({ definition, active }: QuestionActivityProps) 
     refresh()
   }
 
-  return <section style={styles.panel} aria-label="课堂活动答题" data-activity-control='true' data-prevent-swipe='true'
+  return <section style={styles.panel} aria-label="课堂活动答题" data-activity-canvas={definition.key} data-activity-control='true' data-prevent-swipe='true'
     onPointerDown={event => event.stopPropagation()}
     onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
     <div style={styles.header}>

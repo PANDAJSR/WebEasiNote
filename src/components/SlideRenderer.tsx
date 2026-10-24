@@ -208,6 +208,12 @@ export function SlideRenderer({
           }
            return (isStaticRun(item) ? item.elements : [item]).map(sourceElement => {
              const element = selectionPreview?.find(preview => preview.id === sourceElement.id) || sourceElement
+             const canvasActivity = !isEditMode && !playbackSelection?.enabled && slideIndex === currentIndex
+               && element.type === 'activity' && slide.activities?.find(definition => definition.playable
+                 && definition.id === element.activityId)
+             if (canvasActivity && (canvasActivity.competition?.items.some(item => item.id === element.id)
+               || canvasActivity.matching?.materials.some(item => item.id === element.id)
+               || canvasActivity.matching?.stemId === element.id)) return null
             if (elementRenderStates[element.id] === false && element.type !== 'audio') return null
             const bounds = resolveElementBounds(element)
             const draftTextLines = draftTextLinesMap[element.id]
@@ -371,19 +377,18 @@ export function SlideRenderer({
             <EditSelectionBox element={selectedElement} handles={selectedResizeHandles} onResize={handleResizeHandleMouseDown} />
           )
         })()}
+        {!isEditMode && !playbackSelection?.enabled && slideIndex === currentIndex && slide.activities?.filter(definition => definition.playable)
+          .map(definition => definition.matching ? <MatchingActivity key={definition.id} definition={definition}
+            elements={slide.elements} resourceMap={resourceMap} active={true} width={slide.width} height={slide.height} scale={scale} />
+            : definition.competition ? <CompetitionActivity key={definition.id} definition={definition}
+              elements={slide.elements} resourceMap={resourceMap} active={true} />
+            : definition.questions ? <QuestionActivity key={definition.id} definition={definition} active={true} /> : null)}
       </div>
       {!isEditMode && playbackSelection?.enabled && <PlaybackSelectionOverlay key={slide.id}
         slide={slide} scale={scale} selection={playbackSelection} elementDisplayStyles={elementDisplayStyles}
         resourceMap={resourceMap}
         elementRenderStates={elementRenderStates} onPreview={setSelectionPreview} />}
       {!isEditMode && slideIndex === currentIndex && <ActivityControls playback={activity} paused={!!playbackSelection?.enabled} />}
-      {!isEditMode && slideIndex === currentIndex && slide.activities?.filter(definition => definition.playable)
-        .map(definition => definition.matching ? <MatchingActivity key={definition.id} definition={definition}
-          elements={slide.elements} resourceMap={resourceMap} active={!playbackSelection?.enabled} />
-          : definition.competition ? <CompetitionActivity key={definition.id} definition={definition}
-            elements={slide.elements} resourceMap={resourceMap} active={!playbackSelection?.enabled} />
-          : definition.questions ? <QuestionActivity key={definition.id} definition={definition}
-            active={!playbackSelection?.enabled} /> : null)}
     </div>
   )
 }

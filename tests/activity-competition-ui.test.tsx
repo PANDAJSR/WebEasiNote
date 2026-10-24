@@ -29,7 +29,7 @@ test('分组竞争页面启动、计分去重、选择/失焦/离页暂停、恢
     await act(async () => button.click())
   }
   await render()
-  await clickText('分组竞争·开始活动')
+  assert.ok(host.querySelector('[data-activity-canvas="GroupCompetition"]'))
   await clickText('开始')
   const item = host.querySelector('[data-competition-item][data-competition-player="0"]') as unknown as HTMLElement
   assert.ok(item)
@@ -47,7 +47,6 @@ test('分组竞争页面启动、计分去重、选择/失焦/离页暂停、恢
   assert.equal(competitionSession(definition).state, 'paused')
   root = createRoot(host as unknown as HTMLElement)
   await render()
-  await clickText('分组竞争·开始活动')
   assert.ok(host.textContent?.includes('10 分'))
   await clickText('重新开始')
   assert.equal(competitionSession(definition).players[0].score, 0)

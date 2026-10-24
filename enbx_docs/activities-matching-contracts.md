@@ -44,13 +44,13 @@ REA 原始 Evidence：程序集 `ev_55dec193baf3f810e29cdc666a0b4afcead969a3c578
 
 - `matching.targets`：TextMatch 的目标 ID 等于容器 ID；GapFilling 的目标为合成 `${stemId}:gap:${index}`，`containerId` 才是真实元素 ID，`hotspotIndex` 按 FillingContent 出现次序编号。
 - `matching.materials`：所有答案和干扰素材。
-- `matching.paragraphs`：有序文本/空白片段，可用于独立可访问答题面板。该面板属于查看器提供的基本玩法，不是官方画布布局复刻。
+- `matching.paragraphs`：有序文本/空白片段，在保存题干区域内排版空位，使用实际 DOM 矩形作为拖放目标。
 - `linkedElements`：验证真实元素唯一性、角色、activityId 和组合限制；填空时不要按合成目标 ID 验证容器。
 - `categories` 仅供旧公共结构兼容；不能据此调用分类判题或生成填空热点。
 - `placeMatchingMaterial(config, placements, materialId, targetId | null)`：不可变地移动素材、替换目标占用或退回素材区；不即时判题。
 - `checkMatchingAnswers(config, placements, plainText?)`：返回正确、错误、空目标及 complete。plainText 是真实元素 ID 到已确认无公式/内嵌对象的文本映射；省略时保守地按 ID 检查。
 - `clearWrongMatchingPlacements(config, placements, checked)`：仅 TextMatch 退回错误素材；GapFilling 保留。
 
-当前 `ActivityDefinition.matching` 已接入解析器并验证 linkedElements。`MatchingActivity` 提供独立面板、带预览的指针拖放及点击选择、显式检查/重置，WeakMap 会话跨挂载保存 placements；播放选择暂停交互。图片或旧 Contents 复用活动元素渲染器。运行时不包含官方模板加载、热点布局、动画、音效及完成状态机。TextMatch 完成要求所有目标均正确填入；这是查看器的明确完成条件，未复刻官方 CheckAnswer 对空目标的宽松分支。
+当前 `ActivityDefinition.matching` 已接入解析器并验证 linkedElements。`MatchingActivity` 直接在画布上渲染保存素材和题干，替换原素材显示以免重复。配对空位按答案尺寸置于保存容器左侧，填空按题干片段在保存题干区域排版；使用空位 DOM 矩形命中，按幻灯片缩放换算拖动位移与吸附坐标。支持已放置素材重新抓取、点击选择、取消拖动、显式检查/重置，WeakMap 会话跨挂载保存 placements；播放选择恢复保存外观并暂停交互。图片或旧 Contents 复用活动元素渲染器。运行时不包含官方模板偏移、ActivityChar 富文本测量、动画、音效及完成状态机。TextMatch 完成要求所有目标均正确填入；这是查看器的明确完成条件，未复刻官方 CheckAnswer 对空目标的宽松分支。
 
 新增测试 `tests/activity-matching.test.ts` 验证真实字段/角色、干扰项、目标替换、延后检查、纯文本等价、并列答案交换/计数、无效配置及旧 JSON 字段结构。
