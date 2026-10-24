@@ -13,10 +13,8 @@ import { PlaybackSelectionOverlay } from './selection/PlaybackSelectionOverlay'
 import type { PlaybackSelection } from '../viewer/usePlaybackSelection'
 import { useActivityPlayback } from '../viewer/activities/useActivityPlayback'
 import { ActivityControls } from './activities/ActivityControls'
-import { MatchingActivity } from './activities/MatchingActivity'
-import { QuestionActivity } from './activities/QuestionActivity'
-import { JudgeActivity } from './activities/JudgeActivity'
-import { CompetitionActivity } from './activities/CompetitionActivity'
+import { ActivityOverlays } from './activities/ActivityOverlays'
+import { AnnotationSurface } from './annotation/AnnotationSurface'
 interface SlideRendererProps {
   slide: SlideData
   scale?: number
@@ -67,10 +65,13 @@ export function SlideRenderer({
   const scaledWidth = slide.width * scale
   const scaledHeight = slide.height * scale
   const [selectionPreview, setSelectionPreview] = useState<SlideData['elements'] | null>(null)
-  const activity = useActivityPlayback(slide, scale, !isEditMode && !playbackSelection?.enabled
+  const [inkPreview, setInkPreview] = useState<SlideData['elements'] | null>(null)
+  const annotation = playbackSelection?.annotation
+  const interacting = !!playbackSelection?.enabled || !!annotation && (annotation.state.frozen || annotation.state.tool !== 'play')
+  const activity = useActivityPlayback(slide, scale, !isEditMode && !interacting
     && slideIndex === currentIndex, elementDisplayStyles, elementRenderStates)
-  const renderItems = useMemo(() => isEditMode || playbackSelection?.enabled ? slide.elements : getStaticPlan(slide),
-    [slide, isEditMode, playbackSelection?.enabled])
+  const renderItems = useMemo(() => inkPreview || (isEditMode || interacting ? slide.elements : getStaticPlan(slide)),
+    [slide, isEditMode, interacting, inkPreview])
   const {
     resolveElementBounds,
     handleEditElementMouseDown,
@@ -182,7 +183,7 @@ export function SlideRenderer({
         userSelect: 'none',
         WebkitUserSelect: 'none'
       }}
-      onClickCapture={playbackSelection?.enabled && !isEditMode ? undefined : handleSlideClickCapture}
+      onClickCapture={interacting && !isEditMode ? undefined : handleSlideClickCapture}
     >
       <div
         style={{
@@ -205,11 +206,12 @@ export function SlideRenderer({
             // 外部逐元素样式/可见性变化时回退，不能烘焙过期状态。
             const changed = item.elements.some(element => elementDisplayStyles[element.id]
               || elementRenderStates[element.id] !== undefined)
-            if (!changed) return [<StaticRunLayer key={item.id} run={item} width={slide.width} height={slide.height} scale={scale} />]
+            if (!changed) return [<div key={item.id} style={{ position: 'absolute', inset: 0, isolation: 'isolate', pointerEvents: 'none' }}>
+              <StaticRunLayer run={item} width={slide.width} height={slide.height} scale={scale} /></div>]
           }
            return (isStaticRun(item) ? item.elements : [item]).map(sourceElement => {
              const element = selectionPreview?.find(preview => preview.id === sourceElement.id) || sourceElement
-             const canvasActivity = !isEditMode && !playbackSelection?.enabled && slideIndex === currentIndex
+              const canvasActivity = !isEditMode && !interacting && slideIndex === currentIndex
                && element.type === 'activity' && slide.activities?.find(definition => definition.playable
                  && definition.id === element.activityId)
               if (canvasActivity && (canvasActivity.key === 'Judge' || canvasActivity.competition?.items.some(item => item.id === element.id)
@@ -261,7 +263,8 @@ export function SlideRenderer({
                   top: bounds.y,
                   width: bounds.width,
                   height: bounds.height,
-                  overflow: 'visible',
+                   overflow: 'visible',
+                   isolation: 'isolate',
                   cursor: isEditMode
                     ? canEditText && editingTextElementId === element.id
                       ? 'text'
@@ -378,20 +381,16 @@ export function SlideRenderer({
             <EditSelectionBox element={selectedElement} handles={selectedResizeHandles} onResize={handleResizeHandleMouseDown} />
           )
         })()}
-        {!isEditMode && !playbackSelection?.enabled && slideIndex === currentIndex && slide.activities?.filter(definition => definition.playable)
-          .map(definition => definition.matching ? <MatchingActivity key={definition.id} definition={definition}
-            elements={slide.elements} resourceMap={resourceMap} active={true} width={slide.width} height={slide.height} scale={scale} />
-            : definition.competition ? <CompetitionActivity key={definition.id} definition={definition}
-              elements={slide.elements} resourceMap={resourceMap} active={true} width={slide.width} height={slide.height} />
-            : definition.key === 'Judge' && definition.questions ? <JudgeActivity key={definition.id} definition={definition}
-              active={true} width={slide.width} height={slide.height} resourceMap={resourceMap} />
-            : definition.questions ? <QuestionActivity key={definition.id} definition={definition} active={true} /> : null)}
+        {!isEditMode && !interacting && slideIndex === currentIndex && <ActivityOverlays slide={slide} resourceMap={resourceMap} scale={scale} />}
       </div>
-      {!isEditMode && playbackSelection?.enabled && <PlaybackSelectionOverlay key={slide.id}
+      {!isEditMode && playbackSelection?.enabled && <PlaybackSelectionOverlay key={`${slide.id}:${annotation?.epoch ?? 0}`}
         slide={slide} scale={scale} selection={playbackSelection} elementDisplayStyles={elementDisplayStyles}
         resourceMap={resourceMap}
         elementRenderStates={elementRenderStates} onPreview={setSelectionPreview} />}
-      {!isEditMode && slideIndex === currentIndex && <ActivityControls playback={activity} paused={!!playbackSelection?.enabled} />}
+      {!isEditMode && annotation && (annotation.state.frozen || ['pen', 'eraser', 'stroke-eraser'].includes(annotation.state.tool))
+        && <AnnotationSurface key={`${slide.id}:${annotation.epoch}`} slide={slide} scale={scale}
+          annotation={annotation} onPreview={setInkPreview} />}
+      {!isEditMode && slideIndex === currentIndex && <ActivityControls playback={activity} paused={interacting} />}
     </div>
   )
 }

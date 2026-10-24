@@ -6,6 +6,8 @@ import { SlideViewer } from './SlideViewer'
 import { SlideThumbnail } from './slide-viewer/SlideThumbnail'
 import { ElementXmlPanel } from './ElementXmlPanel'
 import { usePlaybackSelection } from '../viewer/usePlaybackSelection'
+import { AnnotationToolbar } from './annotation/AnnotationToolbar'
+import { useAnnotationKeyboard } from '../viewer/annotation/useAnnotationKeyboard'
 import type { CoursewareMetadata, SlideData, SlideElement, TextLine } from '../enbx/parser'
 import { collectMissingFontIssues } from '../viewer/viewer-font-issues'
 import { ViewerIssuesModal } from './ViewerIssuesModal'
@@ -93,7 +95,9 @@ export function Viewer({
     })
   }, [slides, editedElements])
 
-  const { slides: resolvedSlides, selection: playbackSelection, resources: insertedResources } = usePlaybackSelection(editedSlides, currentIndex, metadata)
+  const { slides: playbackSlides, selection: playbackSelection, resources: insertedResources } = usePlaybackSelection(editedSlides, currentIndex, metadata, viewerMode === 'play')
+  const resolvedSlides = viewerMode === 'edit' ? editedSlides : playbackSlides
+  useAnnotationKeyboard(playbackSelection.annotation!, viewerMode === 'play')
   const resolvedResources = useMemo(() => ({ ...resourceMap, ...insertedResources }), [resourceMap, insertedResources])
 
   const currentSlide = resolvedSlides[currentIndex]
@@ -338,7 +342,7 @@ export function Viewer({
           onToggleMode={() => setViewerMode(isEditMode ? 'play' : 'edit')} onSaveAs={handleSaveAs}
           onIssues={() => setIssueModalOpen(true)} onClear={onClear} />
       )}
-
+      {!hideToolbar && !isEditMode && playbackSelection.annotation && <AnnotationToolbar annotation={playbackSelection.annotation} />}
       <div style={styles.mainContent}>
         {isEditMode && (
           <div style={styles.sidebar}>

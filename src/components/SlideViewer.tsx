@@ -146,7 +146,8 @@ export function SlideViewer({
       onEditBackgroundClick?.()
       return
     }
-    if (playbackSelection?.enabled || !clickToNextEnabled) return
+    if (playbackSelection?.enabled || playbackSelection?.annotation?.state.frozen
+      || playbackSelection?.annotation && playbackSelection.annotation.state.tool !== 'play' || !clickToNextEnabled) return
     if (target.closest('[data-activity-control="true"]')) return
     if (target.closest('[data-slide-element="true"]')) return
     handleNextSlide('click')
@@ -164,14 +165,17 @@ export function SlideViewer({
     handlePrevSlide,
     handleNextSlide,
     isSlidePanelActive,
-    handleCloseSlidePanel
+    handleCloseSlidePanel,
+    annotationActive: !isEditMode && (!!playbackSelection?.enabled || !!playbackSelection?.annotation
+      && (playbackSelection.annotation.state.frozen || playbackSelection.annotation.state.tool !== 'play'))
   })
 
   useSlideSwipeNavigation({
     containerRef,
     isEditMode,
     isSlidePanelActive,
-    enabled: swipeNavigationEnabled && !playbackSelection?.enabled,
+    enabled: swipeNavigationEnabled && !playbackSelection?.enabled
+      && (!playbackSelection?.annotation || !playbackSelection.annotation.state.frozen && playbackSelection.annotation.state.tool === 'play'),
     handlePrevSlide,
     handleNextSlide
   })

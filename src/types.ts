@@ -1,4 +1,5 @@
 export type { CoursewareMetadata, DocumentData } from './types/courseware'
+export type { InkPoint, InkBrush, InkElement, AnnotationTool, AnnotationCommand, AnnotationState } from './types/annotation'
 export type { TextRun, TextMarkerStyle, TextLine, TextElement } from './types/text'
 export type { EnglishWordCardElement, EnglishWordContentType, WordSemantic, WordTranslation, WordSynonym } from './types/subjects'
 export type { HanziInfo, HanziCardElement, PinyinInfo, PinyinCardElement, PronounceResource } from './types/subjects'

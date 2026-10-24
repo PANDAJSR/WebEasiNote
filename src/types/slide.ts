@@ -1,5 +1,6 @@
 import type { CoursewareMetadata } from './courseware'
 import type { ViewElement } from './view'
+import type { InkElement } from './annotation'
 import type { ActivityDefinition, ActivityElement } from './activities'
 import type { TextElement } from './text'
 import type {
@@ -69,6 +70,7 @@ export interface ElementAnimation {
 
 export type SlideElement = (
   | ViewElement
+  | InkElement
   | TextElement
   | ShapeElement
   | PictureElement

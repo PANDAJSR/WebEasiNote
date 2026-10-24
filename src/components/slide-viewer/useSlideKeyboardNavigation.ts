@@ -6,6 +6,7 @@ interface UseSlideKeyboardNavigationParams {
   handleNextSlide: (source?: SlideChangeSource) => void
   isSlidePanelActive?: boolean
   handleCloseSlidePanel?: () => void
+  annotationActive?: boolean
 }
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -24,7 +25,8 @@ export function useSlideKeyboardNavigation({
   handlePrevSlide,
   handleNextSlide,
   isSlidePanelActive = false,
-  handleCloseSlidePanel
+  handleCloseSlidePanel,
+  annotationActive = false
 }: UseSlideKeyboardNavigationParams) {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -35,6 +37,7 @@ export function useSlideKeyboardNavigation({
         handleCloseSlidePanel?.()
         return
       }
+      if (annotationActive) return
       if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
         event.preventDefault()
         handlePrevSlide('keyboard')
@@ -48,5 +51,5 @@ export function useSlideKeyboardNavigation({
 
     window.addEventListener('keydown', handleKeyDown, true)
     return () => window.removeEventListener('keydown', handleKeyDown, true)
-  }, [handlePrevSlide, handleNextSlide, isSlidePanelActive, handleCloseSlidePanel])
+  }, [handlePrevSlide, handleNextSlide, isSlidePanelActive, handleCloseSlidePanel, annotationActive])
 }

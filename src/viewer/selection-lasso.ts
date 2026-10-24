@@ -1,5 +1,6 @@
 import type { SlideElement } from '../types'
 import { rotatePoint, selectionMembers, type SelectionPoint } from './selection-geometry'
+import { inkToSlide } from './annotation/ink-geometry'
 
 const epsilon = 1e-7
 const cross = (a: SelectionPoint, b: SelectionPoint, p: SelectionPoint) =>
@@ -29,6 +30,21 @@ export const LASSO_SELECTION_COVERAGE = 0.5
 /** 在元素局部坐标按 64 条扫描线估算覆盖面积；凹形/自交套索使用奇偶填充。 */
 export function lassoCoverage(points: SelectionPoint[], element: SlideElement) {
   if (points.length < 3) return 0
+  if (element.type === 'ink') {
+    if (element.points.length === 1) return lassoContains(points, inkToSlide(element, element.points[0])) ? 1 : 0
+    let length = 0, covered = 0
+    for (let i = 1; i < element.points.length; i++) {
+      const a = inkToSlide(element, element.points[i - 1]), b = inkToSlide(element, element.points[i])
+      const distance = Math.hypot(b.x - a.x, b.y - a.y)
+      const steps = Math.max(1, Math.min(512, Math.ceil(distance / 2)))
+      length += distance
+      for (let j = 0; j < steps; j++) {
+        const t = (j + 0.5) / steps
+        if (lassoContains(points, { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t })) covered += distance / steps
+      }
+    }
+    return length ? covered / length : lassoContains(points, inkToSlide(element, element.points[0])) ? 1 : 0
+  }
   const width = Math.max(1, Math.abs(element.width))
   const height = Math.max(1, Math.abs(element.height))
   const local = points.map(point => rotatePoint({

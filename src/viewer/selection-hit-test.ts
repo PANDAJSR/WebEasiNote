@@ -1,11 +1,13 @@
 import type { SlideElement } from '../types'
 import { getShapeGeometry } from '../rendering/shapeGeometry'
 import { rotatePoint, selectionContains, type SelectionPoint } from './selection-geometry'
+import { hitInk } from './annotation/ink-geometry'
 
 let context: CanvasRenderingContext2D | null | undefined
 
 /** 图形使用真实路径命中；透明区域可选中下面的元素。 */
 export function hitSelectionElement(element: SlideElement, point: SelectionPoint, scale: number) {
+  if (element.type === 'ink') return hitInk(element, point, 4 / scale)
   if (!selectionContains(element, point)) return false
   if (element.type !== 'shape' || typeof Path2D === 'undefined') return true
   if (context === undefined) context = document.createElement('canvas').getContext('2d')
