@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import type { PictureElement } from '../enbx/pictures'
 import { ProgressiveImage } from './ProgressiveImage'
+import { pictureShadowFilter } from './picture-effects'
 
 interface PictureRendererProps {
   element: PictureElement
@@ -135,6 +136,7 @@ export function PictureRenderer({ element, scale, resourceMap }: PictureRenderer
 
   const cssFilter = resolveCssFilter(bright, contrast, saturation)
   const rahmenStyle = resolveRahmenStyle(pictureRahmenType, rahmenThickness, scale)
+  const shadowFilter = pictureShadowFilter(element.shadow, scale)
   const isEllipseClip = (clippingShape || '').trim().toLowerCase() === 'ellipse'
 
   const hasCropRegion = !!(
@@ -163,12 +165,13 @@ export function PictureRenderer({ element, scale, resourceMap }: PictureRenderer
           opacity: alpha,
           transform: rotation ? `rotate(${rotation}deg)` : undefined,
           transformOrigin: 'center center',
-          overflow: 'hidden',
-          clipPath: isEllipseClip ? 'ellipse(50% 50% at 50% 50%)' : undefined,
+          filter: shadowFilter,
           pointerEvents: 'none',
           ...rahmenStyle
         }}
       >
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden',
+          clipPath: isEllipseClip ? 'ellipse(50% 50% at 50% 50%)' : undefined }}>
         <ProgressiveImage
           src={imageUrl}
           alt=''
@@ -184,6 +187,7 @@ export function PictureRenderer({ element, scale, resourceMap }: PictureRenderer
             pointerEvents: 'none'
           }}
         />
+        </div>
       </div>
     )
   }
@@ -199,12 +203,13 @@ export function PictureRenderer({ element, scale, resourceMap }: PictureRenderer
         opacity: alpha,
         transform: rotation ? `rotate(${rotation}deg)` : undefined,
         transformOrigin: 'center center',
-        clipPath: isEllipseClip ? 'ellipse(50% 50% at 50% 50%)' : undefined,
-        overflow: 'hidden',
+        filter: shadowFilter,
         pointerEvents: 'none',
         ...rahmenStyle
       }}
     >
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden',
+        clipPath: isEllipseClip ? 'ellipse(50% 50% at 50% 50%)' : undefined }}>
       <ProgressiveImage
         src={imageUrl}
         alt=''
@@ -216,6 +221,7 @@ export function PictureRenderer({ element, scale, resourceMap }: PictureRenderer
           pointerEvents: 'none'
         }}
       />
+      </div>
     </div>
   )
 }

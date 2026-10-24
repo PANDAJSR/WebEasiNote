@@ -42,6 +42,7 @@ export const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'Effects'
   ]),
   Picture: new Set([
+    'Hyperlink', 'HasMask', 'RotateOrigin', 'SaveInfoMetadata',
     'Id',
     'X',
     'Y',

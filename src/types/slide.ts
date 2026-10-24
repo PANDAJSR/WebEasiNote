@@ -101,6 +101,7 @@ export type SlideElement = (
   groupId?: string
   groupAncestorIds?: string[]
   staticCacheSafe?: boolean
+  hyperlink?: string
   isLocked?: boolean
   canClone?: boolean
 }

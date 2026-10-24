@@ -2,7 +2,7 @@ import type { ViewElement } from '../../types/view'
 import type { SlideElement } from '../../types'
 
 /** CoreCanvas 以可见子元素的旋转外接框尺寸测量，坐标原点不随外接框平移。 */
-function desiredSize(elements: SlideElement[]) {
+export function viewDesiredSize(elements: SlideElement[]) {
   const bounds = elements.filter(e => e.type !== 'view' || !e.isHidden).map(e => {
     const angle = ('rotation' in e ? e.rotation || 0 : 0) * Math.PI / 180
     const width = Math.abs(e.width * Math.cos(angle)) + Math.abs(e.height * Math.sin(angle))
@@ -19,7 +19,7 @@ function desiredSize(elements: SlideElement[]) {
 export function layoutView(view: ViewElement) {
   const layout = { '0': 'Default', '1': 'Grid', '2': 'StackPanel' }[view.layoutType] || view.layoutType
   if (layout === 'Default' || layout === 'Zoom') {
-    const size = desiredSize(view.elements)
+    const size = viewDesiredSize(view.elements)
     return { scale: Math.min(view.width / size.width, view.height / size.height), elements: view.elements }
   }
   let y = 0

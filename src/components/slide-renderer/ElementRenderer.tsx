@@ -42,6 +42,8 @@ interface ElementRendererProps {
   isVisible?: boolean
   slideWidth?: number
   slideHeight?: number
+  onViewFront?: (elementId: string) => void
+  viewControlsEnabled?: boolean
 }
 
 export function ElementRenderer({
@@ -54,13 +56,16 @@ export function ElementRenderer({
   onEditAudioUpdate,
   isVisible = true,
   slideWidth = 1280,
-  slideHeight = 720
+  slideHeight = 720,
+  onViewFront,
+  viewControlsEnabled
 }: ElementRendererProps) {
   switch (element.type) {
     case 'view':
       return <ViewRenderer element={element} scale={scale} resourceMap={resourceMap} slideIndex={slideIndex}
         currentIndex={currentIndex} isEditMode={isEditMode} onEditAudioUpdate={onEditAudioUpdate}
-        isVisible={isVisible} slideWidth={slideWidth} slideHeight={slideHeight} />
+        isVisible={isVisible} slideWidth={slideWidth} slideHeight={slideHeight}
+        onViewFront={onViewFront} viewControlsEnabled={viewControlsEnabled} />
     case 'ink':
       return <InkRenderer element={element} scale={scale} />
     case 'activity':

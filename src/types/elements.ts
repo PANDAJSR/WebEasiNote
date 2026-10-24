@@ -80,6 +80,7 @@ export interface PictureElement {
   clippingShape?: string
   pictureRahmenType?: string | number
   rahmenThickness?: number
+  shadow?: ShapeElement['shadow']
   displayRegion?: {
     x: number
     y: number

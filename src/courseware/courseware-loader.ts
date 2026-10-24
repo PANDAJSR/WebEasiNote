@@ -6,6 +6,7 @@ import type { SlideData } from '../types'
 import { getStaticPlan, isStaticRun } from '../rendering/staticPlan'
 import { fingerprintRun } from '../rendering/rasterCache'
 import { subjectResourcePaths } from './subject-resources'
+import { resourceBlob } from './resource-blob'
 
 async function prepareStaticPlans(slides: SlideData[]) {
   for (const slide of slides) {
@@ -40,7 +41,7 @@ export async function readCoursewareFile(file: File) {
       }
       try {
         const blob = await imgFile.async('blob')
-        resources[id] = URL.createObjectURL(blob)
+        resources[id] = URL.createObjectURL(resourceBlob(blob, filePath))
         resources[filePath] = resources[id]
         loadedCount++
       } catch {
@@ -52,7 +53,7 @@ export async function readCoursewareFile(file: File) {
     const slideData = await loadSlidesFromENBX(file, zip)
     for (const path of subjectResourcePaths(slideData)) {
       const resource = zip.file(path)
-      if (resource && !resources[path]) resources[path] = URL.createObjectURL(await resource.async('blob'))
+      if (resource && !resources[path]) resources[path] = URL.createObjectURL(resourceBlob(await resource.async('blob'), path))
     }
     await prepareStaticPlans(slideData)
     return { meta, slideData, resources }
@@ -87,7 +88,7 @@ export async function readCoursewareFolder(dirHandle: FileSystemDirectoryHandle)
         try {
           const fileHandle = await resourcesHandle.getFileHandle(fileName)
           const file = await fileHandle.getFile()
-          resources[id] = URL.createObjectURL(file)
+          resources[id] = URL.createObjectURL(resourceBlob(file, filePath))
           resources[filePath] = resources[id]
         } catch {
           // 忽略图片加载失败
@@ -103,7 +104,7 @@ export async function readCoursewareFolder(dirHandle: FileSystemDirectoryHandle)
         let directory = dirHandle
         for (const part of parts.slice(0, -1)) directory = await directory.getDirectoryHandle(part)
         const file = await (await directory.getFileHandle(parts[parts.length - 1])).getFile()
-        resources[path] = URL.createObjectURL(file)
+        resources[path] = URL.createObjectURL(resourceBlob(file, path))
       } catch {
         // 缺失发音只禁用对应按钮，不影响正文。
       }

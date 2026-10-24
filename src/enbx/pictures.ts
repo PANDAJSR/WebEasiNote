@@ -1,5 +1,6 @@
 import { getElementText } from './xml-utils';
 import type { PictureElement } from '../types';
+import { parsePictureShadow } from './picture-effects'
 export type { PictureElement } from '../types';
 
 /**
@@ -93,6 +94,7 @@ export function parsePictureElement(pictureNode: Element): PictureElement | null
       pictureRahmenType,
       rahmenThickness: Number.isFinite(rahmenThickness) ? rahmenThickness : 0,
       displayRegion,
+      shadow: parsePictureShadow(pictureNode),
       pictureSize
     };
   } catch (error) {

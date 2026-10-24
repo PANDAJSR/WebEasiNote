@@ -367,6 +367,10 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
         break
       }
     }
+    if (tagName !== 'Group') {
+      const hyperlink = getDirectChildText(node, 'Hyperlink')
+      if (hyperlink) for (const element of parsedElements.slice(parsedStart)) element.hyperlink = hyperlink
+    }
     applySelectionFlags(node, parsedElements, parsedStart)
   })
 

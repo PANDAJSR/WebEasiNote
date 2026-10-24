@@ -66,6 +66,8 @@ export function SlideRenderer({
   const scaledHeight = slide.height * scale
   const [selectionPreview, setSelectionPreview] = useState<SlideData['elements'] | null>(null)
   const [inkPreview, setInkPreview] = useState<SlideData['elements'] | null>(null)
+  const [viewFronts, setViewFronts] = useState<{ slide: SlideData; ids: string[] }>({ slide, ids: [] })
+  const frontIds = viewFronts.slide === slide ? viewFronts.ids : []
   const annotation = playbackSelection?.annotation
   const interacting = !!playbackSelection?.enabled || !!annotation && (annotation.state.frozen || annotation.state.tool !== 'play')
   const activity = useActivityPlayback(slide, scale, !isEditMode && !interacting
@@ -265,6 +267,7 @@ export function SlideRenderer({
                   height: bounds.height,
                    overflow: 'visible',
                    isolation: 'isolate',
+                    zIndex: frontIds.includes(element.id) ? frontIds.indexOf(element.id) + 1 : undefined,
                   cursor: isEditMode
                     ? canEditText && editingTextElementId === element.id
                       ? 'text'
@@ -302,6 +305,9 @@ export function SlideRenderer({
                     isVisible={elementRenderStates[element.id] !== false}
                     slideWidth={slide.width}
                     slideHeight={slide.height}
+                    viewControlsEnabled={!interacting}
+                    onViewFront={id => setViewFronts(previous => ({ slide,
+                      ids: [...(previous.slide === slide ? previous.ids.filter(item => item !== id) : []), id] }))}
                   />
                 </div>
                 {isEditMode && canEditText && editingTextElementId === element.id && (

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import React from 'react'
+import React, { act } from 'react'
+import { readFileSync } from 'node:fs'
+import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { Window } from 'happy-dom'
 import { parseSlideElements } from '../src/enbx/slide-elements-parser'
@@ -8,10 +10,14 @@ import { ElementRenderer } from '../src/components/slide-renderer/ElementRendere
 import { layoutView } from '../src/components/view/view-layout'
 import { subjectResourcePaths } from '../src/courseware/subject-resources'
 import type { SlideData } from '../src/types'
+import type { ViewElement } from '../src/types/view'
+import { executeViewLink, parseViewLink } from '../src/components/view/view-actions'
+import { pictureShadowFilter } from '../src/components/picture-effects'
+import { resourceBlob } from '../src/courseware/resource-blob'
 
 const dom = new Window()
 Object.assign(globalThis, { window: dom, document: dom.document, React,
-  DOMParser: dom.DOMParser, XMLSerializer: dom.XMLSerializer })
+  DOMParser: dom.DOMParser, XMLSerializer: dom.XMLSerializer, IS_REACT_ACT_ENVIRONMENT: true })
 const parse = (xml: string) => parseSlideElements(new dom.DOMParser()
   .parseFromString(`<Elements>${xml}</Elements>`, 'text/xml').documentElement as unknown as Element, { slideId: 'view-test' })
 const cell = (id: string, x: number, y = 0) => `<Picture><Id>${id}</Id><X>${x}</X><Y>${y}</Y>
@@ -83,4 +89,109 @@ test('隐藏子 View 不参与默认测量和堆叠高度，未知子元素仍�
     else assert.equal(arranged.elements[1].y, 0)
   }
   assert.equal(parse('<View><Elements><NewElement /></Elements></View>').issues[0].name, 'NewElement')
+})
+
+const cardXml = readFileSync(new URL('./fixtures/periodic-card.xml', import.meta.url), 'utf8')
+const card = () => parse(cardXml).elements[0] as ViewElement
+const panel = (view: ViewElement, index: number) => view.elements[index] as ViewElement
+const link = (view: ViewElement, index: number) => panel(view, index).elements[1].hyperlink!
+
+test('实际元素卡链接切换面板、保持祖先缩放和位置，重复收放不改变源数据', () => {
+  const source = card()
+  const before = JSON.stringify(source)
+  for (const scale of [1, .5, 2]) {
+    let view = { ...source, width: 96 * scale, height: 96 * scale }
+    for (let i = 0; i < 5; i++) {
+      const expanded = executeViewLink(view, link(source, 0))
+      view = expanded.root
+      assert.equal(expanded.front, true)
+      assert.deepEqual([view.x, view.y, view.width, view.height], [40, 30, 300 * scale, 458 * scale])
+      assert.equal(panel(view, 0).isHidden, true)
+      assert.equal(panel(view, 1).isHidden, false)
+      const collapsed = executeViewLink(view, link(source, 1))
+      view = collapsed.root
+      assert.equal(collapsed.front, false)
+      assert.deepEqual([view.width, view.height], [96 * scale, 96 * scale])
+    }
+  }
+  assert.equal(JSON.stringify(source), before)
+})
+
+test('属性链接支持 self/this、大小写属性、LocalId 中的点和重复解码', () => {
+  assert.deepEqual(parseViewLink('view://property?part.one.WIDTH=12%253D3&Front=true'), [
+    { localId: 'part.one', property: 'width', value: '12=3' },
+    { localId: 'self', property: 'front', value: 'true' }
+  ])
+  const source = card()
+  const changed = executeViewLink(source, 'view://property?this.WIDTH=200&self.HEIGHT=150&Front=false').root
+  assert.deepEqual([changed.width, changed.height], [200, 150])
+  assert.equal(executeViewLink(source, 'https://example.com').root, source)
+  assert.equal(executeViewLink(source, 'view://property?missing.IsHidden=true').root, source)
+  assert.equal(parseViewLink('view://property?bad=%zz'), null)
+})
+
+test('真实卡片 DOM 收放隔离根 LocalId、阻止翻页拖动事件，并在替换课件时复位', async () => {
+  const source = card()
+  const sibling = { ...source, id: 'second-card', x: 162 }
+  const container = document.createElement('div')
+  const root = createRoot(container)
+  let bubbled = 0
+  const fronts: string[] = []
+  const render = (value = source, enabled = true, editing = false) => act(async () => root.render(
+    <div onClick={() => bubbled++} onMouseDown={() => bubbled++} onPointerDown={() => bubbled++}>
+      {[value, sibling].map(element => <ElementRenderer key={element.id} element={element} scale={1}
+        resourceMap={{}} slideIndex={0} currentIndex={0} isEditMode={editing}
+        viewControlsEnabled={enabled} onViewFront={id => fronts.push(id)} />)}
+    </div>))
+  const first = () => container.querySelector(`[data-view-id="${source.id}"]`) as HTMLElement
+  const button = () => first().querySelector('button') as HTMLButtonElement
+  try {
+    await render()
+    await act(async () => {
+      button().dispatchEvent(new dom.PointerEvent('pointerdown', { bubbles: true }) as unknown as Event)
+      button().dispatchEvent(new dom.MouseEvent('mousedown', { bubbles: true }) as unknown as Event)
+      button().click()
+    })
+    assert.equal(first().style.width, '300px')
+    assert.equal(first().style.height, '458px')
+    assert.equal(button().getAttribute('aria-label'), '收起元素卡片')
+    assert.equal(button().style.left, '250px')
+    assert.equal((container.querySelector('[data-view-id="second-card"]') as HTMLElement).style.width, '96px')
+    assert.deepEqual(fronts, [source.id])
+    assert.equal(bubbled, 0)
+    await act(async () => button().click())
+    assert.equal(first().style.width, '96px')
+    assert.deepEqual(fronts, [source.id])
+    await render(source, true, true)
+    await act(async () => button().click())
+    assert.equal(first().style.width, '300px')
+    await render(card())
+    assert.equal(first().style.width, '96px')
+    await render(source)
+    assert.equal(first().style.width, '96px')
+    await render(source, false)
+    assert.equal(container.querySelectorAll('button').length, 0)
+  } finally { await act(async () => root.unmount()) }
+})
+
+test('卡片图片保留阴影与实际裁剪区域，SVG ZIP Blob 声明 MIME 且保持内容', async () => {
+  const source = card()
+  const picture = panel(source, 0).elements[0]
+  assert.ok(picture.type === 'picture')
+  assert.deepEqual(picture.shadow, { offset: 1, angle: 360, opacity: .45, blurRadius: 10, color: '#949499' })
+  assert.match(pictureShadowFilter(picture.shadow, 1)!, /5px rgba\(148, 148, 153, 0.45\)/)
+  assert.match(pictureShadowFilter({ ...picture.shadow!, color: 'rgba(148, 148, 153, 0.5)' }, 1)!, /0.225\)/)
+  const detailed = panel(source, 1).elements[0]
+  assert.ok(detailed.type === 'picture')
+  assert.deepEqual(detailed.displayRegion, { x: 0, y: 0, width: 480, height: 736 })
+  const markup = renderToStaticMarkup(<ElementRenderer element={picture} scale={1}
+    resourceMap={{ [picture.sourceId]: 'blob:card' }} slideIndex={0} currentIndex={0} />)
+  assert.match(markup, /filter:drop-shadow\(/)
+  assert.match(markup, /overflow:hidden/)
+  assert.ok(markup.indexOf('drop-shadow(') < markup.indexOf('overflow:hidden'))
+  const blob = new Blob(['<svg>钙</svg>'])
+  const svg = resourceBlob(blob, 'Resources/card.SVG')
+  assert.equal(svg.type, 'image/svg+xml')
+  assert.equal(await svg.text(), await blob.text())
+  assert.equal(resourceBlob(blob, 'Resources/card.png'), blob)
 })
