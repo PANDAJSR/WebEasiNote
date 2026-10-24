@@ -17,6 +17,7 @@ export interface CompetitionSession {
   players: CompetitionPlayer[]
   difficulty: CompetitionConfig['difficulty']
   elapsed: number
+  countdown?: number
   state: 'ready' | 'running' | 'paused' | 'finished'
 }
 const sessions = new WeakMap<ActivityDefinition, CompetitionSession>()
@@ -49,7 +50,7 @@ export function competitionDuration(session: CompetitionSession) {
   return session.players[0]?.drops.length ? (session.players[0].drops.length - 1) * interval + drop : 0
 }
 export function hitCompetitionMaterial(session: CompetitionSession, playerIndex: number, index: number) {
-  if (session.state !== 'running') return false
+  if (session.state !== 'running' || (session.countdown || 0) > 0) return false
   const player = session.players[playerIndex]
   const item = player?.drops[index]
   const timing = competitionTiming[session.difficulty]
@@ -72,6 +73,12 @@ export function hitCompetitionMaterial(session: CompetitionSession, playerIndex:
 /** 时间由前台活动组件推进；离页、选择、失焦均暂停，避免后台扣时。 */
 export function advanceCompetition(session: CompetitionSession, milliseconds: number) {
   if (session.state !== 'running' || !Number.isFinite(milliseconds) || milliseconds <= 0) return
+  if (session.countdown) {
+    const consumed = Math.min(milliseconds, session.countdown)
+    session.countdown -= consumed
+    milliseconds -= consumed
+    if (!milliseconds) return
+  }
   session.elapsed = Math.min(competitionDuration(session), session.elapsed + milliseconds)
   if (session.elapsed >= competitionDuration(session)) session.state = 'finished'
 }

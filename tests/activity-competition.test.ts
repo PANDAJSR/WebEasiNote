@@ -18,6 +18,8 @@ test('竞争配置布尔答案和难度校验，实际素材引用必须完整',
   assert.deepEqual(parseCompetitionConfig(parse(xml)), {
     competition: { difficulty: 'High', items: [{ id: 'm', text: '甲', correct: true }] }, diagnostics: []
   })
+  assert.equal(parseCompetitionConfig(parse(xml.replace('<Difficulty>', '<InteractiveTheme>找出水果</InteractiveTheme><Difficulty>')))
+    .competition?.title, '找出水果')
   const slide = `<Slide><Id>s</Id><Width>800</Width><Height>600</Height><Elements><ActivityItem><Id>m</Id><ActivityId>a</ActivityId><ResourceType>Material</ResourceType><Width>100</Width><Height>60</Height></ActivityItem></Elements><Activity><Id>a</Id><Key>GroupCompetition</Key>${xml}</Activity></Slide>`
   assert.equal(parseSlideXML(slide).activities![0].playable, true)
   assert.equal(parseSlideXML(slide.replace('<Id>m</Id><Text>', '<Id>missing</Id><Text>')).activities![0].playable, false)
@@ -26,6 +28,22 @@ test('竞争配置布尔答案和难度校验，实际素材引用必须完整',
   assert.deepEqual(parseCompetitionConfig(parse(`<Config>${JSON.stringify({ Difficulty: 2,
     Items: [{ Id: 'm', Text: '甲', IsCorrect: true }] })}</Config>`)).competition,
   { difficulty: 'High', items: [{ id: 'm', text: '甲', correct: true }] })
+})
+
+test('准备倒数不推进游戏时间，暂停不消耗倒数，倒数中禁止点击计分', () => {
+  const session: CompetitionSession = { players: createCompetitionPlayers(config, 2), difficulty: 'High',
+    elapsed: 0, countdown: 3000, state: 'running' }
+  assert.equal(hitCompetitionMaterial(session, 0, 0), false)
+  advanceCompetition(session, 1000)
+  assert.equal(session.countdown, 2000)
+  assert.equal(session.elapsed, 0)
+  session.state = 'paused'
+  advanceCompetition(session, 1000)
+  assert.equal(session.countdown, 2000)
+  session.state = 'running'
+  advanceCompetition(session, 2300)
+  assert.equal(session.countdown, 0)
+  assert.equal(session.elapsed, 300)
 })
 
 test('竞争各组独立序列、双倍标记、连击、重复点击、超时和暂停计时', () => {

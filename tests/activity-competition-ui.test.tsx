@@ -5,7 +5,7 @@ import { createRoot } from 'react-dom/client'
 import { Window } from 'happy-dom'
 import { SlideRenderer } from '../src/components/SlideRenderer'
 import { parseSlideXML } from '../src/enbx/parser'
-import { competitionSession } from '../src/viewer/activities/competition'
+import { advanceCompetition, competitionSession } from '../src/viewer/activities/competition'
 
 const window = new Window()
 Object.assign(globalThis, { window, document: window.document, DOMParser: window.DOMParser,
@@ -24,13 +24,18 @@ test('分组竞争页面启动、计分去重、选择/失焦/离页暂停、恢
   const render = (paused = false) => act(async () => root.render(<SlideRenderer slide={slide}
     playbackSelection={{ enabled: paused, onChange() {}, onDuplicate() {}, onCommand() {} }} />))
   const clickText = async (label: string) => {
-    const button = Array.from(host.querySelectorAll('button')).find(node => node.textContent?.replace(/\s/g, '') === label)
+    const button = Array.from(host.querySelectorAll('button')).find(node => node.getAttribute('aria-label') === label || node.textContent?.replace(/\s/g, '') === label)
     assert.ok(button, label)
     await act(async () => button.click())
   }
   await render()
   assert.ok(host.querySelector('[data-activity-canvas="GroupCompetition"]'))
+  assert.ok(host.querySelector('[aria-label="难度"] [aria-label="简单"]'))
+  assert.equal(host.querySelector('.ant-radio-group'), null)
   await clickText('开始')
+  assert.ok(host.querySelector('[data-competition-countdown]'))
+  assert.equal(host.querySelector('[data-competition-item]'), null)
+  await act(async () => { advanceCompetition(competitionSession(definition), 3000); await render() })
   const item = host.querySelector('[data-competition-item][data-competition-player="0"]') as unknown as HTMLElement
   assert.ok(item)
   await act(async () => { item.click(); item.click() })
@@ -47,9 +52,19 @@ test('分组竞争页面启动、计分去重、选择/失焦/离页暂停、恢
   assert.equal(competitionSession(definition).state, 'paused')
   root = createRoot(host as unknown as HTMLElement)
   await render()
-  assert.ok(host.textContent?.includes('10 分'))
+  assert.ok(host.querySelector('[aria-label="第 1 组：10 分"]'))
   await clickText('重新开始')
+  assert.equal(competitionSession(definition).state, 'ready')
+  await clickText('四组')
+  await clickText('困难')
+  await clickText('开始')
   assert.equal(competitionSession(definition).players[0].score, 0)
+  assert.equal(host.querySelectorAll('[data-competition-header]').length, 2)
+  assert.equal(host.querySelectorAll('[data-competition-pair]').length, 2)
+  await act(async () => { advanceCompetition(competitionSession(definition), 100000); await render() })
+  assert.equal(competitionSession(definition).state, 'finished')
+  assert.ok(host.textContent?.includes('平局'))
+  assert.ok(host.textContent?.includes('最高连击'))
   assert.equal(JSON.stringify(slide), saved)
   await act(async () => root.unmount())
   host.remove()

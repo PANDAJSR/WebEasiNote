@@ -3,6 +3,7 @@ import { getDirectChildElement as child, getDirectChildText as text } from '../x
 export interface CompetitionItem { id: string; text: string; correct: boolean }
 export interface CompetitionConfig {
   difficulty: 'Low' | 'Medium' | 'High'
+  title?: string
   items: CompetitionItem[]
 }
 
@@ -10,10 +11,12 @@ export interface CompetitionConfig {
 export function parseCompetitionConfig(config: Element): { competition?: CompetitionConfig; diagnostics: string[] } {
   try {
     let difficulty: unknown
+    let title = ''
     let items: CompetitionItem[]
     if (!config.children.length) {
       const json = JSON.parse(config.textContent || '')
       difficulty = json.Difficulty ?? 'Low'
+      title = typeof json.InteractiveTheme === 'string' ? json.InteractiveTheme : ''
       if (!Array.isArray(json.Items)) throw new Error('分组竞争缺少 Items')
       items = json.Items.map((item: { Id: unknown; Text?: unknown; IsCorrect: unknown }) => {
         if (typeof item?.Id !== 'string' || typeof item.IsCorrect !== 'boolean') throw new Error('分组竞争条目无效')
@@ -22,6 +25,7 @@ export function parseCompetitionConfig(config: Element): { competition?: Competi
     } else {
       const root = child(config, 'GroupCompetitionConfig') || config
       difficulty = text(root, 'Difficulty') ?? 'Low'
+      title = text(root, 'InteractiveTheme') || ''
       const nodes = child(root, 'Items')
       if (!nodes) throw new Error('分组竞争缺少 Items')
       items = Array.from(nodes.children).filter(node => node.tagName !== 'SaveInfoMetadata').map(item => {
@@ -37,7 +41,7 @@ export function parseCompetitionConfig(config: Element): { competition?: Competi
     if (!items.length || items.some(item => !item.id.trim()) || new Set(items.map(item => item.id)).size !== items.length) {
       throw new Error('分组竞争素材为空或 ID 缺失、重复')
     }
-    return { competition: { difficulty: level, items }, diagnostics: [] }
+    return { competition: { difficulty: level, ...(title ? { title } : {}), items }, diagnostics: [] }
   } catch (error) {
     return { diagnostics: [error instanceof Error ? error.message : '分组竞争配置无效'] }
   }

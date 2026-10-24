@@ -381,7 +381,7 @@ export function SlideRenderer({
           .map(definition => definition.matching ? <MatchingActivity key={definition.id} definition={definition}
             elements={slide.elements} resourceMap={resourceMap} active={true} width={slide.width} height={slide.height} scale={scale} />
             : definition.competition ? <CompetitionActivity key={definition.id} definition={definition}
-              elements={slide.elements} resourceMap={resourceMap} active={true} />
+              elements={slide.elements} resourceMap={resourceMap} active={true} width={slide.width} height={slide.height} />
             : definition.questions ? <QuestionActivity key={definition.id} definition={definition} active={true} /> : null)}
       </div>
       {!isEditMode && playbackSelection?.enabled && <PlaybackSelectionOverlay key={slide.id}
