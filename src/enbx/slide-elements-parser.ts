@@ -16,9 +16,10 @@ import { parseRuledPaperElement } from './ruled-papers'
 import { parseEnglishWordCardElement } from './english-word-cards'
 import { parseHanziCardElement, parsePinyinCardElement } from './chinese-cards'
 import { parseComplexSubject } from './complex-subjects'
+import { parseViewElement } from './views'
 import { getDirectChildElement, getDirectChildText } from './xml-utils'
 import { applySelectionFlags } from './element-selection-flags'
-import { KNOWN_PARAMETERS } from './slide-elements-known-parameters'
+import { collectUnknownParameters, previewValue } from './element-issues'
 import { isStaticNodeSafe } from '../rendering/staticSafety'
 import { parseActivityElement } from './activities/activity-element'
 
@@ -45,42 +46,6 @@ function parseNumber(value: string | null, fallback = 0): number {
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
-function previewValue(node: Element): string {
-  // 诊断只取短预览，避免为几万节点的几何扩展拼接完整 textContent。
-  const walker = node.ownerDocument.createTreeWalker(node, 4)
-  let text = ''
-  let child = walker.nextNode()
-  while (child && text.length <= 80) {
-    const part = child.nodeValue || ''
-    text += (text ? part : part.trimStart()).slice(0, 81 - text.length)
-    child = walker.nextNode()
-  }
-  text = text.trim()
-  if (text.length <= 80) return text
-  return `${text.slice(0, 80)}...`
-}
-
-function collectUnknownParameters(
-  node: Element,
-  elementType: keyof typeof KNOWN_PARAMETERS,
-  slideId: string,
-  elementId: string,
-  issues: SlideIssue[]
-) {
-  const knownParams = KNOWN_PARAMETERS[elementType]
-  Array.from(node.children).forEach(child => {
-    if (knownParams.has(child.tagName) || child.tagName === 'IsLocked' || child.tagName === 'CanClone') return
-    issues.push({
-      kind: 'unknown-parameter',
-      slideId,
-      elementType,
-      elementId,
-      name: child.tagName,
-      value: previewValue(child)
-    })
-  })
-}
-
 function applyOffset<T extends SlideElement>(element: T, offsetX: number, offsetY: number): T {
   return {
     ...element,
@@ -103,6 +68,18 @@ export function parseSlideElements(elementsNode: Element, options: ParseElements
     const rawXml = tagName === 'Group' ? '' : rawXmlByIndex?.[index] || serializeElementXml(node)
 
     switch (tagName) {
+      case 'View': {
+        collectUnknownParameters(node, 'View', slideId, elementId, issues)
+        const view = parseViewElement(node)
+        const contents = getDirectChildElement(node, 'Elements')
+        if (contents) {
+          const children = parseSlideElements(contents, { slideId })
+          view.elements = children.elements
+          issues.push(...children.issues)
+        }
+        parsedElements.push({ ...applyOffset(view, offsetX, offsetY), id: elementId, rawXml })
+        break
+      }
       case 'Text': {
         collectUnknownParameters(node, 'Text', slideId, elementId, issues)
         const textElement = parseTextElement(node)

@@ -1,6 +1,9 @@
 import { COMPLEX_SUBJECT_PARAMETERS } from './complex-subject-parameters'
 
 export const KNOWN_PARAMETERS: Record<string, Set<string>> = {
+  View: new Set(['Id', 'X', 'Y', 'Width', 'Height', 'Rotation', 'IsLocked', 'CanClone', 'HasMask',
+    'RotateOrigin', 'ShowRotateOrigin', 'SaveInfoMetadata', 'Animations', 'Hyperlink', 'ElementSource',
+    'LocalId', 'LayoutType', 'PermittedTransforms', 'IsHidden', 'Elements']),
   ActivityItem: new Set(['Id', 'X', 'Y', 'Width', 'Height', 'Rotation', 'Animations', 'ResourceType',
     'ActivityId', 'ResourceId', 'Source', 'Background', 'Text', 'RichText', 'TextVerticalAlignment',
     'VerticalAlignment', 'TextHorizontalAlignment', 'HorizontalAlignment', 'TextVerticalOffset',

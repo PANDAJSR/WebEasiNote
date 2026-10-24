@@ -5,6 +5,7 @@ import type { VideoElement } from '../../enbx/videos'
 import type { FlashElement } from '../../enbx/flashes'
 import type { TableElement } from '../../types'
 import { ShapeRenderer } from '../ShapeRenderer'
+import { ViewRenderer } from '../view/ViewRenderer'
 import { PictureRenderer } from '../PictureRenderer'
 import { VideoRenderer } from '../VideoRenderer'
 import { AudioRenderer } from '../AudioRenderer'
@@ -55,6 +56,10 @@ export function ElementRenderer({
   slideHeight = 720
 }: ElementRendererProps) {
   switch (element.type) {
+    case 'view':
+      return <ViewRenderer element={element} scale={scale} resourceMap={resourceMap} slideIndex={slideIndex}
+        currentIndex={currentIndex} isEditMode={isEditMode} onEditAudioUpdate={onEditAudioUpdate}
+        isVisible={isVisible} slideWidth={slideWidth} slideHeight={slideHeight} />
     case 'activity':
       return <ActivityElementRenderer element={element} scale={scale} resourceMap={resourceMap}
         slideIndex={slideIndex} currentIndex={currentIndex} isEditMode={isEditMode} />

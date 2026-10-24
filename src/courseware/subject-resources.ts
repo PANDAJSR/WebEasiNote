@@ -9,6 +9,10 @@ export function subjectResourcePaths(slides: SlideData[]) {
     paths.add(path)
   }
   const visit = (elements: SlideElement[]): SlideElement[] => elements.flatMap(element => {
+    if (element.type === 'view') {
+      for (const child of element.elements) if ('sourceId' in child) add(child.sourceId)
+      return visit(element.elements)
+    }
     if (element.type !== 'activity') return [element]
     for (const brush of [element.background, element.stroke]) if (brush?.type === 'image') add(brush.sourceId)
     // 活动嵌套元素可能直接保存相对路径，Reference.xml 中未必有对应项。
