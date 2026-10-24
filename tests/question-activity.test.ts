@@ -6,6 +6,7 @@ import { getQuestionSession, gradeQuestion, resetQuestionSession } from '../src/
 import type { ActivityDefinition } from '../src/types'
 
 const dom = new Window()
+Object.assign(globalThis, { XMLSerializer: dom.XMLSerializer })
 const xml = (value: string) => new dom.DOMParser().parseFromString(value, 'text/xml').documentElement as unknown as Element
 const jsonConfig = (value: unknown) => {
   const config = new dom.DOMParser().parseFromString('<Config />', 'text/xml').documentElement
@@ -63,7 +64,7 @@ test('one invalid question disables the entire activity', () => {
 test('unresolved Judge contents and unsupported competition never produce playable text substitutes', () => {
   const result = parseQuestionConfig('Judge', xml('<Config><JudgeConfig><JudgeItems><JudgeItem><Text>图片判断</Text><Answer>true</Answer><Contents><ElementRef>missing</ElementRef></Contents></JudgeItem></JudgeItems></JudgeConfig></Config>'))
   assert.equal(result.questions.length, 0)
-  assert.match(result.diagnostics[0], /图形或媒体/)
+  assert.match(result.diagnostics[0], /内嵌元素/)
   assert.equal(parseQuestionConfig('GroupCompetition', jsonConfig({ Items: [] })).questions.length, 0)
 })
 

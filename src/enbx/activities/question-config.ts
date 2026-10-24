@@ -1,3 +1,8 @@
+import type { SlideElement } from '../../types'
+import { parseSlideElements } from '../slide-elements-parser'
+
+export interface JudgeConfig { title: string; interval: number }
+
 /** 题目数据独立于课件元素；局部 ID 只用于放映会话，不冒充资源 ID。 */
 export interface ActivityOption {
   id: string
@@ -10,6 +15,7 @@ export interface ActivityQuestion {
   kind: 'choice' | 'judge'
   text: string
   options: ActivityOption[]
+  contents?: SlideElement[]
 }
 
 type RecordValue = Record<string, unknown>
@@ -109,12 +115,23 @@ function fromXml(key: string, config: Element): ActivityQuestion[] {
   }
   return xmlList(root, 'JudgeItems', 'JudgeItem').map((question, index) => {
     const contents = child(question, 'Contents')
-    if (contents && (contents.children.length || contents.textContent?.trim())) {
-      throw new Error('判断题含图形或媒体内容，暂不支持完整答题')
-    }
+    let elements: SlideElement[] = []
+    if (contents?.children.length) {
+      // 官方仅展示 Contents 的第一个 ElementSaveInfo；组合元素由通用解析器展开。
+      const wrapper = contents.cloneNode(false) as Element
+      wrapper.appendChild(contents.children[0].cloneNode(true))
+      const parsed = parseSlideElements(wrapper, { slideId: `judge-question-${index}` })
+      if (!parsed.elements.length || parsed.elements.some(element => element.type === 'unknown'
+        || ![element.x, element.y, element.width, element.height].every(Number.isFinite)
+        || element.width <= 0 || element.height <= 0) || parsed.issues.length) {
+        throw new Error('判断题内嵌元素含未支持的内容')
+      }
+      elements = parsed.elements
+    } else if (contents?.textContent?.trim()) throw new Error('判断题内嵌内容格式无效')
     const text = child(question, 'Text')
     if (text?.children.length) throw new Error('判断题文字格式无效')
-    return judgeQuestion(requiredText(text?.textContent), xmlBoolean(question, 'Answer'), index)
+    const result = judgeQuestion(elements.length ? text?.textContent || '' : requiredText(text?.textContent), xmlBoolean(question, 'Answer'), index)
+    return elements.length ? { ...result, contents: elements } : result
   })
 }
 
@@ -139,13 +156,23 @@ function fromJson(key: string, config: Element): ActivityQuestion[] {
 }
 
 /** 任何题目无效时关闭整个活动，避免部分题目被静默丢弃。 */
-export function parseQuestionConfig(key: string, config: Element): { questions: ActivityQuestion[]; diagnostics: string[] } {
+export function parseQuestionConfig(key: string, config: Element): { questions: ActivityQuestion[]; judge?: JudgeConfig; diagnostics: string[] } {
   try {
     if (key === 'GroupCompetition') throw new Error('分组竞争的下落、连击、计时和素材关联规则暂未实现')
     if (key !== 'Choice' && key !== 'Judge') throw new Error(`未支持的题目玩法 ${key}`)
     const questions = config.children.length || config.localName !== 'Config'
       ? fromXml(key, config) : fromJson(key, config)
     if (!questions.length) throw new Error('题目列表为空')
+    if (key === 'Judge') {
+      const root = config.localName === 'JudgeConfig' ? config : child(config, 'JudgeConfig') || config
+      const json = config.children.length ? undefined : record(JSON.parse(config.textContent || ''))
+      const rawInterval = json ? json.Interval : child(root, 'Interval')?.textContent
+      if (rawInterval != null && typeof rawInterval !== 'number' && typeof rawInterval !== 'string') throw new Error('判断题计时 Interval 无效')
+      const interval = rawInterval == null ? 7000 : Number(rawInterval)
+      if (!Number.isFinite(interval) || interval <= 0) throw new Error('判断题计时 Interval 无效')
+      const title = json ? json.Theme : child(root, 'Theme')?.textContent
+      return { questions, judge: { title: typeof title === 'string' ? title : '', interval }, diagnostics: [] }
+    }
     return { questions, diagnostics: [] }
   } catch (error) {
     return { questions: [], diagnostics: [error instanceof Error ? error.message : '题目配置无效'] }

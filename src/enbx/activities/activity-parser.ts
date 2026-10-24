@@ -24,6 +24,7 @@ export function parseActivities(slide: Element, elements: SlideElement[], slideI
     let categories: ActivityCategory[] = []
     let matching: ActivityDefinition['matching']
     let questions: ActivityDefinition['questions']
+    let judge: ActivityDefinition['judge']
     let competition: ActivityDefinition['competition']
     let mode = 'Classical'
     try {
@@ -56,13 +57,14 @@ export function parseActivities(slide: Element, elements: SlideElement[], slideI
       } else if (key === 'Choice' || key === 'Judge') {
         const parsed = parseQuestionConfig(key, config)
         questions = parsed.questions
+        judge = parsed.judge
         diagnostics.push(...parsed.diagnostics)
       } else diagnostics.push(`玩法 ${key || '未知'} 暂仅静态展示`)
     } catch {
       diagnostics.push('活动配置缺失或格式尚未支持')
     }
     if (!id || nodes.some(other => other !== node && text(other, 'Id') === id)) diagnostics.push('活动 ID 缺失或重复')
-    return { id, key, mode, categories, matching, questions, competition, hotspotOffsets, diagnostics, playable: !diagnostics.length,
+    return { id, key, mode, categories, matching, questions, judge, competition, hotspotOffsets, diagnostics, playable: !diagnostics.length,
       isPlayAudio: text(node, 'IsPlayAudio')?.toLowerCase() === 'true', rawXml: new XMLSerializer().serializeToString(node) }
   })
   for (const definition of definitions) {

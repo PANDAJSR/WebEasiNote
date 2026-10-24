@@ -15,6 +15,7 @@ import { useActivityPlayback } from '../viewer/activities/useActivityPlayback'
 import { ActivityControls } from './activities/ActivityControls'
 import { MatchingActivity } from './activities/MatchingActivity'
 import { QuestionActivity } from './activities/QuestionActivity'
+import { JudgeActivity } from './activities/JudgeActivity'
 import { CompetitionActivity } from './activities/CompetitionActivity'
 interface SlideRendererProps {
   slide: SlideData
@@ -211,7 +212,7 @@ export function SlideRenderer({
              const canvasActivity = !isEditMode && !playbackSelection?.enabled && slideIndex === currentIndex
                && element.type === 'activity' && slide.activities?.find(definition => definition.playable
                  && definition.id === element.activityId)
-             if (canvasActivity && (canvasActivity.competition?.items.some(item => item.id === element.id)
+              if (canvasActivity && (canvasActivity.key === 'Judge' || canvasActivity.competition?.items.some(item => item.id === element.id)
                || canvasActivity.matching?.materials.some(item => item.id === element.id)
                || canvasActivity.matching?.stemId === element.id)) return null
             if (elementRenderStates[element.id] === false && element.type !== 'audio') return null
@@ -382,6 +383,8 @@ export function SlideRenderer({
             elements={slide.elements} resourceMap={resourceMap} active={true} width={slide.width} height={slide.height} scale={scale} />
             : definition.competition ? <CompetitionActivity key={definition.id} definition={definition}
               elements={slide.elements} resourceMap={resourceMap} active={true} width={slide.width} height={slide.height} />
+            : definition.key === 'Judge' && definition.questions ? <JudgeActivity key={definition.id} definition={definition}
+              active={true} width={slide.width} height={slide.height} resourceMap={resourceMap} />
             : definition.questions ? <QuestionActivity key={definition.id} definition={definition} active={true} /> : null)}
       </div>
       {!isEditMode && playbackSelection?.enabled && <PlaybackSelectionOverlay key={slide.id}

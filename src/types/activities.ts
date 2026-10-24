@@ -2,7 +2,7 @@ import type { Brush } from '../enbx/brushes'
 import type { SlideElement } from './slide'
 import type { TextElement } from './text'
 import type { MatchingConfig } from '../enbx/activities/matching-config'
-import type { ActivityQuestion } from '../enbx/activities/question-config'
+import type { ActivityQuestion, JudgeConfig } from '../enbx/activities/question-config'
 import type { CompetitionConfig } from '../enbx/activities/competition-config'
 
 export interface ActivityElement {
@@ -40,6 +40,7 @@ export interface ActivityDefinition {
   categories: ActivityCategory[]
   matching?: MatchingConfig
   questions?: ActivityQuestion[]
+  judge?: JudgeConfig
   competition?: CompetitionConfig
   hotspotOffsets?: Record<string, number>
   playable: boolean
