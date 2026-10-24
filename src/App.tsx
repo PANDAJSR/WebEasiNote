@@ -164,6 +164,7 @@ function App() {
       postToEnbxHost({
         type: 'enbx:document-loaded',
         fileName: file.name,
+        slideIds: slideData.map(slide => slide.id),
         pageCount: slideData.length,
         currentPage: isAutoReload ? currentSlideIndexRef.current + 1 : 1
       })

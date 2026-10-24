@@ -64,6 +64,7 @@ export function CloudViewer({ manifestUrl, ...props }: CloudViewerProps) {
     if (announced.current !== source) {
       announced.current = source
       postToEnbxHost({ type: 'enbx:document-loaded', sessionId: source.sessionId,
+        slideIds: slides.map(slide => slide.id),
         pageCount: slides.length, currentPage: index + 1 })
     }
     const navigation = pending.current

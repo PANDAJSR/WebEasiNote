@@ -44,6 +44,7 @@ test('云 Viewer 延迟页保留旧正文，提交后才向宿主确认，关闭
   try {
     await act(async () => { root.render(render()); await new Promise(resolve => setTimeout(resolve, 30)) })
     assert.equal(messages.filter(m => m.type === 'enbx:document-loaded').length, 1)
+    assert.deepEqual(messages.find(m => m.type === 'enbx:document-loaded').slideIds, ['a', 'b', 'c'])
     const command = { id: 1, direction: 'next', requestId: 'n' }
     await act(async () => root.render(render(command)))
     assert.equal(messages.filter(m => m.type === 'enbx:navigation-complete').length, 0)
