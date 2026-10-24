@@ -4,6 +4,7 @@ import { Button } from 'antd'
 import type { ActivityDefinition, ActivityElement, SlideElement } from '../../types'
 import { checkMatchingAnswers, clearWrongMatchingPlacements, placeMatchingMaterial } from '../../viewer/activities/matching'
 import { matchingSession } from '../../viewer/activities/matching-session'
+import { matchingDropTarget } from '../../viewer/activities/matching-drop'
 import { ActivityElementRenderer } from './ActivityElementRenderer'
 import { matchingStyles as styles } from './matching-styles'
 
@@ -55,7 +56,9 @@ export function MatchingActivity({ definition, elements, resourceMap, active, wi
       const next: Record<string, Point> = {}
       slots.current.forEach((node, id) => {
         const rect = node.getBoundingClientRect()
-        next[id] = { x: (rect.left - bounds.left) / scale, y: (rect.top - bounds.top) / scale }
+        const material = byId.get(session.placements[id])
+        next[id] = { x: (rect.left - bounds.left) / scale + (rect.width / scale - (material?.width || rect.width / scale)) / 2,
+          y: (rect.top - bounds.top) / scale + (rect.height / scale - (material?.height || rect.height / scale)) / 2 }
       })
       setTargets(previous => JSON.stringify(previous) === JSON.stringify(next) ? previous : next)
     }
@@ -66,7 +69,7 @@ export function MatchingActivity({ definition, elements, resourceMap, active, wi
     let disposed = false
     void document.fonts?.ready.then(() => { if (!disposed) measure() })
     return () => { disposed = true; observer?.disconnect() }
-  }, [definition, scale, width, height])
+  })
   const place = (id: string, targetId: string | null) => {
     if (!active) return
     session.placements = placeMatchingMaterial(config, session.placements, id, targetId)
@@ -85,13 +88,15 @@ export function MatchingActivity({ definition, elements, resourceMap, active, wi
     cancel()
     if (!active || !moved) return
     suppressClick.current = true
-    // 使用实际空位矩形命中；素材本身的捕获和遮挡不影响目标查找。
-    const target = [...slots.current].find(([, node]) => {
-      const rect = node.getBoundingClientRect()
-      return event.clientX >= rect.left && event.clientX <= rect.right
-        && event.clientY >= rect.top && event.clientY <= rect.bottom
-    })
-    place(current.id, target?.[0] || null)
+    const bounds = root.current!.getBoundingClientRect()
+    const element = byId.get(current.id)!
+    const left = bounds.left + current.origin.x * scale + event.clientX - current.start.x
+    const top = bounds.top + current.origin.y * scale + event.clientY - current.start.y
+    const material = { left, top, width: element.width * scale, height: element.height * scale,
+      right: left + element.width * scale, bottom: top + element.height * scale }
+    const targetId = matchingDropTarget([...slots.current].map(([id, node]) => ({ id, rect: node.getBoundingClientRect() })),
+      material, { x: event.clientX, y: event.clientY })
+    place(current.id, targetId)
     event.preventDefault()
     event.stopPropagation()
   }
@@ -101,7 +106,7 @@ export function MatchingActivity({ definition, elements, resourceMap, active, wi
     const slotWidth = Math.max(80, ...answers.map(answer => answer?.width || 0))
     const slotHeight = Math.max(40, ...answers.map(answer => answer?.height || 0))
     const correct = session.checked?.correctTargetIds.includes(id)
-    const wrong = session.checked?.wrongTargetIds.includes(id)
+    const wrong = session.checked?.wrongTargetIds.includes(id) || session.checked?.emptyTargetIds.includes(id)
     return <button key={id} ref={node => { if (node) slots.current.set(id, node); else slots.current.delete(id) }}
       type='button' data-matching-target={id} aria-label={`空位 ${index + 1}`} disabled={!active}
       style={{ ...styles.target, width: Math.max(slotWidth, material?.width || 0), height: Math.max(slotHeight, material?.height || 0),
@@ -109,7 +114,7 @@ export function MatchingActivity({ definition, elements, resourceMap, active, wi
       onClick={() => {
         if (session.selectedId) place(session.selectedId, id)
         else if (material) place(material.id, null)
-      }}>{material ? '' : `空位 ${index + 1}`}{correct ? ' ✓' : wrong ? ' ✗' : ''}</button>
+       }}>{material ? '' : `空位 ${index + 1}`}</button>
   }
   const stem = config.stemId ? byId.get(config.stemId) : undefined
   return <div ref={root} style={{ ...styles.canvas, width, height }} data-activity-canvas={config.kind}
@@ -169,6 +174,21 @@ export function MatchingActivity({ definition, elements, resourceMap, active, wi
         <ActivityElementRenderer element={{ ...element, x: 0, y: 0 }} scale={1}
           resourceMap={resourceMap} slideIndex={0} currentIndex={0} isEditMode={false} />
       </div>
+    })}
+    {session.checked && config.targets.map((target, index) => {
+      const point = targets[target.id]
+      if (!point) return null
+      const correct = session.checked!.correctTargetIds.includes(target.id)
+      const empty = session.checked!.emptyTargetIds.includes(target.id)
+      const material = byId.get(session.placements[target.id])
+      return <span key={target.id} role='status' data-matching-result={target.id}
+        aria-label={`空位 ${index + 1}：${correct ? '正确' : empty ? '未填' : '错误'}`}
+        style={{ position: 'absolute', left: point.x, top: point.y - 22, zIndex: 7,
+          pointerEvents: 'none', background: correct ? '#15803d' : '#dc2626', color: '#ffffff',
+          borderRadius: 4, padding: '2px 6px', fontSize: 16, lineHeight: '20px',
+          boxShadow: material ? `0 0 0 2px ${correct ? '#15803d' : '#dc2626'}` : undefined }}>
+        {correct ? '✓ 正确' : empty ? '！未填' : '✗ 错误'}
+      </span>
     })}
     <div style={styles.controls} onClick={event => event.stopPropagation()}>
       <span role='status'>{!active ? '活动已暂停' : session.checked?.complete ? '活动完成！'
