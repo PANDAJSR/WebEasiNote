@@ -24,6 +24,11 @@ export function useEnbxHostMessages({ loadENBXUrlRef, openManifest, viewModeRef,
             success: false, error: '当前没有可插图的课件页面' })
           return
         }
+        if (message.type === 'insert-media' && viewModeRef.current !== 'viewer') {
+          postToEnbxHost({ type: 'media-inserted', requestId: message.requestId,
+            success: false, error: '当前没有可插入媒体的播放页面' })
+          return
+        }
         if (message.type === 'enbx:open') {
           if (message.sourceKind === 'http-manifest' && typeof message.manifestUrl === 'string') {
             openManifest(message.manifestUrl)

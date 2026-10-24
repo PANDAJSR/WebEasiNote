@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { AnnotationCommand, AnnotationState, CoursewareMetadata, InkElement, SlideData, SlideElement } from '../types'
 import { postToEnbxHost, subscribeToEnbxHost } from '../platform/host-bridge'
 import { useHostImageInsertion } from './useHostImageInsertion'
+import { useHostMediaInsertion } from './useHostMediaInsertion'
 import { defaultAnnotationState, patchAnnotationState } from './annotation/annotation-state'
 import { useLaserInk } from './annotation/useLaserInk'
 import { commitPage, emptyPage, replacePageInk, resolvePage, travelPage,
@@ -36,10 +37,14 @@ export function usePlaybackSelection(slides: SlideData[], currentIndex: number, 
   const stateRef = useRef(state)
   const sessionId = useRef('')
   const processed = useRef(new Set<string>())
-  const { images, resources } = useHostImageInsertion(slides[currentIndex], metadata,
+  const { images, resources: imageResources } = useHostImageInsertion(slides[currentIndex], metadata,
     () => updateState({ tool: 'select' }))
-  const latest = useRef({ slides, currentIndex, images, active })
-  latest.current = { slides, currentIndex, images, active }
+  const { media, resources: mediaResources } = useHostMediaInsertion(slides[currentIndex], metadata,
+    () => updateState({ tool: 'play' }), active)
+  const inserted = useMemo(() => [...images, ...media], [images, media])
+  const resources = useMemo(() => ({ ...imageResources, ...mediaResources }), [imageResources, mediaResources])
+  const latest = useRef({ slides, currentIndex, inserted, active })
+  latest.current = { slides, currentIndex, inserted, active }
 
   function updateState(patch: Record<string, unknown>) {
     if (!latest.current.active) return
@@ -48,7 +53,7 @@ export function usePlaybackSelection(slides: SlideData[], currentIndex: number, 
     setEpoch(value => value + 1)
   }
   const baseFor = (slide: SlideData) => [...slide.elements,
-    ...latest.current.images.filter(image => image.pageId === slide.id).map(image => image.element)]
+    ...latest.current.inserted.filter(item => item.pageId === slide.id).map(item => item.element)]
   const updatePage = (update: (page: PageChanges, base: SlideElement[]) => PageChanges) => {
     const slide = latest.current.slides[latest.current.currentIndex]
     if (!slide || stateRef.current.frozen || !latest.current.active) return
@@ -128,12 +133,12 @@ export function usePlaybackSelection(slides: SlideData[], currentIndex: number, 
       state, canUndo: !!history?.past.length, canRedo: !!history?.future.length })
   }, [slideId, state, history])
   const resolvedSlides = useMemo(() => slides.map(slide => {
-    const inserted = images.filter(image => image.pageId === slide.id).map(image => image.element)
+    const additions = inserted.filter(item => item.pageId === slide.id).map(item => item.element)
     const changes = pages[slide.id]?.present
     const transient = laser.pages[slide.id] ?? []
-    if (!changes) return inserted.length || transient.length ? { ...slide, elements: [...slide.elements, ...inserted, ...transient] } : slide
-    return { ...slide, elements: [...resolvePage([...slide.elements, ...inserted], changes), ...transient] }
-  }), [slides, pages, images, laser.pages])
+    if (!changes) return additions.length || transient.length ? { ...slide, elements: [...slide.elements, ...additions, ...transient] } : slide
+    return { ...slide, elements: [...resolvePage([...slide.elements, ...additions], changes), ...transient] }
+  }), [slides, pages, inserted, laser.pages])
 
   const annotation: PlaybackAnnotation = {
     state, epoch, setState: updateState, command,
