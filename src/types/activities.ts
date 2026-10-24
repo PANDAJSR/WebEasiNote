@@ -41,6 +41,7 @@ export interface ActivityDefinition {
   matching?: MatchingConfig
   questions?: ActivityQuestion[]
   competition?: CompetitionConfig
+  hotspotOffsets?: Record<string, number>
   playable: boolean
   diagnostics: string[]
   rawXml: string

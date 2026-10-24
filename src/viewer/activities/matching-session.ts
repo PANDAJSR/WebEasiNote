@@ -5,12 +5,13 @@ export interface MatchingSession {
   placements: MatchingPlacements
   selectedId: string | null
   checked: MatchingCheckResult | null
+  positions: Record<string, { x: number; y: number }>
 }
 const sessions = new WeakMap<ActivityDefinition, MatchingSession>()
 export function matchingSession(definition: ActivityDefinition) {
   let session = sessions.get(definition)
   if (!session) {
-    session = { placements: {}, selectedId: null, checked: null }
+    session = { placements: {}, selectedId: null, checked: null, positions: {} }
     sessions.set(definition, session)
   }
   return session

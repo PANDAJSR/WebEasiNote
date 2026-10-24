@@ -7,6 +7,8 @@ import { matchingSession } from '../../viewer/activities/matching-session'
 import { matchingDropTarget } from '../../viewer/activities/matching-drop'
 import { ActivityElementRenderer } from './ActivityElementRenderer'
 import { matchingStyles as styles } from './matching-styles'
+import { useMatchingMotion } from './useMatchingMotion'
+import { MatchingResult } from './MatchingResult'
 
 interface Point { x: number; y: number }
 interface Gesture { id: string; pointer: number; start: Point; origin: Point; node: HTMLElement }
@@ -19,6 +21,7 @@ export function MatchingActivity({ definition, elements, resourceMap, active, wi
   const [, refresh] = useState(0)
   const [preview, setPreview] = useState<{ id: string; point: Point } | null>(null)
   const [targets, setTargets] = useState<Record<string, Point>>({})
+  const [hovered, setHovered] = useState<string | null>(null)
   const root = useRef<HTMLDivElement>(null)
   const slots = useRef(new Map<string, HTMLButtonElement>())
   const gesture = useRef<Gesture | null>(null)
@@ -40,6 +43,7 @@ export function MatchingActivity({ definition, elements, resourceMap, active, wi
     gesture.current = null
     if (current?.node.hasPointerCapture?.(current.pointer)) current.node.releasePointerCapture(current.pointer)
     setPreview(null)
+    setHovered(null)
   }
   useEffect(() => {
     cancel()
@@ -56,8 +60,9 @@ export function MatchingActivity({ definition, elements, resourceMap, active, wi
       const next: Record<string, Point> = {}
       slots.current.forEach((node, id) => {
         const rect = node.getBoundingClientRect()
-        const material = byId.get(session.placements[id])
-        next[id] = { x: (rect.left - bounds.left) / scale + (rect.width / scale - (material?.width || rect.width / scale)) / 2,
+        const material = byId.get(session.placements[id]) || (config.kind === 'TextMatch'
+          ? byId.get(config.targets.find(target => target.id === id)!.answerIds[0]) : undefined)
+        next[id] = { x: (rect.left - bounds.left) / scale + (rect.width / scale - (material?.width || rect.width / scale)) / (config.kind === 'TextMatch' ? 1 : 2),
           y: (rect.top - bounds.top) / scale + (rect.height / scale - (material?.height || rect.height / scale)) / 2 }
       })
       setTargets(previous => JSON.stringify(previous) === JSON.stringify(next) ? previous : next)
@@ -72,6 +77,9 @@ export function MatchingActivity({ definition, elements, resourceMap, active, wi
   })
   const place = (id: string, targetId: string | null) => {
     if (!active) return
+    const displaced = targetId && session.placements[targetId]
+    if (displaced && displaced !== id) delete session.positions[displaced]
+    delete session.positions[id]
     session.placements = placeMatchingMaterial(config, session.placements, id, targetId)
     session.checked = null
     session.selectedId = null
@@ -79,8 +87,18 @@ export function MatchingActivity({ definition, elements, resourceMap, active, wi
   }
   const materialPoint = (element: ActivityElement) => {
     const target = Object.keys(session.placements).find(id => session.placements[id] === element.id)
-    return target && targets[target] ? targets[target] : { x: element.x, y: element.y }
+    const rect = target && slots.current.get(target)?.getBoundingClientRect()
+    const bounds = root.current?.getBoundingClientRect()
+    if (rect && bounds && scale > 0) return {
+      x: (rect.left - bounds.left) / scale + (rect.width / scale - element.width) / (config.kind === 'TextMatch' ? 1 : 2),
+      y: (rect.top - bounds.top) / scale + (rect.height / scale - element.height) / 2
+    }
+    return target && targets[target] ? targets[target] : session.positions[element.id] || { x: element.x, y: element.y }
   }
+  const points = Object.fromEntries(config.materials.map(item => [item.id,
+    preview?.id === item.id ? preview.point : materialPoint(byId.get(item.id)!)]))
+  const materialNodes = useMatchingMotion(points, gesture.current?.id || null, !!session.checked,
+    Object.values(session.placements))
   const handleEnd = (event: ReactPointerEvent) => {
     const current = gesture.current
     if (!current || current.pointer !== event.pointerId) return
@@ -94,9 +112,15 @@ export function MatchingActivity({ definition, elements, resourceMap, active, wi
     const top = bounds.top + current.origin.y * scale + event.clientY - current.start.y
     const material = { left, top, width: element.width * scale, height: element.height * scale,
       right: left + element.width * scale, bottom: top + element.height * scale }
+    // 最后一次 pointerup 也可能有位移，动画从实际松手点开始。
+    points[current.id] = { x: (left - bounds.left) / scale, y: (top - bounds.top) / scale }
     const targetId = matchingDropTarget([...slots.current].map(([id, node]) => ({ id, rect: node.getBoundingClientRect() })),
       material, { x: event.clientX, y: event.clientY })
     place(current.id, targetId)
+    if (!targetId) {
+      session.positions[current.id] = { x: (left - bounds.left) / scale, y: (top - bounds.top) / scale }
+      update()
+    }
     event.preventDefault()
     event.stopPropagation()
   }
@@ -109,12 +133,14 @@ export function MatchingActivity({ definition, elements, resourceMap, active, wi
     const wrong = session.checked?.wrongTargetIds.includes(id) || session.checked?.emptyTargetIds.includes(id)
     return <button key={id} ref={node => { if (node) slots.current.set(id, node); else slots.current.delete(id) }}
       type='button' data-matching-target={id} aria-label={`空位 ${index + 1}`} disabled={!active}
-      style={{ ...styles.target, width: Math.max(slotWidth, material?.width || 0), height: Math.max(slotHeight, material?.height || 0),
-        borderColor: correct ? '#16a34a' : wrong ? '#dc2626' : undefined }}
+      style={{ ...styles.target, width: config.kind === 'TextMatch' ? 463 : Math.max(slotWidth, material?.width || 0),
+        height: config.kind === 'TextMatch' ? 101 : Math.max(slotHeight, material?.height || 0),
+        background: hovered === id ? '#60a5fa4d' : config.kind === 'TextMatch' ? 'transparent' : undefined,
+        borderColor: config.kind === 'TextMatch' ? 'transparent' : correct ? '#16a34a' : wrong ? '#dc2626' : undefined }}
       onClick={() => {
         if (session.selectedId) place(session.selectedId, id)
         else if (material) place(material.id, null)
-       }}>{material ? '' : `空位 ${index + 1}`}</button>
+       }}>{material || config.kind === 'TextMatch' ? '' : `空位 ${index + 1}`}</button>
   }
   const stem = config.stemId ? byId.get(config.stemId) : undefined
   return <div ref={root} style={{ ...styles.canvas, width, height }} data-activity-canvas={config.kind}
@@ -125,9 +151,9 @@ export function MatchingActivity({ definition, elements, resourceMap, active, wi
     }}>
     {config.kind === 'TextMatch' ? config.targets.map((target, index) => {
       const container = byId.get(target.containerId)!
-      const answer = byId.get(target.answerIds[0])!
       return <div key={target.id} style={{ position: 'absolute', pointerEvents: 'auto',
-        left: Math.max(0, container.x - answer.width - 16), top: container.y + (container.height - answer.height) / 2 }}>
+        left: container.x - 463 + (definition.hotspotOffsets?.Container ?? definition.hotspotOffsets?.['1'] ?? 0),
+        top: container.y + (container.height - 101) / 2 }}>
         {slot(target.id, index)}
       </div>
     }) : stem && <div style={{ position: 'absolute', left: stem.x, top: stem.y, width: stem.width,
@@ -147,15 +173,18 @@ export function MatchingActivity({ definition, elements, resourceMap, active, wi
       const element = byId.get(item.id)!
       const point = preview?.id === item.id ? preview.point : materialPoint(element)
       const selected = session.selectedId === item.id
-      return <div key={item.id} role='button' tabIndex={active ? 0 : -1} aria-label={plainText[item.id] || item.name || '素材'}
+      return <div key={item.id} ref={node => { if (node) materialNodes.current.set(item.id, node); else materialNodes.current.delete(item.id) }}
+        role='button' tabIndex={active ? 0 : -1} aria-label={plainText[item.id] || item.name || '素材'}
         aria-disabled={!active} aria-pressed={selected} data-matching-material={item.id}
         style={{ ...styles.material, left: point.x, top: point.y, width: element.width, height: element.height,
           outline: selected ? '2px solid #1677ff' : undefined, zIndex: preview?.id === item.id ? 6 : 3,
+          opacity: hovered && session.placements[hovered] === item.id && gesture.current?.id !== item.id ? 0.5 : 1,
           cursor: active ? preview?.id === item.id ? 'grabbing' : 'grab' : undefined }}
         onPointerDown={event => {
           if (!active || event.button !== 0 || gesture.current || !(scale > 0)) return
           event.preventDefault(); event.stopPropagation()
           session.selectedId = item.id
+          session.checked = null
           gesture.current = { id: item.id, pointer: event.pointerId, start: { x: event.clientX, y: event.clientY },
             origin: materialPoint(element), node: event.currentTarget }
           event.currentTarget.setPointerCapture?.(event.pointerId)
@@ -163,8 +192,14 @@ export function MatchingActivity({ definition, elements, resourceMap, active, wi
         }} onPointerMove={event => {
           const current = gesture.current
           if (!current || current.pointer !== event.pointerId) return
-          setPreview({ id: current.id, point: { x: current.origin.x + (event.clientX - current.start.x) / scale,
-            y: current.origin.y + (event.clientY - current.start.y) / scale } })
+          const point = { x: current.origin.x + (event.clientX - current.start.x) / scale,
+            y: current.origin.y + (event.clientY - current.start.y) / scale }
+          setPreview({ id: current.id, point })
+          const bounds = root.current!.getBoundingClientRect()
+          const left = bounds.left + point.x * scale, top = bounds.top + point.y * scale
+          setHovered(matchingDropTarget([...slots.current].map(([id, node]) => ({ id, rect: node.getBoundingClientRect() })),
+            { left, top, right: left + element.width * scale, bottom: top + element.height * scale,
+              width: element.width * scale, height: element.height * scale }, { x: event.clientX, y: event.clientY }))
         }} onPointerUp={handleEnd} onPointerCancel={cancel}
         onLostPointerCapture={event => { if (gesture.current?.pointer === event.pointerId) cancel() }}
         onClick={() => { if (active) { session.selectedId = item.id; update() } }}
@@ -180,26 +215,22 @@ export function MatchingActivity({ definition, elements, resourceMap, active, wi
       if (!point) return null
       const correct = session.checked!.correctTargetIds.includes(target.id)
       const empty = session.checked!.emptyTargetIds.includes(target.id)
-      const material = byId.get(session.placements[target.id])
-      return <span key={target.id} role='status' data-matching-result={target.id}
-        aria-label={`空位 ${index + 1}：${correct ? '正确' : empty ? '未填' : '错误'}`}
-        style={{ position: 'absolute', left: point.x, top: point.y - 22, zIndex: 7,
-          pointerEvents: 'none', background: correct ? '#15803d' : '#dc2626', color: '#ffffff',
-          borderRadius: 4, padding: '2px 6px', fontSize: 16, lineHeight: '20px',
-          boxShadow: material ? `0 0 0 2px ${correct ? '#15803d' : '#dc2626'}` : undefined }}>
-        {correct ? '✓ 正确' : empty ? '！未填' : '✗ 错误'}
-      </span>
+      const material = byId.get(session.placements[target.id]) || (config.kind === 'TextMatch' ? byId.get(target.answerIds[0]) : undefined)
+      return <MatchingResult key={target.id} id={target.id} index={index} correct={correct} empty={empty}
+        x={point.x + Math.max(0, (material?.width || 0) - 50)} y={point.y + (material?.height || 0) - 22}
+        delay={config.kind === 'GapFilling' ? index * 300 : 0} />
     })}
     <div style={styles.controls} onClick={event => event.stopPropagation()}>
       <span role='status'>{!active ? '活动已暂停' : session.checked?.complete ? '活动完成！'
         : session.checked ? `正确 ${session.checked.correctTargetIds.length} / ${config.targets.length}` : '拖动素材到空位'}</span>
       <Button type='primary' disabled={!active} onClick={() => {
         cancel(); session.checked = checkMatchingAnswers(config, session.placements, plainText)
+        if (config.kind === 'TextMatch') for (const id of session.checked.wrongTargetIds) delete session.positions[session.placements[id]]
         session.placements = clearWrongMatchingPlacements(config, session.placements, session.checked)
         session.selectedId = null; update()
       }}>检查答案</Button>
       <Button disabled={!active} onClick={() => {
-        cancel(); session.placements = {}; session.selectedId = null; session.checked = null; update()
+        cancel(); session.placements = {}; session.positions = {}; session.selectedId = null; session.checked = null; update()
       }}>重新开始</Button>
     </div>
   </div>

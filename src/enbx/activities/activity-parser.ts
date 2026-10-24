@@ -14,6 +14,13 @@ export function parseActivities(slide: Element, elements: SlideElement[], slideI
     const id = text(node, 'Id') || ''
     const key = text(node, 'Key') || ''
     const config = child(node, 'Config')
+    const hotspotOffsets: Record<string, number> = {}
+    const resources = child(child(node, 'ActivitySetting') || node, 'Resources')
+    for (const resource of Array.from(resources?.children || [])) {
+      const type = text(resource, 'Type')
+      const offset = text(child(resource, 'HotspotInfo') || resource, 'RelativeOffset')
+      if (type && offset?.trim() && Number.isFinite(Number(offset))) hotspotOffsets[type] = Number(offset)
+    }
     let categories: ActivityCategory[] = []
     let matching: ActivityDefinition['matching']
     let questions: ActivityDefinition['questions']
@@ -55,7 +62,7 @@ export function parseActivities(slide: Element, elements: SlideElement[], slideI
       diagnostics.push('活动配置缺失或格式尚未支持')
     }
     if (!id || nodes.some(other => other !== node && text(other, 'Id') === id)) diagnostics.push('活动 ID 缺失或重复')
-    return { id, key, mode, categories, matching, questions, competition, diagnostics, playable: !diagnostics.length,
+    return { id, key, mode, categories, matching, questions, competition, hotspotOffsets, diagnostics, playable: !diagnostics.length,
       isPlayAudio: text(node, 'IsPlayAudio')?.toLowerCase() === 'true', rawXml: new XMLSerializer().serializeToString(node) }
   })
   for (const definition of definitions) {

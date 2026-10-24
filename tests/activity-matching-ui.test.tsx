@@ -78,7 +78,7 @@ test('matching 缺失关联元素降级静态展示，选择题通过页面配�
   assert.equal(slide.activities![0].questions![0].options.length, 2)
 })
 
-test('画布素材在半倍缩放下拖放、取消、错误退回及重新抓取，不修改保存坐标', async () => {
+test('画布素材在半倍缩放下拖放、取消、自由摆放及重新抓取，不修改保存坐标', async () => {
   const slide = parseSlideXML(slideXml('GapFilling', gapConfig))
   const saved = JSON.stringify(slide)
   const host = document.createElement('div')
@@ -123,7 +123,60 @@ test('画布素材在半倍缩放下拖放、取消、错误退回及重新抓�
   await pointer('m', 'pointerdown', 120, 60)
   await pointer('m', 'pointerup', 300, 200)
   assert.deepEqual(session.placements, {})
+  const released = { x: Number.parseFloat(material('m').style.left), y: Number.parseFloat(material('m').style.top) }
+  assert.deepEqual(session.positions.m, released)
+  assert.notEqual(released.x, 0)
+  await act(async () => root.render(<SlideRenderer slide={slide} scale={0.5} playbackSelection={{ enabled: true } as never} />))
+  await act(async () => root.render(<SlideRenderer slide={slide} scale={0.5} />))
+  assert.equal(material('m').style.left, `${released.x}px`)
+  assert.equal(material('m').style.top, `${released.y}px`)
   assert.equal(JSON.stringify(slide), saved)
+  const reset = Array.from(host.querySelectorAll('button')).find(button => button.textContent === '重新开始')!
+  await act(async () => reset.click())
+  assert.deepEqual(session.positions, {})
+  assert.equal(material('m').style.left, '0px')
   await act(async () => root.unmount())
   host.remove()
+})
+
+test('配对读取主题热点偏移并右对齐，吸附动画和判题动画在卸载时取消', async () => {
+  const xml = slideXml('TextMatch', pairConfig).replace('<Key>TextMatch</Key>', `<Key>TextMatch</Key>
+    <ActivitySetting><Resources><Resource><Type>Container</Type><HotspotInfo><RelativeOffset>56</RelativeOffset>
+    </HotspotInfo></Resource></Resources></ActivitySetting>`)
+  const slide = parseSlideXML(xml)
+  assert.equal(slide.activities![0].hotspotOffsets?.Container, 56)
+  const host = document.createElement('div')
+  document.body.appendChild(host)
+  const root = createRoot(host as unknown as HTMLElement)
+  const recorded: { duration: number; cancelled: boolean }[] = []
+  const prototype = window.HTMLElement.prototype
+  const original = prototype.animate
+  prototype.animate = (function (this: HTMLElement, _frames: unknown, options: { duration: number }) {
+    if (!this.hasAttribute('data-matching-material') && !this.hasAttribute('data-matching-result')) return original.call(this, _frames as never, options)
+    const entry = { duration: options.duration, cancelled: false }
+    recorded.push(entry)
+    return { cancel: () => { entry.cancelled = true } }
+  }) as never
+  try {
+    await act(async () => root.render(<SlideRenderer slide={slide} scale={1} />))
+    const target = host.querySelector('[data-matching-target]') as unknown as HTMLElement
+    assert.equal(target.parentElement?.style.left, '-407px')
+    assert.equal(target.style.width, '463px')
+    target.getBoundingClientRect = () => ({ left: -407, top: -20.5, right: 56, bottom: 80.5,
+      width: 463, height: 101, x: -407, y: -20.5, toJSON() {} })
+    const material = host.querySelector('[data-matching-material="m"]') as unknown as HTMLElement
+    await act(async () => material.click())
+    await act(async () => target.click())
+    assert.equal(material.style.left, '-64px')
+    assert.equal(material.style.top, '0px')
+    assert.ok(recorded.some(entry => entry.duration === 200))
+    const check = Array.from(host.querySelectorAll('button')).find(button => button.textContent === '检查答案')!
+    await act(async () => check.click())
+    assert.ok(recorded.some(entry => entry.duration === 300))
+    await act(async () => root.unmount())
+    assert.ok(recorded.every(entry => entry.cancelled))
+  } finally {
+    prototype.animate = original
+    host.remove()
+  }
 })

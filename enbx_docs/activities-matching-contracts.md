@@ -51,8 +51,18 @@ REA 原始 Evidence：程序集 `ev_55dec193baf3f810e29cdc666a0b4afcead969a3c578
 - `checkMatchingAnswers(config, placements, plainText?)`：返回正确、错误、空目标及 complete。plainText 是真实元素 ID 到已确认无公式/内嵌对象的文本映射；省略时保守地按 ID 检查。
 - `clearWrongMatchingPlacements(config, placements, checked)`：仅 TextMatch 退回错误素材；GapFilling 保留。
 
-当前 `ActivityDefinition.matching` 已接入解析器并验证 linkedElements。`MatchingActivity` 直接在画布上渲染保存素材和题干，替换原素材显示以免重复。配对空位按答案尺寸置于保存容器左侧，填空按题干片段在保存题干区域排版；使用空位 DOM 矩形命中，按幻灯片缩放换算拖动位移与吸附坐标。支持已放置素材重新抓取、点击选择、取消拖动、显式检查/重置，WeakMap 会话跨挂载保存 placements；播放选择恢复保存外观并暂停交互。图片或旧 Contents 复用活动元素渲染器。运行时不包含官方模板偏移、ActivityChar 富文本测量、动画、音效及完成状态机。TextMatch 完成要求所有目标均正确填入；这是查看器的明确完成条件，未复刻官方 CheckAnswer 对空目标的宽松分支。
+当前 `ActivityDefinition.matching` 已接入解析器并验证 linkedElements。`MatchingActivity` 直接在画布上渲染保存素材和题干，替换原素材显示以免重复。配对热点按官方尺寸与模板偏移生成，填空按题干片段在保存题干区域排版；使用空位 DOM 矩形命中，按幻灯片缩放换算拖动位移与吸附坐标。支持已放置素材重新抓取、点击选择、取消拖动、显式检查/重置，WeakMap 会话跨挂载保存 placements 及空位外自由坐标；播放选择恢复保存外观并暂停交互。图片或旧 Contents 复用活动元素渲染器。运行时尚未包含 ActivityChar 富文本测量、官方提示贴图、声音及完整开场/完成动画状态机。TextMatch 完成要求所有目标均正确填入；这是查看器的明确完成条件，未复刻官方 CheckAnswer 对空目标的宽松分支。
 
 新增测试 `tests/activity-matching.test.ts` 验证真实字段/角色、干扰项、目标替换、延后检查、纯文本等价、并列答案交换/计数、无效配置及旧 JSON 字段结构。
 
-画布吸附按松手时移动后的素材矩形判断：素材中心或指针进入空位，或重叠面积达到较小矩形面积的 25% 时接受；多个目标优先素材中心命中及较大重叠。空位坐标在排版更新后重新测量，放置素材居中吸附。检查结果在素材上层独立标出“正确”“错误”“未填”，避免被素材遮挡。填空错误素材保留，修改摆放后清除旧检查结果。相关回归覆盖缩放拖放、素材替换与正误标记。
+画布吸附按松手时移动后的素材矩形判断：素材中心或指针进入空位，或重叠面积达到较小矩形面积的 25% 时接受；多个目标优先素材中心命中及较大重叠。这仍是查看器的命中策略；官方调用 `RectsUtil.GetMaxIntersectRect`，该工具的阈值尚未核实。空位坐标在排版更新后重新测量，填空居中吸附，配对右边缘对齐。检查结果在素材上层独立标出“正确”“错误”“未填”，避免被素材遮挡。填空错误素材保留，开始拖动或修改摆放后清除旧检查结果。
+
+### 官方拖动及主题几何证据（5.2.4.10148）
+
+- `ActivityDragBehaviorController.Material_DragCompleted` 在未命中热点时调用的 `Undo()` 对象是 `LevelMoveResultCollection`；它由 `PlaceDraggingElementAtTop` 的 `Slide.LevelStorage.MoveToTop(element)` 返回，只撤销层级移动。随后记录当前 `material.Location`，不把素材坐标恢复到初始位置。查看器因此在热点外保留释放坐标；拖动取消恢复抓取前位置，替换占用素材、TextMatch 错答及重新开始会清除对应自由坐标。
+- `TextMatchActivityHotspotsMaker.Get` 使用 463×101 的幻灯片坐标热点：`x = container.x - 463 + RelativeOffset`，`y = container.y + (container.height - 101) / 2`。`RelativeOffset` 来自 `Activity/ActivitySetting/Resources/*/HotspotInfo/RelativeOffset`，按资源 `Type` 关联，缺省为 0；解析后保存到 `ActivityDefinition.hotspotOffsets`，原 XML 保留。
+- 安装目录 `.packages/Activities/TextMatch/*.enas` 提供直接主题证据：基础模板 42、潜艇导弹 27、天空之城 56、群花丛簇 5。此偏移让连接轮廓适当重叠；不能用固定 16px 间距替代，也不能强制热点 x≥0。
+- TextMatch 的 `CreateEnterAnimation` 对齐素材外接矩形右边缘与热点右边缘，并垂直居中；普通填空居中。移入动画 200ms，样条 `(0.3,0.1,0.8,0.2)`；TextMatch 错答退回使用 300ms。查看器已移植位置动画，替换/重置也平滑移动。悬停占用素材透明度为 0.5，空热点显示半透明预览。
+- `AnswerTipAnimation` 在素材右下附近使用 300ms 的 2→1 缩放及 0→1 淡入；GapFilling 依次播放提示。查看器移植时序及缩放淡入，仍使用文字提示而非官方贴图。拖动或卸载取消关联动画并处理取消 Promise，不修改保存坐标。
+
+以上为静态反编译及安装主题配置证据，未进行官方窗口运行对照。REA 原始证据 `ev_4a03bd967a9cadf32fd5564e11ea9b2ff8ddcabe348853c85771f475ed17e77f`；DLL SHA256 `236058a07a567c197b3736b7659ab8f269d940b703a2b0dbc15243a0e431ec68`。回归测试覆盖缩放拖放、自由位置恢复、主题偏移、右对齐、替换、正误提示及动画卸载取消；浏览器以 0.75 倍缩放验证自由释放和 56px 主题重叠。
