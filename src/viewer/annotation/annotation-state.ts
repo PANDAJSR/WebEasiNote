@@ -20,7 +20,22 @@ export function patchAnnotationState(state: AnnotationState, patch: Record<strin
       color: typeof brush.color === 'string' && /^#[\da-f]{6}(?:[\da-f]{2})?$/i.test(brush.color) ? brush.color : state.brush.color,
       width: finite(brush.width, 0.25, 256, state.brush.width),
       opacity: finite(brush.opacity, 0.01, 1, state.brush.opacity),
-      pressure: typeof brush.pressure === 'boolean' ? brush.pressure : state.brush.pressure
+      pressure: typeof brush.pressure === 'boolean' ? brush.pressure : state.brush.pressure,
+      kind: brush.kind === 'pen' || brush.kind === 'highlighter' || brush.kind === 'laser' ? brush.kind : state.brush.kind,
+      height: brush.height === undefined && brush.width !== undefined
+        ? finite(brush.width, 0.25, 256, state.brush.width) * (state.brush.height ?? state.brush.width) / state.brush.width
+        : finite(brush.height, 0.25, 256, state.brush.height ?? state.brush.width),
+      tip: brush.tip === 'ellipse' || brush.tip === 'rectangle' ? brush.tip : state.brush.tip,
+      inkStyle: [0, 1, 2, 3].includes(brush.inkStyle as number) ? brush.inkStyle as 0 | 1 | 2 | 3 : state.brush.inkStyle,
+      velocityMix: finite(brush.velocityMix, 0, 1, state.brush.velocityMix ?? 0.45),
+      minDistanceScale: finite(brush.minDistanceScale, 0, 2, state.brush.minDistanceScale ?? 0.5),
+      highlighterOverlap: typeof brush.highlighterOverlap === 'boolean' ? brush.highlighterOverlap : state.brush.highlighterOverlap,
+      fadeEnabled: typeof brush.fadeEnabled === 'boolean' ? brush.fadeEnabled : state.brush.fadeEnabled,
+      fadeDelay: finite(brush.fadeDelay, 0, 60000, state.brush.fadeDelay ?? 3000),
+      fadeSpeed: finite(brush.fadeSpeed, 0.01, 100, state.brush.fadeSpeed ?? 1),
+      smoothing: typeof brush.smoothing === 'boolean' ? brush.smoothing : state.brush.smoothing,
+      smoothingQuality: [0, 1, 2].includes(brush.smoothingQuality as number)
+        ? brush.smoothingQuality as 0 | 1 | 2 : state.brush.smoothingQuality
     },
     eraser: { width: finite(eraser.width, 4, 512, state.eraser.width),
       shape: eraser.shape === 'circle' || eraser.shape === 'rectangle' ? eraser.shape : state.eraser.shape }

@@ -74,7 +74,8 @@ export function lassoCoverage(points: SelectionPoint[], element: SlideElement) {
 
 /** 覆盖至少一半即可选中；组合按成员面积加权，始终整体选择且全部成员必须可选。 */
 export function lassoSelection(elements: SlideElement[], points: SelectionPoint[],
-  eligible: (element: SlideElement) => boolean = element => !element.isLocked && element.type !== 'unknown') {
+  eligible: (element: SlideElement) => boolean = element => !element.isLocked && element.type !== 'unknown'
+    && !(element.type === 'ink' && element.brush.kind === 'laser')) {
   if (points.length < 3) return []
   const visited = new Set<string>()
   const result: SlideElement[] = []

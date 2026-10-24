@@ -3,6 +3,7 @@ import type { AnnotationCommand, AnnotationState, CoursewareMetadata, InkElement
 import { postToEnbxHost, subscribeToEnbxHost } from '../platform/host-bridge'
 import { useHostImageInsertion } from './useHostImageInsertion'
 import { defaultAnnotationState, patchAnnotationState } from './annotation/annotation-state'
+import { useLaserInk } from './annotation/useLaserInk'
 import { commitPage, emptyPage, replacePageInk, resolvePage, travelPage,
   type PageChanges, type PageHistory } from './annotation/playback-page'
 
@@ -30,6 +31,7 @@ export function usePlaybackSelection(slides: SlideData[], currentIndex: number, 
   const [state, setState] = useState(defaultAnnotationState)
   const [pages, setPages] = useState<Record<string, PageHistory>>({})
   const [epoch, setEpoch] = useState(0)
+  const laser = useLaserInk(metadata)
   const pagesRef = useRef(pages)
   const stateRef = useRef(state)
   const sessionId = useRef('')
@@ -63,6 +65,7 @@ export function usePlaybackSelection(slides: SlideData[], currentIndex: number, 
     const slide = latest.current.slides[latest.current.currentIndex]
     if (!slide) return
     if (command === 'clear') {
+      laser.clear(slide.id)
       updatePage((page, base) => {
         const ids = resolvePage(base, page).filter(element => element.type === 'ink' && !element.isLocked).map(element => element.id)
         return ids.length ? { ...page, deleted: [...new Set([...page.deleted, ...ids])] } : page
@@ -127,15 +130,21 @@ export function usePlaybackSelection(slides: SlideData[], currentIndex: number, 
   const resolvedSlides = useMemo(() => slides.map(slide => {
     const inserted = images.filter(image => image.pageId === slide.id).map(image => image.element)
     const changes = pages[slide.id]?.present
-    if (!changes) return inserted.length ? { ...slide, elements: [...slide.elements, ...inserted] } : slide
-    return { ...slide, elements: resolvePage([...slide.elements, ...inserted], changes) }
-  }), [slides, pages, images])
+    const transient = laser.pages[slide.id] ?? []
+    if (!changes) return inserted.length || transient.length ? { ...slide, elements: [...slide.elements, ...inserted, ...transient] } : slide
+    return { ...slide, elements: [...resolvePage([...slide.elements, ...inserted], changes), ...transient] }
+  }), [slides, pages, images, laser.pages])
 
   const annotation: PlaybackAnnotation = {
     state, epoch, setState: updateState, command,
     canUndo: !!history?.past.length, canRedo: !!history?.future.length,
-    addInk: ink => updatePage((page, base) => ({ ...page, added: [...page.added, ink],
-      order: [...resolvePage(base, page).map(element => element.id), ink.id] })),
+    addInk: ink => {
+      if (ink.brush.kind === 'laser') {
+        const slide = latest.current.slides[latest.current.currentIndex]
+        if (slide && !stateRef.current.frozen && latest.current.active) laser.add(slide.id, ink)
+      } else updatePage((page, base) => ({ ...page, added: [...page.added, ink],
+        order: [...resolvePage(base, page).map(element => element.id), ink.id] }))
+    },
     replaceInk: replacements => updatePage((page, base) => replacePageInk(page, base, replacements))
   }
   const selection: PlaybackSelection = {

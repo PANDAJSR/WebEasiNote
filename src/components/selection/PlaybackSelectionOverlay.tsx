@@ -85,6 +85,7 @@ export function PlaybackSelectionOverlay({ slide, scale, selection, elementDispl
     refreshPreview()
   }
   const visible = (element: SlideElement) => {
+    if (element.type === 'ink' && element.brush.kind === 'laser') return false
     if (element.isLocked || element.type === 'unknown' || element.type === 'activity') return false
     if (selectionMembers(slide.elements, element).some(member => member.isLocked || member.type === 'activity')) return false
     const style = elementDisplayStyles[element.id]

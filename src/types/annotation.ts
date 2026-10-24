@@ -11,6 +11,20 @@ export interface InkBrush {
   width: number
   opacity: number
   pressure: boolean
+  kind?: 'pen' | 'highlighter' | 'laser'
+  height?: number
+  tip?: 'ellipse' | 'rectangle'
+  inkStyle?: 0 | 1 | 2 | 3
+  velocityMix?: number
+  minDistanceScale?: number
+  highlighterOverlap?: boolean
+  fadeEnabled?: boolean
+  fadeDelay?: number
+  fadeSpeed?: number
+  /** 页面坐标到宿主 DIP 的比例，用于速度和距离阈值。 */
+  inputScale?: number
+  smoothing?: boolean
+  smoothingQuality?: 0 | 1 | 2
 }
 
 export interface InkElement {
@@ -26,6 +40,8 @@ export interface InkElement {
   sourceHeight: number
   points: InkPoint[]
   brush: InkBrush
+  laserStartedAt?: number
+  strokeDuration?: number
 }
 
 export type AnnotationTool = 'play' | 'select' | 'pen' | 'eraser' | 'stroke-eraser'

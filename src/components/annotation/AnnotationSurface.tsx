@@ -5,10 +5,11 @@ import type { PlaybackAnnotation } from '../../viewer/usePlaybackSelection'
 import { pointerToSlide } from '../../viewer/pointer-coordinates'
 import { createInk } from '../../viewer/annotation/ink-geometry'
 import { eraseInk } from '../../viewer/annotation/ink-eraser'
+import { CeBrushSampler } from '../../viewer/annotation/ce-brush'
 import { InkRenderer } from './InkRenderer'
 import { annotationStyles as styles } from './styles'
 
-interface PenGesture { kind: 'pen'; points: InkPoint[]; brush: InkBrush }
+interface PenGesture { kind: 'pen'; sampler: CeBrushSampler; brush: InkBrush }
 interface EraseGesture {
   kind: 'erase'
   last: InkPoint
@@ -34,7 +35,7 @@ export function AnnotationSurface({ slide, scale, annotation, onPreview }: Props
   latest.current = { onPreview, annotation }
   const refresh = () => {
     setDrafts([...gestures.current.entries()].flatMap(([id, gesture]) =>
-      gesture.kind === 'pen' ? [createInk(gesture.points, gesture.brush, `draft-${id}`)] : []))
+      gesture.kind === 'pen' ? [createInk(gesture.sampler.points, gesture.brush, `draft-${id}`)] : []))
     const erase = [...gestures.current.values()].find((gesture): gesture is EraseGesture => gesture.kind === 'erase')
     onPreview(erase ? slide.elements.flatMap(element => erase.replacements.get(element.id) ?? [element]) : null)
   }
@@ -69,7 +70,7 @@ export function AnnotationSurface({ slide, scale, annotation, onPreview }: Props
   const point = (event: PointerEvent): InkPoint => {
     const position = pointerToSlide(event, surface.current!.getBoundingClientRect(), scale)
     return { ...position, time: event.timeStamp,
-      pressure: event.pointerType === 'pen' && event.pressure > 0 ? event.pressure : 0.5 }
+      pressure: state.brush.pressure && event.pointerType === 'pen' && event.pressure > 0 ? event.pressure : 0.5 }
   }
   const eraseAt = (gesture: EraseGesture, next: InkPoint) => {
     for (const element of slide.elements) {
@@ -100,8 +101,13 @@ export function AnnotationSurface({ slide, scale, annotation, onPreview }: Props
       gestures.current.set(event.pointerId, gesture)
       eraseAt(gesture, start)
       setCursor(start)
-    } else gestures.current.set(event.pointerId, { kind: 'pen', points: [start],
-      brush: { ...state.brush, width: state.brush.width / scale } })
+    } else {
+      const brush = { ...state.brush, width: state.brush.width / scale,
+        height: (state.brush.height ?? state.brush.width) / scale, inputScale: scale,
+        pressure: state.brush.pressure || state.brush.inkStyle !== undefined && state.brush.inkStyle !== 2 }
+      gestures.current.set(event.pointerId, { kind: 'pen', brush,
+        sampler: new CeBrushSampler(brush, start, event.pointerType) })
+    }
     surface.current?.setPointerCapture(event.pointerId)
     schedule()
   }
@@ -113,8 +119,10 @@ export function AnnotationSurface({ slide, scale, annotation, onPreview }: Props
       const next = point(sample)
       if (gesture.kind === 'erase') eraseAt(gesture, next)
       else {
-        const last = gesture.points[gesture.points.length - 1]
-        if (Math.hypot(last.x - next.x, last.y - next.y) * scale >= 0.25) gesture.points.push(next)
+        if (sample.type === 'pointerup' && sample.pointerType === 'pen' && sample.pressure === 0) {
+          next.pressure = gesture.sampler.points[gesture.sampler.points.length - 1].pressure
+        }
+        gesture.sampler.append(next)
       }
     }
   }
@@ -125,7 +133,10 @@ export function AnnotationSurface({ slide, scale, annotation, onPreview }: Props
     gestures.current.delete(event.pointerId)
     if (surface.current?.hasPointerCapture(event.pointerId)) surface.current.releasePointerCapture(event.pointerId)
     if (commit) {
-      if (gesture.kind === 'pen') annotation.addInk(createInk(gesture.points, gesture.brush))
+      if (gesture.kind === 'pen') {
+        const ink = createInk(gesture.sampler.finish(), gesture.brush)
+        annotation.addInk({ ...ink, strokeDuration: Math.max(0, event.timeStamp - gesture.sampler.points[0].time) })
+      }
       else annotation.replaceInk(gesture.replacements)
     }
     refresh()

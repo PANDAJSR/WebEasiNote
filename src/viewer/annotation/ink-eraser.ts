@@ -1,6 +1,6 @@
 import type { InkElement, InkPoint } from '../../types/annotation'
 import type { SelectionPoint } from '../selection-geometry'
-import { inkFragment, inkRadius, interpolateInk, slideToInk } from './ink-geometry'
+import { inkFragment, inkSupport, interpolateInk, slideToInk } from './ink-geometry'
 
 const cross = (a: SelectionPoint, b: SelectionPoint, c: SelectionPoint) =>
   (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
@@ -34,12 +34,11 @@ function eraserPolygon(from: SelectionPoint, to: SelectionPoint, width: number, 
 /** 裁剪线性压感中心线；轮廓半径扩张裁剪平面，保留插值后的切点。 */
 function cutInterval(a: InkPoint, b: InkPoint, ink: InkElement, polygon: SelectionPoint[]) {
   let enter = 0, exit = 1
-  const ra = inkRadius(a, ink.brush), rb = inkRadius(b, ink.brush)
   for (let i = 0; i < polygon.length; i++) {
     const p = polygon[i], q = polygon[(i + 1) % polygon.length]
-    const length = Math.hypot(q.x - p.x, q.y - p.y)
-    const start = cross(p, q, a) + ra * length
-    const end = cross(p, q, b) + rb * length
+    const nx = p.y - q.y, ny = q.x - p.x
+    const start = cross(p, q, a) + inkSupport(a, ink.brush, nx, ny)
+    const end = cross(p, q, b) + inkSupport(b, ink.brush, nx, ny)
     if (start < 0 && end < 0) return null
     if (start < 0) enter = Math.max(enter, start / (start - end))
     if (end < 0) exit = Math.min(exit, start / (start - end))
@@ -51,6 +50,7 @@ function cutInterval(a: InkPoint, b: InkPoint, ink: InkElement, polygon: Selecti
 /** 返回同一引用代表未命中；新片段保留原层序位置，由调用方一次性提交历史。 */
 export function eraseInk(ink: InkElement, from: SelectionPoint, to: SelectionPoint,
   width: number, shape: 'circle' | 'rectangle', wholeStroke = false): InkElement[] {
+  if (ink.brush.kind === 'laser') return [ink]
   const polygon = eraserPolygon(from, to, width, shape).map(point => slideToInk(ink, point))
   let current: InkPoint[] = [], changed = false
   const fragments: InkPoint[][] = []
