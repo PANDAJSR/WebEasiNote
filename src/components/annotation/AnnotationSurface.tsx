@@ -7,6 +7,7 @@ import { createInk } from '../../viewer/annotation/ink-geometry'
 import { eraseInk } from '../../viewer/annotation/ink-eraser'
 import { CeBrushSampler } from '../../viewer/annotation/ce-brush'
 import { InkRenderer } from './InkRenderer'
+import { EraserCursor } from './EraserCursor'
 import { annotationStyles as styles } from './styles'
 
 interface PenGesture { kind: 'pen'; sampler: CeBrushSampler; brush: InkBrush }
@@ -100,7 +101,6 @@ export function AnnotationSurface({ slide, scale, annotation, onPreview }: Props
       const gesture: EraseGesture = { kind: 'erase', last: start, replacements: new Map() }
       gestures.current.set(event.pointerId, gesture)
       eraseAt(gesture, start)
-      setCursor(start)
     } else {
       const brush = { ...state.brush, width: state.brush.width / scale,
         height: (state.brush.height ?? state.brush.width) / scale, inputScale: scale,
@@ -140,10 +140,11 @@ export function AnnotationSurface({ slide, scale, annotation, onPreview }: Props
       else annotation.replaceInk(gesture.replacements)
     }
     refresh()
+    if (gesture.kind === 'erase') setCursor(null)
   }
   return <div ref={surface} tabIndex={0} data-annotation-surface style={styles.surface}
     onPointerDown={handleStart} onPointerMove={event => {
-      if (erasing) setCursor(point(event.nativeEvent))
+      if (state.tool === 'eraser' && gestures.current.get(event.pointerId)?.kind === 'erase') setCursor(point(event.nativeEvent))
       collect(event)
       schedule()
     }} onPointerUp={event => finish(event, true)} onPointerCancel={event => finish(event, false)}
@@ -153,9 +154,7 @@ export function AnnotationSurface({ slide, scale, annotation, onPreview }: Props
     onDoubleClick={event => { event.preventDefault(); event.stopPropagation() }}
     onContextMenu={event => event.preventDefault()}>
     <div style={styles.preview}>{drafts.map(ink => <InkRenderer key={ink.id} element={ink} scale={scale} />)}</div>
-    {erasing && cursor && <div data-eraser-cursor style={{ ...styles.eraser,
-      left: cursor.x * scale, top: cursor.y * scale, width: state.eraser.width,
-      height: state.eraser.width * (state.eraser.shape === 'circle' ? 1 : 56 / 38),
-      borderRadius: state.eraser.shape === 'circle' ? '50%' : 3 }} />}
+    {state.tool === 'eraser' && cursor && <EraserCursor x={cursor.x * scale} y={cursor.y * scale}
+      width={state.eraser.width} shape={state.eraser.shape} />}
   </div>
 }
