@@ -22,10 +22,7 @@ workerScope.onmessage = (event: MessageEvent<{
       context.rotate(drawing.rotation * Math.PI / 180)
       context.scale(drawing.flipX ? -1 : 1, drawing.flipY ? -1 : 1)
       context.translate(-w / 2, -h / 2)
-      // 匹配原 SVG 视口裁剪，不能让路径溢出本元素。
-      context.beginPath()
-      context.rect(0, 0, w, h)
-      context.clip()
+      // 官方气泡尾部、方框引线等允许超出元素局部矩形。
       context.translate(geometry.pathTranslateX, geometry.pathTranslateY)
       context.scale(geometry.pathScaleX, geometry.pathScaleY)
       context.fillStyle = drawing.fill

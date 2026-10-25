@@ -25,10 +25,10 @@ export function hitSelectionElement(element: SlideElement, point: SelectionPoint
     context.translate(geometry.pathTranslateX / geometry.pathScaleX, geometry.pathTranslateY / geometry.pathScaleY)
     context.lineWidth = Math.max(element.borderWidth || 0, 10 / scale)
       / Math.max(0.001, Math.min(Math.abs(geometry.pathScaleX), Math.abs(geometry.pathScaleY)))
-    const paths = element.shapePaths?.length ? element.shapePaths : [{ path: element.path, isFilled: true, isStroke: true }]
+    const paths = element.shapePaths?.length ? element.shapePaths : [{ path: element.path, isFilled: geometry.isFilled, isStroke: true }]
     return paths.some(item => {
       const path = new Path2D(item.path)
-      return (item.isFilled && element.backgroundColor !== 'transparent' && context!.isPointInPath(path, x, y, geometry.resolvedFillRule))
+      return (item.isFilled && element.backgroundColor !== 'transparent' && context!.isPointInPath(path, x, y, item.fillRule || geometry.resolvedFillRule))
         || (item.isStroke && context!.isPointInStroke(path, x, y))
     }) || Boolean(element.inlineText?.length)
   } catch {

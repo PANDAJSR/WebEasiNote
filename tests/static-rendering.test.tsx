@@ -90,7 +90,7 @@ test('Worker 绘制与 SVG 使用相同路径、裁剪、旋转、翻转及填�
     const svg = markup.match(/<svg[\s\S]*?<\/svg>/)![0]
     const drawing = item.drawings[0]
     const transform = `translate(${drawing.x + drawing.width / 2} ${drawing.y + drawing.height / 2}) rotate(${drawing.rotation}) scale(${drawing.flipX ? -1 : 1} ${drawing.flipY ? -1 : 1}) translate(${-drawing.width / 2} ${-drawing.height / 2})`
-    const reference = `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240" viewBox="0 0 160 120"><g transform="${transform}">${svg.replace(/style="[^"]*"/, 'overflow="hidden"')}</g></svg>`
+    const reference = `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240" viewBox="0 0 160 120"><g transform="${transform}">${svg.replace(/style="[^"]*"/, 'overflow="visible"')}</g></svg>`
     const referenceCanvas = createCanvas(320, 240)
     const referenceContext = referenceCanvas.getContext('2d')
     referenceContext.drawImage(await loadImage(new Resvg(reference).render().asPng()), 0, 0)

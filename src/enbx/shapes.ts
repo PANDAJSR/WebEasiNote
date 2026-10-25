@@ -7,35 +7,8 @@ import { generatePresetGeometryPath } from './preset-geometries'
 import type { AdjustPoint } from './preset-geometries'
 import { resolveShapeIsClosed, resolveShapeStroke } from '../rendering/shape-stroke'
 import { parsePenSetting } from '../rendering/shape-pen'
-
-interface NormalizedPathResult {
-  path: string
-  fillRule?: 'nonzero' | 'evenodd'
-}
-
-function normalizeSeewoPath(rawPath: string): NormalizedPathResult {
-  if (!rawPath) return { path: '' }
-
-  let normalizedPath = rawPath.trim()
-  let fillRule: 'nonzero' | 'evenodd' | undefined
-
-  // 兼容希沃导出的 F0/F1 前缀：F0=evenodd, F1=nonzero
-  const fillRuleMatch = normalizedPath.match(/^F([01])\s*/i)
-  if (fillRuleMatch) {
-    fillRule = fillRuleMatch[1] === '0' ? 'evenodd' : 'nonzero'
-    normalizedPath = normalizedPath.slice(fillRuleMatch[0].length).trim()
-  }
-
-  // 兜底：若开头不是 SVG 合法路径命令，尝试从首个 M/m 处恢复
-  if (normalizedPath && !/^[MmLlHhVvCcSsQqTtAaZz]/.test(normalizedPath)) {
-    const moveToIndex = normalizedPath.search(/[Mm]/)
-    if (moveToIndex > 0) {
-      normalizedPath = normalizedPath.slice(moveToIndex)
-    }
-  }
-
-  return { path: normalizedPath, fillRule }
-}
+import { normalizeSeewoPath } from './seewo-path'
+import { buildShapeLayers } from './shape-layers'
 
 /** 读取官方 Line/HeadEnd|TailEnd/Type 是否为 Arrow（官方判定为 Type != None） */
 function readArrowEnabled(shapeNode: Element, endTag: 'HeadEnd' | 'TailEnd'): boolean {
@@ -49,6 +22,8 @@ function readArrowEnabled(shapeNode: Element, endTag: 'HeadEnd' | 'TailEnd'): bo
 
 export interface ShapePathItem {
   path: string
+  /** 官方复合形状的细节色或半透明明暗覆盖层。 */
+  fill?: string
   isFilled: boolean
   isStroke: boolean
   fillRule?: 'nonzero' | 'evenodd'
@@ -73,6 +48,8 @@ export interface ShapeElement {
   fillRule?: 'nonzero' | 'evenodd'
   shapePaths?: ShapePathItem[]
   geometryType: string
+  /** 已知形状的序列化路径使用元素局部坐标，允许超出元素大小。 */
+  localPathCoordinates?: boolean
   adjusts?: number[]
   inlineText?: TextLine[]
   borderWidth?: number
@@ -141,7 +118,7 @@ export function parseShapeElement(shapeNode: Element): ShapeElement | null {
     const adjustPairs: AdjustPoint[] = []
     const geometryNode = shapeNode.querySelector('Geometry')
     if (geometryNode) {
-      const presetNode = geometryNode.querySelector('PresetGeometry')
+      const presetNode = geometryNode.querySelector('PresetGeometry, CustomGeometry')
       if (presetNode) {
         const typeNode = presetNode.querySelector('GeometryType')
         if (typeNode?.textContent) {
@@ -231,6 +208,7 @@ export function parseShapeElement(shapeNode: Element): ShapeElement | null {
         })
       })
     }
+    if (!shapePaths.length) shapePaths.push(...(buildShapeLayers(geometryType, rawPath, foregroundColor) || []))
 
     // 解析边框粗细、线型、箭头（严格按官方 ShapeBase.SetSaveInfo 语义推导）
     const thickness = parseFloat(getDirectChildText(shapeNode, 'Thickness') || getElementText(shapeNode, 'Thickness') || '0')
@@ -357,6 +335,7 @@ export function parseShapeElement(shapeNode: Element): ShapeElement | null {
       fillRule,
       shapePaths: shapePaths.length > 0 ? shapePaths : undefined,
       geometryType,
+      localPathCoordinates: /^(Rectangle|RoundRectangle|RectangleMark|Circle|Fan|Sun|Moon|Triangle|RightTriangle|Rhomboid|Rhombus|CurveRhombus|Polygon|Trapezoid|ArrowEnd|ArrowStartEnd|ArrowSwallow|CurveArrow|CircleBubble|RectangleBubble|Star|Flag|Bubble|Fire|SmilingFace|Medal|Scroll|Banner|RotationArrow|Love|Cloud|Bomb|Thunder|Line|LineArrowEnd|LineArrowStartEnd|DashLine|Brace|Bracket)$/i.test(geometryType),
       adjusts: adjusts.length > 0 ? adjusts : undefined,
       adjustPairs: adjustPairs.length > 0 ? adjustPairs : undefined,
       inlineText,

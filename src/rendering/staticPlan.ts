@@ -31,6 +31,7 @@ function toDrawing(element: SlideElement, blocked: Set<string>): StaticDrawing |
   if ([element.id, element.groupId, ...(element.groupAncestorIds || [])].some(id => id && blocked.has(id))) return null
   const shape = element as ShapeElement
   if (shape.inlineText?.length || shape.shadow || shape.reflection
+    || shape.shapePaths?.some(path => path.fill !== undefined)
     || (shape.backgroundBrush && shape.backgroundBrush.type !== 'color')
     || shape.borderWidth || shape.strokeDashes?.length || shape.arrowStart || shape.arrowEnd
     || (shape.opacity ?? 1) !== 1 || !shape.path) return null
@@ -47,7 +48,7 @@ function toDrawing(element: SlideElement, blocked: Set<string>): StaticDrawing |
       ? shape.shapePaths.filter(path => path.isFilled).map(path => ({
         path: path.path, fillRule: path.fillRule || geometry.resolvedFillRule
       }))
-      : [{ path: shape.path, fillRule: geometry.resolvedFillRule }]
+      : geometry.isFilled ? [{ path: shape.path, fillRule: geometry.resolvedFillRule }] : []
   }
 }
 

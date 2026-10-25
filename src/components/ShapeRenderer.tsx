@@ -1,6 +1,8 @@
 import type { ShapeElement } from '../enbx/shapes'
 import { getShapeGeometry } from '../rendering/shapeGeometry'
 import { extractPathAnchors } from '../enbx/path-utils'
+import { bezierArrowReferences } from '../enbx/bezier-path-bounds'
+import { isTransparentPaint } from '../enbx/seewo-path'
 import { arrowHeight, arrowWidth, buildArrowHeadPath, dashArrayToCss } from '../rendering/shape-stroke'
 import { ShapeInlineText } from './shape-renderer/ShapeInlineText'
 
@@ -25,7 +27,7 @@ const ARROW_CAPABLE_GEOMETRY_TYPES = new Set([
 export function ShapeRenderer({ element, scale }: ShapeRendererProps) {
   const { x, y, rotation = 0, opacity = 1, backgroundColor, backgroundBrush, path, borderWidth, borderColor, shadow, reflection } = element
   const hasShapePaths = Boolean(element.shapePaths && element.shapePaths.length > 0)
-  const { renderWidth, renderHeight, pathScaleX, pathScaleY, pathTranslateX, pathTranslateY, resolvedFillRule } = getShapeGeometry(element)
+  const { renderWidth, renderHeight, pathScaleX, pathScaleY, pathTranslateX, pathTranslateY, resolvedFillRule, isFilled: shapeFilled } = getShapeGeometry(element)
 
   const strokeVisible = Boolean(borderWidth && borderWidth > 0 && borderColor && borderColor !== 'transparent')
   const strokeWidthPx = strokeVisible ? (borderWidth as number) * scale : 0
@@ -48,12 +50,13 @@ export function ShapeRenderer({ element, scale }: ShapeRendererProps) {
       })
       const lastLocal = toLocal(last)
       const firstLocal = toLocal(first)
+      const references = element.geometryType.toLowerCase() === 'freeline' ? bezierArrowReferences(path) : undefined
       // 官方 LineShape 使用首末两点（弦）确定朝向
       if (element.arrowEnd) {
-        arrowGeometries.push(buildArrowHeadPath(lastLocal, firstLocal, borderWidth as number))
+        arrowGeometries.push(buildArrowHeadPath(lastLocal, references ? toLocal(references.end) : firstLocal, borderWidth as number))
       }
       if (element.arrowStart) {
-        arrowGeometries.push(buildArrowHeadPath(firstLocal, lastLocal, borderWidth as number))
+        arrowGeometries.push(buildArrowHeadPath(firstLocal, references ? toLocal(references.start) : lastLocal, borderWidth as number))
       }
     }
   }
@@ -133,6 +136,7 @@ export function ShapeRenderer({ element, scale }: ShapeRendererProps) {
       viewBox={`0 0 ${renderWidth + visualPadding * 2} ${renderHeight + visualPadding * 2}`}
       style={{
         display: 'block',
+        overflow: 'visible',
         transform: flipTransform ? flipTransform : undefined,
         transformOrigin: 'center center'
       }}
@@ -169,14 +173,15 @@ export function ShapeRenderer({ element, scale }: ShapeRendererProps) {
       <g transform={`translate(${visualPadding + pathTranslateX} ${visualPadding + pathTranslateY}) scale(${pathScaleX} ${pathScaleY})`}>
         {hasShapePaths ? (
           element.shapePaths!.map((sp, spIdx) => {
-            const isFilled = sp.isFilled && resolvedFill !== 'transparent' && resolvedFill !== 'none'
+            const isFilled = sp.isFilled && (!isTransparentPaint(resolvedFill)
+              || (element.geometryType.toLowerCase() === 'smilingface' && sp.fill !== undefined))
             const isStroke = sp.isStroke && strokeVisible
             if (!isFilled && !isStroke) return null
             return (
               <path
                 key={spIdx}
                 d={sp.path}
-                fill={isFilled ? resolvedFill : 'none'}
+                fill={isFilled ? sp.fill || resolvedFill : 'none'}
                 fillRule={sp.fillRule || resolvedFillRule}
                 stroke={isStroke ? borderColor : 'none'}
                 strokeWidth={isStroke ? strokeWidthPx : 0}
@@ -190,7 +195,7 @@ export function ShapeRenderer({ element, scale }: ShapeRendererProps) {
         ) : (
           <path
             d={path}
-            fill={resolvedFill}
+            fill={shapeFilled ? resolvedFill : 'none'}
             fillRule={resolvedFillRule}
             stroke={strokeVisible ? borderColor : 'none'}
             strokeWidth={strokeWidthPx}

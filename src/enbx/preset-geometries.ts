@@ -308,10 +308,9 @@ export function generatePresetGeometryPath(
     case 'brace':
     case 'leftbrace':
     case 'custom_pptx_leftbrace': {
-      // 大括号 (左大括号，尖端朝左，开口向右包围右侧文字)
-      const halfH = h / 2
-      const tipW = Math.min(w * 0.5, 20)
-      return `M ${w} 0 Q ${w - tipW} 0 ${w - tipW} ${halfH * 0.5} Q ${w - tipW} ${halfH} 0 ${halfH} Q ${w - tipW} ${halfH} ${w - tipW} ${halfH * 1.5} Q ${w - tipW} ${h} ${w} ${h}`
+      const r = Math.min(h / 4, Math.max(0, (adjustPairs?.[0]?.y ?? 0.2) * Math.min(w, h)))
+      const mid = w / 2
+      return `M ${w} 0 A ${mid} ${r} 0 0 0 ${mid} ${r} L ${mid} ${h / 2 - r} A ${mid} ${r} 0 0 1 0 ${h / 2} A ${mid} ${r} 0 0 1 ${mid} ${h / 2 + r} L ${mid} ${h - r} A ${mid} ${r} 0 0 0 ${w} ${h}`
     }
 
     case 'rightbrace':
@@ -323,9 +322,8 @@ export function generatePresetGeometryPath(
     }
 
     case 'bracket': {
-      // 中括号
-      const tipW = Math.min(w * 0.5, 15)
-      return `M ${w} 0 H ${w - tipW} V ${h} H ${w}`
+      const r = Math.min(h / 2, Math.max(0, (adjustPairs?.[0]?.y ?? 0.3) * Math.min(w, h)))
+      return `M ${w} 0 A ${w} ${r} 0 0 0 0 ${r} L 0 ${h - r} A ${w} ${r} 0 0 0 ${w} ${h}`
     }
 
     case 'fan': {
