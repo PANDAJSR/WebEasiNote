@@ -54,6 +54,10 @@ export const KNOWN_PARAMETERS: Record<string, Set<string>> = {
     'Rotation',
     'DisplayRegion',
     'MetaData',
+    'Style',
+    'ElementEffects',
+    'ClippingShape', 'CropShape', 'PictureRahmenType', 'RahmenType', 'RahmenThickness',
+    'Bright', 'Brightness', 'Contrast', 'Saturation',
     'Animations'
   ]),
   Video: new Set([

@@ -12,7 +12,6 @@ import { subjectResourcePaths } from '../src/courseware/subject-resources'
 import type { SlideData } from '../src/types'
 import type { ViewElement } from '../src/types/view'
 import { executeViewLink, parseViewLink } from '../src/components/view/view-actions'
-import { pictureShadowFilter } from '../src/components/picture-effects'
 import { resourceBlob } from '../src/courseware/resource-blob'
 
 const dom = new Window()
@@ -179,16 +178,26 @@ test('卡片图片保留阴影与实际裁剪区域，SVG ZIP Blob 声明 MIME �
   const picture = panel(source, 0).elements[0]
   assert.ok(picture.type === 'picture')
   assert.deepEqual(picture.shadow, { offset: 1, angle: 360, opacity: .45, blurRadius: 10, color: '#949499' })
-  assert.match(pictureShadowFilter(picture.shadow, 1)!, /5px rgba\(148, 148, 153, 0.45\)/)
-  assert.match(pictureShadowFilter({ ...picture.shadow!, color: 'rgba(148, 148, 153, 0.5)' }, 1)!, /0.225\)/)
   const detailed = panel(source, 1).elements[0]
   assert.ok(detailed.type === 'picture')
   assert.deepEqual(detailed.displayRegion, { x: 0, y: 0, width: 480, height: 736 })
   const markup = renderToStaticMarkup(<ElementRenderer element={picture} scale={1}
     resourceMap={{ [picture.sourceId]: 'blob:card' }} slideIndex={0} currentIndex={0} />)
-  assert.match(markup, /filter:drop-shadow\(/)
-  assert.match(markup, /overflow:hidden/)
-  assert.ok(markup.indexOf('drop-shadow(') < markup.indexOf('overflow:hidden'))
+  const rendered = new dom.DOMParser().parseFromString(markup, 'text/html')
+  const shadow = rendered.querySelector('[data-picture-shadow="drop"]')!
+  assert.equal(shadow.getAttribute('fill'), '#949499')
+  assert.equal(shadow.getAttribute('d'), 'M0,0h96v96h-96Z')
+  assert.equal(shadow.parentElement!.parentElement!.getAttribute('opacity'), '0.45')
+  assert.equal(rendered.querySelector('feGaussianBlur')!.getAttribute('stdDeviation'), '5')
+  const image = rendered.querySelector('[data-picture-image]')!
+  assert.match(image.getAttribute('style')!, /overflow:hidden/)
+  assert.equal(image.closest('[data-picture-effects]'), null)
+  assert.ok(markup.indexOf('data-picture-shadow') < markup.indexOf('data-picture-image'))
+  const translucent = renderToStaticMarkup(<ElementRenderer element={{ ...picture,
+    shadow: { ...picture.shadow!, color: 'rgba(148, 148, 153, 0.5)' } }} scale={1}
+    resourceMap={{ [picture.sourceId]: 'blob:card' }} slideIndex={0} currentIndex={0} />)
+  assert.match(translucent, /fill="rgba\(148, 148, 153, 0.5\)"/)
+  assert.match(translucent, /opacity="0.45"/)
   const blob = new Blob(['<svg>钙</svg>'])
   const svg = resourceBlob(blob, 'Resources/card.SVG')
   assert.equal(svg.type, 'image/svg+xml')

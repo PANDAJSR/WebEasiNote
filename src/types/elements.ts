@@ -80,7 +80,24 @@ export interface PictureElement {
   clippingShape?: string
   pictureRahmenType?: string | number
   rahmenThickness?: number
+  rahmenColor?: string
+  imageRahmenWidthIndex?: number
   shadow?: ShapeElement['shadow']
+  perspectiveShadow?: {
+    matrix: [number, number, number, number, number, number]
+    offsetY: number
+    opacity: number
+    blurRadius: number
+    color: string
+  }
+  reflection?: {
+    offsetY: number
+    opacity: number
+    startPoint: [number, number]
+    endPoint: [number, number]
+    stops: { offset: number; opacity: number }[]
+    maskOpacity: number
+  }
   displayRegion?: {
     x: number
     y: number

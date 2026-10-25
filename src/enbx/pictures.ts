@@ -1,6 +1,6 @@
 import { getElementText } from './xml-utils';
 import type { PictureElement } from '../types';
-import { parsePictureShadow } from './picture-effects'
+import { parsePictureEffects, parsePictureFrame } from './picture-effects'
 export type { PictureElement } from '../types';
 
 /**
@@ -73,8 +73,7 @@ export function parsePictureElement(pictureNode: Element): PictureElement | null
 
     // 解析裁剪形状与相框样式
     const clippingShape = getElementText(pictureNode, 'ClippingShape') || getElementText(pictureNode, 'CropShape') || undefined
-    const pictureRahmenType = getElementText(pictureNode, 'PictureRahmenType') || getElementText(pictureNode, 'RahmenType') || undefined
-    const rahmenThickness = parseFloat(getElementText(pictureNode, 'RahmenThickness') || '0')
+    const frame = parsePictureFrame(pictureNode)
 
     return {
       type: 'picture',
@@ -91,10 +90,9 @@ export function parsePictureElement(pictureNode: Element): PictureElement | null
       contrast: Number.isFinite(contrast) ? contrast : 0,
       saturation: Number.isFinite(saturation) ? saturation : 0,
       clippingShape,
-      pictureRahmenType,
-      rahmenThickness: Number.isFinite(rahmenThickness) ? rahmenThickness : 0,
+      ...frame,
       displayRegion,
-      shadow: parsePictureShadow(pictureNode),
+      ...parsePictureEffects(pictureNode),
       pictureSize
     };
   } catch (error) {
