@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import type { SlideData, SlideElement } from '../../types'
 import type { PlaybackSelection } from '../../viewer/usePlaybackSelection'
-import { handlePosition, resizeSelection, rotatePoint, selectionBounds,
-  selectionContains, selectionHandles, selectionMembers, snapSelectionRotation, transformSelection,
+import { handlePosition, rotatePoint, selectionBounds,
+  selectionContains, selectionHandles, selectionMembers,
   type SelectionBounds, type SelectionHandle, type SelectionPoint } from '../../viewer/selection-geometry'
 import { selectionStyles as styles } from './styles'
 import { hitSelectionElement } from '../../viewer/selection-hit-test'
 import { SelectionActionBar } from './SelectionActionBar'
-import { cloneSelection } from '../../viewer/selection-clone'
+import { moveSelectionGesture, rebaseSelectionGesture, type SelectionGesture } from '../../viewer/selection-gesture'
 import { lassoSelection } from '../../viewer/selection-lasso'
 import { pointerToSlide } from '../../viewer/pointer-coordinates'
 
@@ -21,17 +21,6 @@ interface PlaybackSelectionOverlayProps {
   onPreview: (elements: SlideElement[] | null) => void
   resourceMap: Record<string, string>
 }
-interface Gesture {
-  kind: 'transform'
-  pointerId: number
-  start: SelectionPoint
-  original: SlideElement[]
-  bounds: SelectionBounds
-  handle: SelectionHandle | 'move' | 'rotate'
-  next: SlideElement[] | null
-  clones: SlideElement[] | null
-  selected: boolean
-}
 interface LassoGesture {
   kind: 'lasso'
   pointerId: number
@@ -42,7 +31,7 @@ interface LassoGesture {
 export function PlaybackSelectionOverlay({ slide, scale, selection, elementDisplayStyles,
   elementRenderStates, onPreview, resourceMap }: PlaybackSelectionOverlayProps) {
   const surface = useRef<HTMLDivElement>(null)
-  const gestures = useRef(new Map<number, Gesture | LassoGesture>())
+  const gestures = useRef(new Map<number, SelectionGesture | LassoGesture>())
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [lasso, setLasso] = useState<SelectionPoint[] | null>(null)
   const [preview, setPreview] = useState<SlideElement[] | null>(null)
@@ -68,7 +57,7 @@ export function PlaybackSelectionOverlay({ slide, scale, selection, elementDispl
     return pointerToSlide(event, rect, scale)
   }
   const refreshPreview = () => {
-    const transforms = [...gestures.current.values()].filter((active): active is Gesture => active.kind === 'transform')
+    const transforms = [...new Set(gestures.current.values())].filter((active): active is SelectionGesture => active.kind === 'transform')
     const elements = transforms.flatMap(active => active.next || [])
     const selectedPreview = transforms.find(active => active.selected && active.next)?.next
     setPreview(elements.length ? elements : null)
@@ -77,9 +66,11 @@ export function PlaybackSelectionOverlay({ slide, scale, selection, elementDispl
     onPreview(elements.length ? elements : null)
   }
   const clearGesture = (pointerId?: number) => {
-    const ids = pointerId === undefined ? [...gestures.current.keys()] : [pointerId]
+    const active = pointerId === undefined ? undefined : gestures.current.get(pointerId)
+    const ids = pointerId === undefined ? [...gestures.current.keys()]
+      : active?.kind === 'transform' ? [...active.pointers.keys()] : [pointerId]
+    for (const id of ids) gestures.current.delete(id)
     for (const id of ids) {
-      gestures.current.delete(id)
       if (surface.current?.hasPointerCapture(id)) surface.current.releasePointerCapture(id)
     }
     refreshPreview()
@@ -101,6 +92,19 @@ export function PlaybackSelectionOverlay({ slide, scale, selection, elementDispl
     event.stopPropagation()
     surface.current?.focus({ preventScroll: true })
     const start = point(event)
+    if (event.pointerType === 'touch') {
+      // 第二指命中已选中元素的当前预览时加入同一事务。
+      const active = [...new Set(gestures.current.values())].find((item): item is SelectionGesture => item.kind === 'transform'
+        && item.touch && item.selected && (!!handle || selectionContains(selectionBounds(item.next || item.basis), start)))
+      if (active) {
+        if (active.pointers.size >= 2) return
+        rebaseSelectionGesture(active)
+        active.pointers.set(event.pointerId, { start, position: start })
+        gestures.current.set(event.pointerId, active)
+        surface.current?.setPointerCapture(event.pointerId)
+        return
+      }
+    }
     let original = members
     if (!handle) {
       const target = [...slide.elements].reverse().find(element => visible(element)
@@ -122,12 +126,13 @@ export function PlaybackSelectionOverlay({ slide, scale, selection, elementDispl
       }
     }
     if (!original.length || !original.every(visible)) return
-    // 同一元素（含组合）只归一个指针；套索期间不混入元素拖动。
+    // 同一元素（含组合）只归一个手势；套索期间不混入元素拖动。
     if ([...gestures.current.values()].some(active => active.kind === 'lasso'
       || active.original.some(element => original.some(member => member.id === element.id)))) return
     const selected = original.every(element => selectedIds.includes(element.id))
-    gestures.current.set(event.pointerId, { kind: 'transform', pointerId: event.pointerId, start, original, bounds: selectionBounds(original),
-      handle: handle || 'move', next: null, clones: null, selected })
+    gestures.current.set(event.pointerId, { kind: 'transform', touch: event.pointerType === 'touch',
+      pointers: new Map([[event.pointerId, { start, position: start }]]), original, basis: original, bounds: selectionBounds(original),
+      handle: handle || 'move', next: null, clones: null, cloneOnMove: original.every(element => element.canClone), selected })
     surface.current?.setPointerCapture(event.pointerId)
   }
   const handleMove = (event: ReactPointerEvent) => {
@@ -143,26 +148,7 @@ export function PlaybackSelectionOverlay({ slide, scale, selection, elementDispl
       }
       return
     }
-    const delta = { x: position.x - active.start.x, y: position.y - active.start.y }
-    if (Math.hypot(delta.x, delta.y) * scale < 3 && !active.next) return
-    const from = active.bounds
-    let next = { ...from }
-    if (active.handle === 'move') {
-      next.x += delta.x
-      next.y += delta.y
-    } else if (active.handle === 'rotate') {
-      const center = { x: from.x + from.width / 2, y: from.y + from.height / 2 }
-      const startAngle = Math.atan2(active.start.y - center.y, active.start.x - center.x)
-      const angle = Math.atan2(position.y - center.y, position.x - center.x)
-      next.rotation = snapSelectionRotation((from.rotation || 0) + (angle - startAngle) * 180 / Math.PI,
-        from.rotation || 0, Math.hypot(position.x - center.x, position.y - center.y) * scale, event.shiftKey, event.altKey)
-    } else {
-      next = resizeSelection(from, active.handle, delta, true, event.ctrlKey)
-    }
-    if (active.handle === 'move' && active.original.every(element => element.canClone) && !active.clones) {
-      active.clones = cloneSelection(active.original)
-    }
-    active.next = transformSelection(active.clones || active.original, from, next)
+    moveSelectionGesture(active, event.pointerId, position, scale, event)
     refreshPreview()
   }
   const handleEnd = (event: ReactPointerEvent) => {
@@ -172,6 +158,15 @@ export function PlaybackSelectionOverlay({ slide, scale, selection, elementDispl
       const enclosed = lassoSelection(slide.elements, [...active.points, point(event)], visible).map(element => element.id)
       setSelectedIds(ids => active.additive ? [...new Set([...ids, ...enclosed])] : enclosed)
       clearGesture(event.pointerId)
+      return
+    }
+    if (active.pointers.size === 2) {
+      handleMove(event)
+      active.pointers.delete(event.pointerId)
+      gestures.current.delete(event.pointerId)
+      rebaseSelectionGesture(active)
+      if (surface.current?.hasPointerCapture(event.pointerId)) surface.current.releasePointerCapture(event.pointerId)
+      refreshPreview()
       return
     }
     const { next, clones } = active
