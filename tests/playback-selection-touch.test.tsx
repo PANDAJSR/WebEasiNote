@@ -10,6 +10,19 @@ import { rotatePoint, selectionBounds, transformSelection } from '../src/viewer/
 import type { SlideData, SlideElement } from '../src/types'
 
 const window = new Window()
+let frameId = 0
+let frameTime = 0
+const frames = new Map<number, FrameRequestCallback>()
+window.requestAnimationFrame = callback => { frames.set(++frameId, callback); return frameId }
+window.cancelAnimationFrame = id => { frames.delete(id) }
+const tick = async (count = 1) => {
+  for (let index = 0; index < count; index++) await act(async () => {
+    frameTime += 1000 / 60
+    const callbacks = [...frames.values()]
+    frames.clear()
+    callbacks.forEach(callback => callback(frameTime))
+  })
+}
 Object.assign(globalThis, { window, document: window.document, HTMLElement: window.HTMLElement,
   SVGElement: window.SVGElement, Element: window.Element, ShadowRoot: window.ShadowRoot,
   CSS: window.CSS, getComputedStyle: window.getComputedStyle.bind(window), IS_REACT_ACT_ENVIRONMENT: true, React })
@@ -283,4 +296,51 @@ test('几乎重合的初始双指分开时不产生无限缩放，触摸控制�
     close(view.state.slides[0].elements[0].width, 400)
     close(view.state.slides[0].elements[0].height, 200)
   } finally { await view.unmount() }
+})
+
+test('DOM 预览在稀疏输入之间连续插值，松手平滑吸附绝对 90°，撤销和卸载不留动画', async () => {
+  const view = await player()
+  const displayedAngle = () => {
+    const box = view.container.querySelector('[aria-label="旋转"]')!.parentElement as HTMLElement
+    return Number(box.style.transform.match(/rotate\(([^d]+)deg\)/)![1])
+  }
+  try {
+    await view.select()
+    await view.pointer('pointerdown', 1, 150, 150)
+    await view.pointer('pointerdown', 2, 250, 150)
+    const radians = 87 * Math.PI / 180
+    const x = 150 + 100 * Math.cos(radians)
+    const y = 150 + 100 * Math.sin(radians)
+    await view.pointer('pointermove', 2, x, y)
+    close(displayedAngle(), 0)
+    await tick()
+    const first = displayedAngle()
+    assert.ok(first > 0 && first < 90)
+    await tick()
+    assert.ok(displayedAngle() > first && displayedAngle() < 90)
+    await view.pointer('pointerup', 2, x, y)
+    await view.pointer('pointerup', 1, 150, 150)
+    close((view.state.slides[0].elements[0] as any).rotation, 90)
+    assert.ok(displayedAngle() < 90)
+    await tick(35)
+    close(displayedAngle(), 90)
+    assert.equal(frames.size, 0)
+    assert.ok(view.container.querySelector('[role="toolbar"]'))
+    await view.undo()
+    assert.equal(view.state.selection.annotation!.canUndo, false)
+    await view.select()
+    await view.pointer('pointerdown', 1, 150, 150)
+    await view.pointer('pointerdown', 2, 250, 150)
+    await view.pointer('pointermove', 2, x, y)
+    await tick()
+    assert.ok(frames.size)
+    await view.pointer('pointercancel', 1, 150, 150)
+    assert.equal(frames.size, 0)
+    close(displayedAngle(), 0)
+    await view.pointer('pointerdown', 1, 150, 150)
+    await view.pointer('pointerdown', 2, 250, 150)
+    await view.pointer('pointermove', 2, x, y)
+    assert.ok(frames.size)
+  } finally { await view.unmount() }
+  assert.equal(frames.size, 0)
 })

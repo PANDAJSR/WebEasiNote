@@ -11,6 +11,7 @@ import { SelectionActionBar } from './SelectionActionBar'
 import { moveSelectionGesture, rebaseSelectionGesture, type SelectionGesture } from '../../viewer/selection-gesture'
 import { lassoSelection } from '../../viewer/selection-lasso'
 import { pointerToSlide } from '../../viewer/pointer-coordinates'
+import { SelectionPreviewMotion } from '../../viewer/selection-motion'
 
 interface PlaybackSelectionOverlayProps {
   slide: SlideData
@@ -40,9 +41,18 @@ export function PlaybackSelectionOverlay({ slide, scale, selection, elementDispl
   const bounds = members.length ? previewBounds || selectionBounds(members) : null
   const onPreviewRef = useRef(onPreview)
   onPreviewRef.current = onPreview
+  const motion = useRef<SelectionPreviewMotion | null>(null)
+  if (!motion.current) motion.current = new SelectionPreviewMotion({
+    request: callback => window.requestAnimationFrame(callback), cancel: id => window.cancelAnimationFrame(id)
+  }, (elements, selected) => {
+    setPreview(elements.length ? elements : null)
+    setPreviewBounds(selected.length ? selectionBounds(selected) : null)
+    onPreviewRef.current(elements.length ? elements : null)
+  })
 
   useEffect(() => () => {
     gestures.current.clear()
+    motion.current?.dispose()
     onPreviewRef.current(null)
   }, [slide.id])
 
@@ -56,16 +66,14 @@ export function PlaybackSelectionOverlay({ slide, scale, selection, elementDispl
     const rect = surface.current!.getBoundingClientRect()
     return pointerToSlide(event, rect, scale)
   }
-  const refreshPreview = () => {
+  const refreshPreview = (settleRemoved = false) => {
     const transforms = [...new Set(gestures.current.values())].filter((active): active is SelectionGesture => active.kind === 'transform')
-    const elements = transforms.flatMap(active => active.next || [])
-    const selectedPreview = transforms.find(active => active.selected && active.next)?.next
-    setPreview(elements.length ? elements : null)
-    setPreviewBounds(selectedPreview ? selectionBounds(selectedPreview) : null)
+    motion.current!.update(transforms.filter(active => active.next).map(active => ({
+      elements: active.next!, origin: active.clones || active.original, selected: active.selected, smooth: !!active.smooth
+    })), scale, settleRemoved)
     setLasso([...gestures.current.values()].find((active): active is LassoGesture => active.kind === 'lasso')?.points || null)
-    onPreview(elements.length ? elements : null)
   }
-  const clearGesture = (pointerId?: number) => {
+  const clearGesture = (pointerId?: number, settle = false) => {
     const active = pointerId === undefined ? undefined : gestures.current.get(pointerId)
     const ids = pointerId === undefined ? [...gestures.current.keys()]
       : active?.kind === 'transform' ? [...active.pointers.keys()] : [pointerId]
@@ -73,7 +81,9 @@ export function PlaybackSelectionOverlay({ slide, scale, selection, elementDispl
     for (const id of ids) {
       if (surface.current?.hasPointerCapture(id)) surface.current.releasePointerCapture(id)
     }
-    refreshPreview()
+    if (!settle) motion.current!.clear(pointerId === undefined ? undefined
+      : active?.kind === 'transform' ? (active.next || active.clones || active.original).map(element => element.id) : [])
+    refreshPreview(settle)
   }
   const visible = (element: SlideElement) => {
     if (element.type === 'ink' && element.brush.kind === 'laser') return false
@@ -99,6 +109,7 @@ export function PlaybackSelectionOverlay({ slide, scale, selection, elementDispl
       if (active) {
         if (active.pointers.size >= 2) return
         rebaseSelectionGesture(active)
+        active.smooth = true
         active.pointers.set(event.pointerId, { start, position: start })
         gestures.current.set(event.pointerId, active)
         surface.current?.setPointerCapture(event.pointerId)
@@ -169,8 +180,9 @@ export function PlaybackSelectionOverlay({ slide, scale, selection, elementDispl
       refreshPreview()
       return
     }
+    if (active.smooth) handleMove(event)
     const { next, clones } = active
-    clearGesture(event.pointerId)
+    clearGesture(event.pointerId, true)
     if (next) {
       if (clones) { selection.onDuplicate(next); if (active.selected) setSelectedIds(next.map(element => element.id)) }
       else selection.onChange(next)

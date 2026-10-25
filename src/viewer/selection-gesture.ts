@@ -2,6 +2,7 @@ import type { SlideElement } from '../types'
 import { cloneSelection } from './selection-clone'
 import { resizeSelection, rotatePoint, selectionBounds, snapSelectionRotation, transformSelection,
   type SelectionBounds, type SelectionHandle, type SelectionPoint } from './selection-geometry'
+import { selectionAngleDelta } from './selection-motion'
 
 interface GesturePointer { start: SelectionPoint; position: SelectionPoint }
 export interface SelectionGesture {
@@ -16,10 +17,16 @@ export interface SelectionGesture {
   clones: SlideElement[] | null
   cloneOnMove: boolean
   selected: boolean
+  smooth?: boolean
+  rotationBase?: number
+  snappedRotation?: number | null
 }
 
 /** 触点增减时从当前预览重新起算，整次操作仍只提交一次。 */
 export function rebaseSelectionGesture(gesture: SelectionGesture) {
+  const angleOf = (element: SlideElement) => (('rotation' in element && element.rotation) || 0)
+  gesture.rotationBase = (gesture.rotationBase ?? gesture.bounds.rotation ?? 0)
+    + (gesture.next ? selectionAngleDelta(angleOf(gesture.basis[0]), angleOf(gesture.next[0])) : 0)
   gesture.basis = gesture.next || gesture.basis
   gesture.bounds = selectionBounds(gesture.basis)
   gesture.handle = 'move'
@@ -28,7 +35,7 @@ export function rebaseSelectionGesture(gesture: SelectionGesture) {
 }
 
 /** 以双指中点为基准做等比缩放和旋转，同时跟随中点平移。 */
-export function pinchSelection(bounds: SelectionBounds, starts: SelectionPoint[], positions: SelectionPoint[]): SelectionBounds {
+export function pinchSelection(bounds: SelectionBounds, starts: SelectionPoint[], positions: SelectionPoint[], rotation?: number): SelectionBounds {
   const vector = (points: SelectionPoint[]) => ({ x: points[1].x - points[0].x, y: points[1].y - points[0].y })
   const middle = (points: SelectionPoint[]) => ({ x: (points[0].x + points[1].x) / 2, y: (points[0].y + points[1].y) / 2 })
   const before = vector(starts)
@@ -37,7 +44,9 @@ export function pinchSelection(bounds: SelectionBounds, starts: SelectionPoint[]
   if (distance < 1e-6) return bounds
   const ratio = Math.max(Math.hypot(after.x, after.y) / distance,
     8 / Math.max(bounds.width, 1e-6), 8 / Math.max(bounds.height, 1e-6))
-  const angle = (Math.atan2(after.y, after.x) - Math.atan2(before.y, before.x)) * 180 / Math.PI
+  const angle = rotation === undefined
+    ? (Math.atan2(after.y, after.x) - Math.atan2(before.y, before.x)) * 180 / Math.PI
+    : rotation - (bounds.rotation || 0)
   const start = middle(starts)
   const end = middle(positions)
   const offset = rotatePoint({ x: (bounds.x + bounds.width / 2 - start.x) * ratio,
@@ -46,6 +55,14 @@ export function pinchSelection(bounds: SelectionBounds, starts: SelectionPoint[]
   const height = bounds.height * ratio
   return { x: end.x + offset.x - width / 2, y: end.y + offset.y - height / 2, width, height,
     rotation: (((bounds.rotation || 0) + angle) % 360 + 360) % 360 }
+}
+
+/** 页面绝对直角：6° 内吸附，偏离 10° 才脱离，抵消触摸噪声。 */
+export function snapTouchRotation(angle: number, previous: number | null = null) {
+  const nearest = ((Math.round(angle / 90) * 90) % 360 + 360) % 360
+  const snapped = previous !== null && Math.abs(selectionAngleDelta(previous, angle)) <= 10 ? previous
+    : Math.abs(selectionAngleDelta(nearest, angle)) <= 6 ? nearest : null
+  return { angle: snapped ?? angle, snapped }
 }
 
 export function moveSelectionGesture(gesture: SelectionGesture, pointerId: number, position: SelectionPoint,
@@ -62,6 +79,12 @@ export function moveSelectionGesture(gesture: SelectionGesture, pointerId: numbe
     }
     if (!gesture.next && pointers.every(item => Math.hypot(item.position.x - item.start.x, item.position.y - item.start.y) * scale < 3)) return
     next = pinchSelection(from, pointers.map(item => item.start), pointers.map(item => item.position))
+    const base = gesture.rotationBase ?? from.rotation ?? 0
+    const absolute = base + selectionAngleDelta(from.rotation || 0, next.rotation || 0)
+    const snap = snapTouchRotation(absolute, gesture.snappedRotation)
+    gesture.snappedRotation = snap.snapped
+    next = pinchSelection(from, pointers.map(item => item.start), pointers.map(item => item.position),
+      (from.rotation || 0) + snap.angle - base)
   } else {
     const delta = { x: position.x - pointer.start.x, y: position.y - pointer.start.y }
     if (Math.hypot(delta.x, delta.y) * scale < 3 && !gesture.next) return
