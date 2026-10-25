@@ -82,6 +82,7 @@ export interface PictureElement {
   rahmenThickness?: number
   rahmenColor?: string
   imageRahmenWidthIndex?: number
+  glow?: { color: string; opacity: number; blurRadius: number }
   shadow?: ShapeElement['shadow']
   perspectiveShadow?: {
     matrix: [number, number, number, number, number, number]

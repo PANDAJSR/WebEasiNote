@@ -1,6 +1,7 @@
 import type { SlideIssue } from '../types'
 import { KNOWN_PARAMETERS } from './slide-elements-known-parameters'
 import { getDirectChildElement, getDirectChildText } from './xml-utils'
+import { isKnownPictureFrameType } from './picture-frame-types'
 
 export function previewValue(node: Element): string {
   // 诊断只取短预览，避免为几万节点的几何扩展拼接完整 textContent。
@@ -35,13 +36,12 @@ function collectPictureStyleIssues(node: Element, slideId: string, elementId: st
     slideId, elementId, elementType: 'Picture', name, value })
   const frame = getDirectChildElement(style, 'PictureRahmenStyle')
   const type = frame && getDirectChildText(frame, 'RahmenStyle')
-  if (type && !['None', 'Empty', 'NormalFrame', 'DotDashFrame', 'LongDashFrame', 'RectFrame',
-    'RoundRectFrame', 'EllipseFrame', 'CurveRhombusFrame'].includes(type)) {
+  if (type && !isKnownPictureFrameType(type)) {
     report('Style/PictureRahmenStyle/RahmenStyle', type)
   }
   const effects = getDirectChildElement(style, 'Effects')
   for (const effect of Array.from(effects?.children || [])) {
-    if (!['DropShadow', 'PerspectiveShadow', 'Reflection'].includes(effect.tagName)) {
+    if (!['DropShadow', 'PerspectiveShadow', 'Reflection', 'Glow'].includes(effect.tagName)) {
       report(`Style/Effects/${effect.tagName}`, previewValue(effect))
     }
   }

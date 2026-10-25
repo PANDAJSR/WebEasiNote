@@ -5,6 +5,7 @@ import { pictureGeometry } from '../rendering/picture-geometry'
 import { ProgressiveImage } from './ProgressiveImage'
 import { PictureFrame } from './PictureFrame'
 import { PictureEffects } from './PictureEffects'
+import { PictureGlow } from './PictureGlow'
 
 interface PictureRendererProps {
   element: PictureElement
@@ -36,15 +37,17 @@ export function PictureRenderer({ element, scale, resourceMap }: PictureRenderer
   } : { display: 'block', width: '100%', height: '100%', objectFit: 'fill' }
   imageStyle.filter = resolveCssFilter(element.bright, element.contrast, element.saturation)
   imageStyle.pointerEvents = 'none'
-  const content = <>
+  const image = <>
     <div data-picture-image='' style={{ position: 'absolute', inset: 0, overflow: 'hidden',
       clipPath: shape ? `url(#${clipId})` : undefined }}>
       {imageUrl ? <ProgressiveImage src={imageUrl} alt='' style={imageStyle} />
         : <div style={{ width: '100%', height: '100%', background: '#e2e8f0', color: '#718096',
           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>图片</div>}
     </div>
-    <PictureFrame element={element} />
   </>
+  const content = <PictureGlow element={element}>
+    {image}<PictureFrame element={element} image={image} />
+  </PictureGlow>
   return <div data-picture={element.id} style={{ position: 'absolute', left: x * scale, top: y * scale,
     width, height, transform: `scale(${scale})`, transformOrigin: '0 0', pointerEvents: 'none' }}>
     {shape && <svg width='0' height='0' style={{ position: 'absolute' }} aria-hidden='true'>

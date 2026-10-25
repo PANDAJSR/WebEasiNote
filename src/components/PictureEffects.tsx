@@ -8,11 +8,12 @@ export function PictureEffects({ element, content }: { element: PictureElement; 
   const id = `picture-effect-${useId().replace(/:/g, '')}`
   const { width, height, rotation = 0, alpha, shadow, perspectiveShadow, reflection } = element
   if (!shadow && !perspectiveShadow && !reflection) return null
-  const { silhouette, outset } = pictureGeometry(element)
+  const { shadowPath, shadowBounds, outset, visualBounds } = pictureGeometry(element)
   const rotate = `rotate(${rotation} ${width / 2} ${height / 2})`
   const bounds = rotatedPictureBounds(element, outset)
-  const matrix = perspectivePictureMatrix(element, outset)
+  const matrix = perspectivePictureMatrix(element, outset, shadowBounds)
   const shadowInfo = perspectiveShadow || shadow
+  const reflectionPadding = 4 + (element.glow?.opacity ? Math.min(element.glow.blurRadius, 127.5) * 3 : 0)
   const angle = (shadow?.angle || 0) * Math.PI / 180
   const translate = shadow ? `translate(${Math.sin(angle) * shadow.offset} ${-Math.cos(angle) * shadow.offset})` : ''
   return <svg data-picture-effects='' width={width} height={height}
@@ -34,7 +35,7 @@ export function PictureEffects({ element, content }: { element: PictureElement; 
     </defs>
     {shadowInfo && <g opacity={shadowInfo.opacity * alpha} filter={`url(#${id}-blur)`}>
       <g transform={matrix ? `matrix(${matrix.join(' ')})` : translate}>
-        <path data-picture-shadow={matrix ? 'perspective' : 'drop'} d={silhouette}
+        <path data-picture-shadow={matrix ? 'perspective' : 'drop'} d={shadowPath}
           transform={rotate} fill={shadowInfo.color} />
       </g>
     </g>}
@@ -42,9 +43,11 @@ export function PictureEffects({ element, content }: { element: PictureElement; 
       transform={`translate(0 ${2 * (bounds.y + bounds.height) + reflection.offsetY}) scale(1 -1)`}>
       <g mask={`url(#${id}-mask)`}>
         <g transform={rotate}>
-          <foreignObject x={-outset - 4} y={-outset - 4} width={width + outset * 2 + 8} height={height + outset * 2 + 8}
+          <foreignObject x={visualBounds.x - reflectionPadding} y={visualBounds.y - reflectionPadding}
+            width={visualBounds.width + reflectionPadding * 2} height={visualBounds.height + reflectionPadding * 2}
             overflow='visible'>
-            <div style={{ position: 'relative', width, height, left: outset + 4, top: outset + 4 }}>{content}</div>
+            <div style={{ position: 'relative', width, height,
+              left: reflectionPadding - visualBounds.x, top: reflectionPadding - visualBounds.y }}>{content}</div>
           </foreignObject>
         </g>
       </g>

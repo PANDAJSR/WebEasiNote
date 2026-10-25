@@ -25,10 +25,15 @@ function shadowProperties(node: Element) {
 
 /** 只读 Style/Effects，不能从 ElementEffects 的菜单预设名称推断实际特效。 */
 export function parsePictureEffects(node: Element) {
-  const result: Pick<PictureElement, 'shadow' | 'perspectiveShadow' | 'reflection'> = {}
+  const result: Pick<PictureElement, 'shadow' | 'perspectiveShadow' | 'reflection' | 'glow'> = {}
   const style = child(node, 'Style')
   const effects = style && child(style, 'Effects')
   if (!effects) return result
+  const glow = child(effects, 'Glow')
+  if (glow) result.glow = {
+    color: parseColor(text(glow, 'Color') || '#00000000', true),
+    opacity: clamp(number(glow, 'Opacity', 0)), blurRadius: Math.max(0, number(glow, 'BlurRadius', 0))
+  }
   const drop = child(effects, 'DropShadow')
   if (drop) result.shadow = { ...shadowProperties(drop), offset: number(drop, 'Offset', 0), angle: number(drop, 'Angle', 315) }
   const perspective = child(effects, 'PerspectiveShadow')
@@ -63,6 +68,7 @@ export function parsePictureFrame(node: Element) {
   const frame = style && child(style, 'PictureRahmenStyle')
   const preset = style && text(style, 'PicturePresetStyle')
   const presetFrames: Record<string, string> = { FrameShadowAround: 'RectFrame',
+    FrameShadowBottom: 'FrameShadowBottom', FrameInnerShadowAround: 'FrameInnerShadowAround',
     RoundRectFrame: 'RoundRectFrame', CurveRhombusFrame: 'CurveRhombusFrame', EllipseFrame: 'EllipseFrame' }
   const brush = frame && child(frame, 'LineRahmenBrush')
   return {

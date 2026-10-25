@@ -73,7 +73,7 @@ test('弧边相框只圆左上/右下，旋转不会改变原图裁剪坐标', (
 
 test('矩形艺术相框使用官方九宫格而非实线加任意 box-shadow', () => {
   const markup = render(frames[3])
-  assert.ok(markup.includes('border-image-slice:29'))
+  assert.ok(markup.includes('border-image-slice:29 29 29 29 fill'))
   assert.ok(markup.includes('picture-frame.png'))
   assert.ok(markup.includes('inset:-28px'))
 })
@@ -156,7 +156,7 @@ test('无效数据有界回退，零线宽不擅自补默认粗边，旧平铺�
   assert.deepEqual(parsePictureEffects(doc.documentElement as unknown as Element), {})
 })
 
-test('支持的现代样式不再误报，未实现的艺术相框和特效继续报告', () => {
+test('支持的现代样式不再误报，未知相框和特效继续报告', () => {
   const parseIssues = (xml: string) => {
     const node = new dom.DOMParser().parseFromString(xml, 'text/xml').documentElement
     const issues: SlideIssue[] = []
@@ -164,6 +164,6 @@ test('支持的现代样式不再误报，未实现的艺术相框和特效继�
     return issues
   }
   assert.equal(parseIssues('<Picture><Style><PictureRahmenStyle><RahmenStyle>EllipseFrame</RahmenStyle></PictureRahmenStyle><Effects><Reflection/></Effects></Style><ElementEffects/></Picture>').length, 0)
-  const issues = parseIssues('<Picture><Style><PictureRahmenStyle><RahmenStyle>FlowerPhotoFrame</RahmenStyle></PictureRahmenStyle><Effects><Glow/></Effects></Style></Picture>')
-  assert.deepEqual(issues.map(issue => issue.name), ['Style/PictureRahmenStyle/RahmenStyle', 'Style/Effects/Glow'])
+  const issues = parseIssues('<Picture><Style><PictureRahmenStyle><RahmenStyle>FutureFrame</RahmenStyle></PictureRahmenStyle><Effects><FutureEffect/></Effects></Style></Picture>')
+  assert.deepEqual(issues.map(issue => issue.name), ['Style/PictureRahmenStyle/RahmenStyle', 'Style/Effects/FutureEffect'])
 })

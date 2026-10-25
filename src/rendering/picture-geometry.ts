@@ -1,14 +1,13 @@
 import type { PictureElement } from '../types'
-
-const FRAME_NAMES: Record<string, string> = { '1': 'rectframe', '2': 'roundrectframe', '3': 'ellipseframe',
-  '4': 'curverhombusframe', '100': 'normalframe', '101': 'dotdashframe', '102': 'longdashframe',
-  ellipse: 'ellipseframe', roundrect: 'roundrectframe' }
+import { pictureArtFrame, pictureArtOutset } from './picture-art-frames'
+import { expandPictureBounds, pointsBounds, polygonPath, rectanglePoints, rotatePictureBounds, rotatePoints } from './picture-bounds'
+import type { PictureBounds } from './picture-bounds'
+import { normalizePictureFrameType } from '../enbx/picture-frame-types'
 
 export function pictureFrame(element: PictureElement) {
-  const value = String(element.pictureRahmenType || '').trim().toLowerCase()
-  const type = FRAME_NAMES[value] || value
+  const type = normalizePictureFrameType(element.pictureRahmenType)
   const line = ['normalframe', 'dotdashframe', 'longdashframe'].includes(type)
-  const index = element.imageRahmenWidthIndex ?? 1
+  const index = Math.max(0, element.imageRahmenWidthIndex ?? 1)
   const thickness = line ? element.rahmenThickness || 0 : index * 10
   return { type, line, index, thickness, color: line ? element.rahmenColor || '#000000' : '#ffffff',
     dashes: type === 'dotdashframe' ? [5, 3] : type === 'longdashframe' ? [10, 2, 2, 2] : [] }
@@ -31,17 +30,46 @@ export function pictureGeometry(element: PictureElement) {
   const frame = pictureFrame(element)
   const shaped = ['ellipseframe', 'roundrectframe', 'curverhombusframe'].includes(frame.type)
   const shape = shaped ? frame.type : (element.clippingShape || '').toLowerCase()
-  const outset = frame.thickness && (frame.line || shaped || frame.type === 'rectframe') ? frame.thickness : 0
+  const art = pictureArtFrame(frame.type, frame.index)
+  const hasArt = Boolean(art) || (frame.type === 'stampphotoframe' && frame.thickness > 0)
+  const outset = frame.line || shaped ? frame.thickness : hasArt ? pictureArtOutset(frame.type, frame.index) : 0
   const { width, height } = element
-  return { frame, shape, outset, clip: picturePath(shape, width, height),
-    silhouette: picturePath(shape, width + outset * 2, height + outset * 2, -outset, -outset),
+  const rigid = rectanglePoints(expandPictureBounds(width, height, outset))
+  const overlap = frame.type === 'rectoverlapframe' && frame.thickness > 0
+  const rigidPoints = overlap ? [...rigid, ...rotatePoints(rigid, -6, width / 2, height / 2)] : rigid
+  const visualOutset = art?.margin ?? (frame.type === 'stampphotoframe' && frame.thickness ? 14 + frame.thickness : outset)
+  const visual = rectanglePoints(expandPictureBounds(width, height, visualOutset))
+  const visualBounds = pointsBounds(overlap ? [...visual, ...rotatePoints(visual, -6, width / 2, height / 2)] : visual)
+  const shadowBounds = hasArt ? artShadowBounds(frame.type, frame.index, visualBounds)
+    : expandPictureBounds(width, height, outset)
+  const silhouette = overlap ? polygonPath(rigid) + polygonPath(rotatePoints(rigid, -6, width / 2, height / 2))
+    : picturePath(shape, width + outset * 2, height + outset * 2, -outset, -outset)
+  return { frame, shape, outset, visualBounds, rigidPoints, shadowBounds,
+    clip: picturePath(shape, width, height), silhouette,
+    shadowPath: hasArt ? picturePath('', shadowBounds.width, shadowBounds.height, shadowBounds.x, shadowBounds.y) : silhouette,
     outline: picturePath(shape, width + outset, height + outset, -outset / 2, -outset / 2) }
 }
 
-export interface PictureBounds { x: number; y: number; width: number; height: number }
+/** RahmanShadowOffset 从包含 PNG 柔影的视觉边界收回到实框，不重复投影 PNG 阴影。 */
+function artShadowBounds(type: string, index: number, bounds: PictureBounds): PictureBounds {
+  const slot = index === 2 ? 1 : index === 3 ? 2 : 0
+  const offsets: Record<string, number[]> = { rectframe: [19.5], rectoverlapframe: [19.5],
+    frameshadowbottom: [11.5, 11.5, 11.5, 14.5], stampphotoframe: [7.5], arrowphotoframe: [15.6],
+    frameinnershadowaround: [[17, 12, 17][slot]], flowerphotoframe: [[15.6, 15.6, 10.6][slot]],
+    crossphotoframe: slot === 1 ? [32, 30, 32, 32] : [[32, 32, 35][slot]] }
+  const values = offsets[type] || [0]
+  const [left, top = left, right = left, bottom = top] = values
+  if (bounds.width <= left + right || bounds.height <= top + bottom) return bounds
+  return { x: bounds.x + left, y: bounds.y + top, width: bounds.width - left - right, height: bounds.height - top - bottom }
+}
 
 /** 特效在旋转后的页面坐标中构造；不能随主图再旋转一次。 */
 export function rotatedPictureBounds(element: PictureElement, outset = 0): PictureBounds {
+  if (pictureFrame(element).type === 'rectoverlapframe' && pictureFrame(element).thickness) {
+    const points = rectanglePoints(expandPictureBounds(element.width, element.height, outset))
+    return pointsBounds(rotatePoints([...points, ...rotatePoints(points, -6, element.width / 2, element.height / 2)],
+      element.rotation, element.width / 2, element.height / 2))
+  }
   const radians = element.rotation * Math.PI / 180
   const c = Math.cos(radians)
   const s = Math.sin(radians)
@@ -51,11 +79,12 @@ export function rotatedPictureBounds(element: PictureElement, outset = 0): Pictu
 }
 
 /** 对齐透视阴影的近端到旋转后图片底边，复刻 GetShadowGeometry。 */
-export function perspectivePictureMatrix(element: PictureElement, outset = 0) {
+export function perspectivePictureMatrix(element: PictureElement, outset = 0, localBounds?: PictureBounds) {
   const shadow = element.perspectiveShadow
   if (!shadow) return undefined
   const [a, b, c, d, e, f] = shadow.matrix
-  const bounds = rotatedPictureBounds(element, outset)
+  const bounds = localBounds ? rotatePictureBounds(localBounds, element.rotation, element.width, element.height)
+    : rotatedPictureBounds(element, outset)
   const bottom = bounds.y + bounds.height
   const xs = [bounds.x, bounds.x + bounds.width]
   const ys = [bounds.y, bottom]

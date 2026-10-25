@@ -1,0 +1,120 @@
+{
+  "source": "EasiNote.Resources.dll 5.2.4.10148",
+  "sourceSha256": "71a2cdc7ac34f3e39b332520d82de6702373f6afa425d0aca8726cf65e532fdf",
+  "files": [
+    {
+      "name": "pictureframe07_10.png",
+      "width": 124,
+      "height": 124,
+      "sha256": "03b986149fe471ec75cdc3eecd96c566ed86f95676f93b07eeeee8db58836e01"
+    },
+    {
+      "name": "pictureframe07_20.png",
+      "width": 124,
+      "height": 124,
+      "sha256": "14da67af2c9fea97db0dcdfbcc51384248cb22866ef74e0936408992d1e28daa"
+    },
+    {
+      "name": "pictureframe07_30.png",
+      "width": 124,
+      "height": 124,
+      "sha256": "46c086fd491b74e863805e513bf77a768a82dd9833a67f43b8e9ac432d5a8bfd"
+    },
+    {
+      "name": "pictureframe08_10.png",
+      "width": 180,
+      "height": 180,
+      "sha256": "a9707d3d0db02f91281c4b3566e458c9b8e0e5ee61a263050befc30a7fcbf453"
+    },
+    {
+      "name": "pictureframe08_20.png",
+      "width": 180,
+      "height": 180,
+      "sha256": "d5944ce30759e72792d5ebd37dd22eb22f127b1b1a4add041ba748482bab79bd"
+    },
+    {
+      "name": "pictureframe08_30.png",
+      "width": 180,
+      "height": 180,
+      "sha256": "f6ecfc8bed482e1476e35ac2057ace5e6237e07277c0706e027a89d0328d7950"
+    },
+    {
+      "name": "pictureframe09_10.png",
+      "width": 104,
+      "height": 104,
+      "sha256": "358825a6aa2c83871e774546c0b351364793b1655f15f86ba6c680986cd1283e"
+    },
+    {
+      "name": "pictureframe09_20.png",
+      "width": 124,
+      "height": 124,
+      "sha256": "7b8b283cf54e8db7aa94c76eb63166a0aa528c780db3d379bf4242b5439cb189"
+    },
+    {
+      "name": "pictureframe09_30.png",
+      "width": 150,
+      "height": 150,
+      "sha256": "c2fa108d6119c5ecfbb877e191d2353f39da98136104043732687bb10716fc59"
+    },
+    {
+      "name": "pictureframe2_10.png",
+      "width": 244,
+      "height": 117,
+      "sha256": "20d30d4f090080c34c789cb61d6f2dd0986d60f4f0a13942308dd6a5536f9fd0"
+    },
+    {
+      "name": "pictureframe2_20.png",
+      "width": 244,
+      "height": 117,
+      "sha256": "d43519aa64f500b9a0646df34b4899452314042eae3524ee21df5d554f07f1ba"
+    },
+    {
+      "name": "pictureframe2_30.png",
+      "width": 244,
+      "height": 117,
+      "sha256": "0d122baf05bca659129bf8639fb75750f71983b8eb44ee5b48c26ded3e777516"
+    },
+    {
+      "name": "pictureframe3_10.png",
+      "width": 80,
+      "height": 80,
+      "sha256": "f678f3111a65655b2977d483f9b10f1cefba25b4cc718fe7152be1f78d39007d"
+    },
+    {
+      "name": "pictureframe3_20.png",
+      "width": 100,
+      "height": 100,
+      "sha256": "d6b3fc692a318e7713c0493ba52b6ae7b96f3dae89f9756d03bbbf4deaa911f6"
+    },
+    {
+      "name": "pictureframe3_30.png",
+      "width": 130,
+      "height": 130,
+      "sha256": "0411d69f737e822fd529c54b57d33fdc4abd462e2a895bef79d7423df3c197bc"
+    },
+    {
+      "name": "stampphotoframe0610bottom.png",
+      "width": 24,
+      "height": 24,
+      "sha256": "6094be2ae420553326cf98cfc94d4470ed8aeb28d2ba344439e2df956e6821d7"
+    },
+    {
+      "name": "stampphotoframe0610left.png",
+      "width": 24,
+      "height": 24,
+      "sha256": "04c89be6b7f874fd5dfd42b459610cf708ec9732d138fdbcbfd247cae915e8ff"
+    },
+    {
+      "name": "stampphotoframe0610right.png",
+      "width": 24,
+      "height": 24,
+      "sha256": "29b66aa621f11f6d0ae59297a0b7b31b1cc7f49763f2e8d3905f3d35ee08a38a"
+    },
+    {
+      "name": "stampphotoframe0610top.png",
+      "width": 24,
+      "height": 24,
+      "sha256": "5be3e7ad54b5b274362aecf22f43dc23a50bd65c2ef2af05920c71c13dc3ae3e"
+    }
+  ]
+}
