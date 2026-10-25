@@ -46,3 +46,4 @@ coverage/
 *.AppImage
 *.enbx
 *.mhb
+public/pdfjs/

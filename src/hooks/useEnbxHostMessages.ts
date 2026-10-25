@@ -30,6 +30,7 @@ export function useEnbxHostMessages({ loadENBXUrlRef, openManifest, viewModeRef,
           return
         }
         if (message.type === 'enbx:open') {
+          if (message.sourceKind === 'pdf') return
           if (message.sourceKind === 'http-manifest' && typeof message.manifestUrl === 'string') {
             openManifest(message.manifestUrl)
             return
@@ -77,6 +78,9 @@ export function useEnbxHostMessages({ loadENBXUrlRef, openManifest, viewModeRef,
         })
       }
     }
-    return subscribeToEnbxHost(handleHostMessage)
+    const unsubscribe = subscribeToEnbxHost(handleHostMessage)
+    // 从独立文档视图切回时，打开消息可能早于 App 挂载，重新请求当前源。
+    postToEnbxHost({ type: 'enbx:request-current-document' })
+    return unsubscribe
   }, [])
 }
